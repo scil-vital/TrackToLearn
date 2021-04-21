@@ -1,4 +1,4 @@
-## Track-to-Learn: A general framework for tractography with deep reinforcement learning
+# Track-to-Learn: A general framework for tractography with deep reinforcement learning
 
 See preprint: https://www.biorxiv.org/content/10.1101/2020.11.16.385229v1
 
@@ -41,7 +41,7 @@ python TrackToLearn/runners/td3_train.py \
   REFERENCE_FILE
 ```
 
-Similarly, you may train the SAC agent by running `TrackToLearn/dataset/create_dataset.py` using the same parameters. *Or run a script in the `scripts` folder.*
+Similarly, you may train the SAC agent by running `TrackToLearn/dataset/create_dataset.py` using the same parameters. **Or run a script in the `scripts` folder.**
 
 Then, you may track with your trained agent with
 
@@ -53,12 +53,8 @@ python TrackToLearn/runners/test.py \
   TEST_DATASET_FILE \
   TEST_SUBJECT_ID \
   REFERENCE_FILE \
-  PATH/model" \
-  PATH/model/hyperparameters.json"
+  PATH/model \
+  PATH/model/hyperparameters.json
 ```
 
 To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder
-
-## Contributing
-
-Please follow PEP8 conventions, use meaningful commit messages and mark PRs appropriately. Following `numpy` standards is heavily recommended: https://numpy.org/doc/1.16/dev/gitwash/development_workflow.html
