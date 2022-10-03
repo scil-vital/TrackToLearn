@@ -5,11 +5,10 @@ set -e  # exit if any command fails
 
 DATASET_FOLDER=
 WORK_DATASET_FOLDER=
-
 mkdir -p $WORK_DATASET_FOLDER
 
-TEST_SUBJECT_ID=fibercup
-SUBJECT_ID=fibercup
+TEST_SUBJECT_ID=fibercup_asym
+SUBJECT_ID=fibercup_asym
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 SCORING_DATA=${DATASET_FOLDER}/raw/${TEST_SUBJECT_ID}/scoring_data
@@ -24,16 +23,16 @@ test_reference_file=$WORK_DATASET_FOLDER/raw/${TEST_SUBJECT_ID}/masks/${TEST_SUB
 
 max_ep=500 # Chosen empirically
 log_interval=50 # Log at n steps
-lr=0.005 # Learning rate
-gamma=0.75 # Gamma for reward discounting
-alpha=0.5
+lr=0.0001 # Learning rate
+gamma=0.85 # Gamma for reward discounting
+alpha=0.2
 
 valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 n_seeds_per_voxel=2 # Seed per voxel
 max_angle=30 # Maximum angle for streamline curvature
 
-EXPERIMENT=SACAutoFiberCupTrain
+EXPERIMENT=SACAutoFiberCupTrain_CmcAsym
 
 ID=$(date +"%F-%H_%M_%S")
 
@@ -63,6 +62,8 @@ do
     --n_seeds_per_voxel=${n_seeds_per_voxel} \
     --max_angle=${max_angle} \
     --valid_noise=$valid_noise \
+    --asymmetric \
+    --cmc \
     --use_gpu \
     --use_comet \
     --run_tractometer \
