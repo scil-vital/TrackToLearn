@@ -104,22 +104,19 @@ class CometMonitor():
                       '{}.png'.format(i_episode)),
                 step=i_episode)
 
+    def log_losses(self, loss_dict, i):
+        self.e.log_metrics(loss_dict, step=i)
+
     def update_train(
         self,
         reward_monitor,
-        actor_loss_monitor,
-        critic_loss_monitor,
         i_episode,
     ):
         reward_x, reward_y = zip(*reward_monitor.epochs)
-        ac_x, ac_y = zip(*actor_loss_monitor.epochs)
-        cc_x, cc_y = zip(*critic_loss_monitor.epochs)
 
         self.e.log_metrics(
             {
                 self.prefix + "Train Reward": reward_y[-1],
-                self.prefix + "Actor Loss": ac_y[-1],
-                self.prefix + "Critic Loss": cc_y[-1],
 
             },
             step=i_episode

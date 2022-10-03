@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 
 from nibabel.nifti1 import Nifti1Image
 
-from TrackToLearn.datasets.processing import normalize_data_volume
+from TrackToLearn.datasets.processing import min_max_normalize_data_volume
 from TrackToLearn.utils.utils import (
     Timer)
 
@@ -126,28 +126,25 @@ def generate_dataset(
             hdf_peaks_volume.attrs['vox2rasmm'] = peaks.affine
             hdf_peaks_volume.create_dataset('data', data=peaks.get_fdata())
 
-            if wm_file:
-                hdf_peaks_volume = hdf_subject.create_group('wm_volume')
-                hdf_peaks_volume.attrs['vox2rasmm'] = wm_img.affine
-                hdf_peaks_volume.create_dataset(
-                    'data', data=wm_img.get_fdata())
+            hdf_wm_volume = hdf_subject.create_group('wm_volume')
+            hdf_wm_volume.attrs['vox2rasmm'] = wm_img.affine
+            hdf_wm_volume.create_dataset('data', data=wm_img.get_fdata())
 
-            if gm_file:
-                hdf_peaks_volume = hdf_subject.create_group('gm_volume')
-                hdf_peaks_volume.attrs['vox2rasmm'] = gm_img.affine
-                hdf_peaks_volume.create_dataset(
-                    'data', data=gm_img.get_fdata())
+            hdf_gm_volume = hdf_subject.create_group('gm_volume')
+            hdf_gm_volume.attrs['vox2rasmm'] = gm_img.affine
+            hdf_gm_volume.create_dataset(
+                'data', data=gm_img.get_fdata())
 
-            if csf_file:
-                hdf_peaks_volume = hdf_subject.create_group('csf_volume')
-                hdf_peaks_volume.attrs['vox2rasmm'] = csf_img.affine
-                hdf_peaks_volume.create_dataset(
-                    'data', data=csf_img.get_fdata())
+            hdf_csf_volume = hdf_subject.create_group('csf_volume')
+            hdf_csf_volume.attrs['vox2rasmm'] = csf_img.affine
+            hdf_csf_volume.create_dataset(
+                'data', data=csf_img.get_fdata())
 
             if interface_file:
-                hdf_peaks_volume = hdf_subject.create_group('interface_volume')
-                hdf_peaks_volume.attrs['vox2rasmm'] = interface_img.affine
-                hdf_peaks_volume.create_dataset(
+                hdf_interface_volume = hdf_subject.create_group(
+                    'seeding_volume')
+                hdf_interface_volume.attrs['vox2rasmm'] = interface_img.affine
+                hdf_interface_volume.create_dataset(
                     'data', data=interface_img.get_fdata())
 
     print("Saved dataset : {}".format(dataset_file))
@@ -165,8 +162,10 @@ def process_subject(
 ) -> Tuple[np.ndarray, List, List, Dict, np.ndarray, np.ndarray]:
 
     affine = nib.load(input_files[0]).affine
+    header = nib.load(input_files[0]).header
 
     input_volumes = [nib.load(f).get_fdata() for f in input_files]
+    print('Using as inputs', input_files)
     for i, v in enumerate(input_volumes):
         if len(v.shape) == 3:
             input_volumes[i] = v[..., None]
@@ -191,16 +190,16 @@ def process_subject(
 
     if normalize:
         print('Normalizing signal volume')
-        input_volume = normalize_data_volume(input_volumes[0])
+        input_volume = min_max_normalize_data_volume(input_volumes[0])
     else:
         input_volume = input_volumes[0]
 
     inputs = np.concatenate([input_volume] + input_volumes[1:], axis=-1)
-
     # Save processed data
     input_image = Nifti1Image(
         inputs,
-        affine)
+        affine,
+        header)
 
     return (input_image, peaks_image,
             wm_mask_image, gm_mask_image, csf_mask_image,

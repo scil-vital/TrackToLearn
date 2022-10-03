@@ -5,6 +5,8 @@ from enum import Enum
 
 from scipy.ndimage.interpolation import map_coordinates
 
+from TrackToLearn.utils.utils import normalize_vectors
+
 
 B1 = np.array([[1, 0, 0, 0, 0, 0, 0, 0],
                [-1, 0, 0, 0, 1, 0, 0, 0],
@@ -49,9 +51,9 @@ def get_sh(
     """
 
     N, H, P = segments.shape
-    flat_coords = np.concatenate(segments, axis=0)
+    flat_coords = np.reshape(segments, (N * H, P))
 
-    coords = torch.as_tensor(flat_coords).to(device)
+    coords = torch.as_tensor(flat_coords, device=device)
     n_coords = coords.shape[0]
 
     if add_neighborhood_vox:
@@ -133,8 +135,8 @@ def torch_trilinear_interpolation(
             coords[:, None, :] + idx_torch).reshape((-1, 3)).long()
 
         # Clip indices to make sure we don't go out-of-bounds
-        lower = torch.as_tensor([0, 0, 0]).to(device)
-        upper = (torch.as_tensor(volume.shape) - 1).to(device)
+        lower = torch.as_tensor([0, 0, 0], device=device)
+        upper = torch.as_tensor(volume.shape, device=device) - 1
         indices = torch.min(torch.max(indices_unclipped, lower), upper)
 
         # Fetch volume data at indices
@@ -185,7 +187,8 @@ def interpolate_volume_at_coordinates(
     volume: np.ndarray,
     coords: np.ndarray,
     mode: str = 'nearest',
-    order: int = 1
+    order: int = 1,
+    cval: float = 0.0,
 ) -> np.ndarray:
     """ Evaluates a 3D or 4D volume data at the given coordinates using trilinear
     interpolation.
@@ -212,14 +215,15 @@ def interpolate_volume_at_coordinates(
         raise ValueError("Volume must be 3D or 4D!")
 
     if volume.ndim == 3:
-        return map_coordinates(volume, coords.T, order=order, mode=mode)
+        return map_coordinates(
+            volume, coords.T, order=order, mode=mode, cval=cval)
 
     if volume.ndim == 4:
         D = volume.shape[-1]
         values_4d = np.zeros((coords.shape[0], D))
         for i in range(volume.shape[-1]):
             values_4d[:, i] = map_coordinates(
-                volume[..., i], coords.T, order=order, mode=mode)
+                volume[..., i], coords.T, order=order, mode=mode, cval=cval)
         return values_4d
 
 
@@ -246,6 +250,43 @@ def get_neighborhood_directions(
     axes = np.identity(3)
     directions = np.concatenate(([[0, 0, 0]], axes, -axes)) * radius
     return directions
+
+
+def has_reached_gm(
+    streamlines: np.ndarray,
+    mask: np.ndarray,
+    affine_vox2mask: np.ndarray = None,
+    threshold: float = 0.,
+    min_nb_steps: int = 10
+):
+    """ Checks which streamlines have their last coordinates inside a mask and
+    are at least longer than a minimum strealine length.
+
+    Parameters
+    ----------
+    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+        Streamline coordinates in voxel space
+    mask : 3D `numpy.ndarray`
+        3D image defining a stopping mask. The interior of the mask is defined
+        by values higher or equal than `threshold` .
+        NOTE: The mask coordinates can be in a different space than the
+        streamlines coordinates if an affine is provided.
+    affine_vox2mask : `numpy.ndarray` with shape (4,4) (optional)
+        Tranformation that aligns streamlines on top of `mask`.
+    threshold : float
+        Voxels with a value higher or equal than this threshold are considered
+        as part of the interior of the mask.
+    min_length: float
+        Minimum streamline length to end
+
+    Returns
+    -------
+    inside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+        Array telling whether a streamline's can end after reaching GM.
+    """
+    return np.logical_and(is_inside_mask(
+        streamlines, mask, affine_vox2mask, threshold),
+        np.full(streamlines.shape[0], streamlines.shape[1] > min_nb_steps))
 
 
 def is_inside_mask(
@@ -278,53 +319,156 @@ def is_inside_mask(
         or not.
     """
     # Get last streamlines coordinates
-    indices_vox = streamlines[:, -1, :]
-
-    mask_values = interpolate_volume_at_coordinates(
-        mask, indices_vox, mode='constant')
-    inside = mask_values >= threshold
-
-    return inside
+    return interpolate_volume_at_coordinates(
+        mask, streamlines[:, -1, :], mode='constant', order=0) >= threshold
 
 
-def is_outside_mask(
-    streamlines: np.ndarray,
-    mask: np.ndarray,
-    affine_vox2mask: np.ndarray = None,
-    threshold: float = 0.
-):
-    """ Checks which streamlines have their last coordinates outside a mask.
-
-    Parameters
-    ----------
-    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-        Streamline coordinates in voxel space
-    mask : 3D `numpy.ndarray`
-        3D image defining a stopping mask. The interior of the mask is defined
-        by values higher or equal than `threshold` .
-        NOTE: The mask coordinates can be in a different space than the
-        streamlines coordinates if an affine is provided.
-    affine_vox2mask : `numpy.ndarray` with shape (4,4) (optional)
-        Tranformation that aligns streamlines on top of `mask`.
-    threshold : float
-        Voxels with a value higher or equal than this threshold are considered
-        as part of the interior of the mask.
-
-    Returns
-    -------
-    outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-        Array telling whether a streamline's last coordinate is outside the
-        mask or not.
+class BinaryStoppingCriterion(object):
+    """
+    Defines if a streamline is outside a mask using trilinear interp.
     """
 
-    # Get last streamlines coordinates
-    indices_vox = streamlines[:, -1, :]
+    def __init__(
+        self,
+        mask: np.ndarray,
+        affine: np.ndarray = None,
+        threshold: float = 0.5,
+    ):
+        """
+        Parameters
+        ----------
 
-    mask_values = interpolate_volume_at_coordinates(
-        mask, indices_vox, mode='constant')
-    outside = mask_values < threshold
+        mask : 3D `numpy.ndarray`
+            3D image defining a stopping mask. The interior of the mask is
+            defined by values higher or equal than `threshold` .
+            NOTE: The mask coordinates can be in a different space than the
+            streamlines coordinates if an affine is provided.
+        affine_vox2mask : `numpy.ndarray` with shape (4,4) (optional)
+            Tranformation that aligns streamlines on top of `mask`.
+        threshold : float
+            Voxels with a value higher or equal than this threshold are
+            considered as part of the interior of the mask.
 
-    return outside
+        """
+        self.mask = mask
+        self.affine = affine
+        self.threshold = threshold
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+    ):
+        """ Checks which streamlines have their last coordinates outside a mask.
+
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+
+        Returns
+        -------
+        outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array telling whether a streamline's last coordinate is outside the
+            mask or not.
+        """
+
+        # Get last streamlines coordinates
+        return interpolate_volume_at_coordinates(
+            self.mask, streamlines[:, -1, :], mode='constant',
+            order=0) < self.threshold
+
+
+class CmcStoppingCriterion(object):
+    """
+    Defines if a streamline is outside a mask using trilinear interp.
+    """
+
+    def __init__(
+        self,
+        include_mask: np.ndarray,
+        exclude_mask: np.ndarray,
+        affine: np.ndarray,
+        step_size: float,
+        min_nb_steps: int,
+    ):
+        """
+        Parameters
+        ----------
+
+        mask : 3D `numpy.ndarray`
+            3D image defining a stopping mask. The interior of the mask is
+            defined by values higher or equal than `threshold` .
+            NOTE: The mask coordinates can be in a different space than the
+            streamlines coordinates if an affine is provided.
+        affine_vox2mask : `numpy.ndarray` with shape (4,4) (optional)
+            Tranformation that aligns streamlines on top of `mask`.
+        threshold : float
+            Voxels with a value higher or equal than this threshold are
+            considered as part of the interior of the mask.
+
+        """
+        self.include_mask = include_mask
+        self.exclude_mask = exclude_mask
+        self.affine = affine
+        vox_size = np.mean(np.abs(np.diag(affine)[:3]))
+        self.correction_factor = step_size / vox_size
+        self.min_nb_steps = min_nb_steps
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+    ):
+        """ Checks which streamlines should stop according to Continuous map
+        criteria.
+
+        Ref:
+            Girard, G., Whittingstall, K., Deriche, R., & Descoteaux, M. (2014)
+            Towards quantitative connectivity analysis: reducing tractography
+            biases.
+            Neuroimage, 98, 266-278.
+
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+
+        Returns
+        -------
+        outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array telling whether a streamline's last coordinate is outside the
+            mask or not.
+        """
+
+        include_result = interpolate_volume_at_coordinates(
+            self.include_mask, streamlines[:, -1, :], mode='constant',
+            order=1)
+        if streamlines.shape[1] < self.min_nb_steps:
+            include_result[:] = 0.
+
+        exclude_result = interpolate_volume_at_coordinates(
+            self.exclude_mask, streamlines[:, -1, :], mode='constant',
+            order=1, cval=1.0)
+
+        # If streamlines are still in 100% WM, don't exit
+        wm_points = include_result + exclude_result <= 0
+
+        # Compute continue probability
+        num = np.maximum(0, (1 - include_result - exclude_result))
+        den = num + include_result + exclude_result
+        p = (num / den) ** self.correction_factor
+
+        # p >= continue prob -> not continue
+        not_continue_points = np.random.random(streamlines.shape[0]) >= p
+
+        # if by some magic some wm point don't continue, make them continue
+        not_continue_points[wm_points] = False
+
+        # if the point is in the include map, it has potentially reached GM
+        p = (include_result / (include_result + exclude_result))
+        stop_include = np.random.random(streamlines.shape[0]) < p
+        not_continue_points[stop_include] = True
+
+        return not_continue_points
 
 
 def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
@@ -342,9 +486,7 @@ def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
     too_long : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
         Array telling whether a streamline is too long or not
     """
-    return (np.full(len(streamlines), True)
-            if streamlines.shape[1] >= max_nb_steps
-            else np.full(len(streamlines), False))
+    return np.full(streamlines.shape[0], streamlines.shape[1] >= max_nb_steps)
 
 
 def is_too_curvy(streamlines: np.ndarray, max_theta: float):
@@ -367,19 +509,14 @@ def is_too_curvy(streamlines: np.ndarray, max_theta: float):
     max_theta_rad = np.deg2rad(max_theta)  # Internally use radian
     if streamlines.shape[1] < 3:
         # Not enough segments to compute curvature
-        return np.zeros(len(streamlines), dtype=np.uint8)
+        return np.zeros(streamlines.shape[0], dtype=np.uint8)
 
     # Compute vectors for the last and before last streamline segments
-    u = streamlines[:, -1] - streamlines[:, -2]
-    v = streamlines[:, -2] - streamlines[:, -3]
-
-    # Normalize vectors
-    u /= np.sqrt(np.sum(u ** 2, axis=1, keepdims=True))
-    v /= np.sqrt(np.sum(v ** 2, axis=1, keepdims=True))
+    u = normalize_vectors(streamlines[:, -1] - streamlines[:, -2])
+    v = normalize_vectors(streamlines[:, -2] - streamlines[:, -3])
 
     # Compute angles
-    cos_theta = np.sum(u * v, axis=1).clip(-1., 1.)
-    angles = np.arccos(cos_theta)
+    angles = np.arccos(np.sum(u * v, axis=1).clip(-1., 1.))
 
     return angles > max_theta_rad
 
@@ -468,3 +605,57 @@ def count_flags(flags, ref_flag):
     if type(ref_flag) is StoppingFlags:
         ref_flag = ref_flag.value
     return is_flag_set(flags, ref_flag).sum()
+
+
+def format_state(
+    streamlines: np.ndarray,
+    data_volume,
+    add_neighborhood_vox,
+    neighborhood_directions,
+    n_signal,
+    n_dirs,
+    device
+) -> np.ndarray:
+    """
+    From the last streamlines coordinates, extract the corresponding
+    SH coefficients
+
+    Parameters
+    ----------
+    streamlines: `numpy.ndarry`
+        Streamlines from which to get the coordinates
+
+    Returns
+    -------
+    signal: `numpy.ndarray`
+        SH coefficients at the coordinates
+    """
+    N, L, P = streamlines.shape
+    if N <= 0:
+        return []
+    segments = streamlines[:, -1, :][:, None, :]
+    signal = get_sh(
+        segments,
+        data_volume,
+        add_neighborhood_vox,
+        neighborhood_directions,
+        n_signal,
+        device
+    ).cpu().numpy()
+
+    N, S = signal.shape
+
+    inputs = np.zeros((N, S + (n_dirs * P)))
+
+    inputs[:, :S] = signal
+
+    previous_dirs = np.zeros((N, n_dirs, P), dtype=np.float32)
+    if L > 1:
+        dirs = np.diff(streamlines, axis=1)
+        previous_dirs[:, :min(dirs.shape[1], n_dirs), :] = \
+            dirs[:, :-(n_dirs+1):-1, :]
+
+    dir_inputs = np.reshape(previous_dirs, (N, n_dirs * P))
+
+    inputs[:, S:] = dir_inputs
+    return inputs
