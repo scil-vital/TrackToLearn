@@ -1,2 +1,1 @@
-ismrm-2015-tractography-challenge-scoring @ git+git://github.com/AntoineTheb/ismrm_2015_tractography_challenge_scoring.git
-
+ismrm-2015-tractography-challenge-scoring @ git+git://github.com/scilus/ismrm_2015_tractography_challenge_scoring.git
