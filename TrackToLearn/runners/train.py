@@ -9,7 +9,7 @@ from os.path import join as pjoin
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.runners.experiment import TrackToLearnExperiment
+from TrackToLearn.runners.ttl import TrackToLearnExperiment
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 assert(torch.cuda.is_available())
@@ -45,12 +45,21 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         min_length: int,
         max_length: int,
         step_size: float,  # Step size (in mm)
+        cmc: float,
+        asymmetric: float,
+        alignment_weighting: float,
+        straightness_weighting: float,
+        length_weighting: float,
+        target_bonus_factor: float,
+        exclude_penalty_factor: float,
+        angle_penalty_factor: float,
         tracking_batch_size: int,
         n_signal: int,
         n_dirs: int,
+        interface_seeding: bool,
+        no_retrack: bool,
         # Model params
-        n_latent_var: int,
-        hidden_layers: int,
+        hidden_dims: int,
         add_neighborhood: float,
         # Experiment params
         use_gpu: bool,
@@ -100,10 +109,20 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             Maximum length for streamlines
         step_size: float
             Step size for tracking
+        alignment_weighting: float
+            Reward coefficient for alignment with local odfs peaks
+        straightness_weighting: float
+            Reward coefficient for streamline straightness
+        length_weighting: float
+            Reward coefficient for streamline length
+        target_bonus_factor: `float`
+            Bonus for streamlines reaching the target mask
+        exclude_penalty_factor: `float`
+            Penalty for streamlines reaching the exclusion mask
+        angle_penalty_factor: `float`
+            Penalty for looping or too-curvy streamlines
         tracking_batch_size: int
             Batch size for tracking during test
-        n_latent_var: int
-            Width of the NN layers
         add_neighborhood: float
             Use signal in neighboring voxels for model input
         # Experiment params
@@ -147,11 +166,21 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.max_angle = max_angle
         self.min_length = min_length
         self.max_length = max_length
+        self.interface_seeding = interface_seeding
+        self.cmc = cmc
+
+        # Reward parameters
+        self.asymmetric = asymmetric
+        self.alignment_weighting = alignment_weighting
+        self.straightness_weighting = straightness_weighting
+        self.length_weighting = length_weighting
+        self.target_bonus_factor = target_bonus_factor
+        self.exclude_penalty_factor = exclude_penalty_factor
+        self.angle_penalty_factor = angle_penalty_factor
 
         # Model parameters
         self.use_gpu = use_gpu
-        self.n_latent_var = n_latent_var
-        self.hidden_layers = hidden_layers
+        self.hidden_dims = hidden_dims
         self.load_policy = load_policy
         self.comet_experiment = comet_experiment
         self.render = render
@@ -163,6 +192,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
+        self.no_retrack = no_retrack
 
         # RNG
         torch.manual_seed(self.rng_seed)
@@ -170,7 +200,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.rng = np.random.RandomState(seed=self.rng_seed)
         random.seed(self.rng_seed)
 
-        directory = os.path.dirname(pjoin(self.experiment_path, "model"))
+        directory = pjoin(self.experiment_path, 'model')
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -198,6 +228,10 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 the same as the "forward" tracking environment but initalized
                 with half-streamlines
         """
+
+        def mean_losses(dic):
+            return {k: np.mean(dic[k]) for k in dic.keys()}
+
         # Tractogram containing all the episodes. Might be useful I guess
         # Run the test before training to see what an untrained network does
         valid_tractogram, valid_reward = self.test(
@@ -210,11 +244,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         i_episode = 0
         # Transition counter
         t = 0
-        # Transition counter for logging
-        t_log = 0
 
         # Main training loop
-        while i_episode <= self.max_ep:
+        while i_episode < self.max_ep:
 
             # Last episode/epoch. Was initially for resuming experiments but
             # since they take so little time I just restart them from scratch
@@ -222,12 +254,11 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.last_episode = i_episode
 
             # Run the episode
-            _, actor_loss, critic_loss, reward, episode_length = \
-                alg.run_train(env, back_env)
+            _, losses, reward, episode_length = \
+                alg.run_train(env, back_env, self.tracking_batch_size)
 
             # Keep track of how many transitions were gathered
             t += episode_length
-            t_log += episode_length
 
             print(
                 f"Total T: {t+1} Episode Num: {i_episode+1} "
@@ -236,23 +267,20 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             # Update monitors
             self.train_reward_monitor.update(reward)
             self.train_reward_monitor.end_epoch(i_episode)
-            self.actor_loss_monitor.update(actor_loss)
-            self.actor_loss_monitor.end_epoch(i_episode)
-            self.critic_loss_monitor.update(critic_loss)
-            self.critic_loss_monitor.end_epoch(i_episode)
 
             i_episode += 1
             if self.comet_experiment is not None:
                 self.comet_monitor.update_train(
-                    self.train_reward_monitor, self.actor_loss_monitor,
-                    self.critic_loss_monitor, i_episode)
+                    self.train_reward_monitor, i_episode)
+                mean_ep_losses = mean_losses(losses)
+                self.comet_monitor.log_losses(mean_ep_losses, i_episode)
 
             # Time to do a valid run and display stats
-            if t_log > self.log_interval:
+            if i_episode % self.log_interval == 0:
 
                 # Validation run
                 valid_tractogram, valid_reward = self.test(
-                    alg, test_env, back_test_env)
+                    alg, test_env, back_test_env, save_model=True, i=i_episode)
 
                 # Display what the network is capable-of "now"
                 self.display(
@@ -261,9 +289,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                     valid_reward,
                     i_episode,
                     self.run_tractometer)
-
-                # Reset the logging counter
-                t_log = t_log - self.log_interval  # to reduce "drift"
 
         # Validation run
         valid_tractogram, valid_reward = self.test(
@@ -312,8 +337,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Start training !
         self.rl_train(alg, env, back_env, test_env, back_test_env)
 
-        torch.cuda.empty_cache()
-
 
 def add_rl_args(parser):
     parser.add_argument('--max_ep', default=200000, type=int,
@@ -322,8 +345,6 @@ def add_rl_args(parser):
     parser.add_argument('--log_interval', default=20, type=int,
                         help='Log statistics, update comet, save the model '
                         'and hyperparameters at n steps')
-    parser.add_argument('--action_std', default=0.4, type=float,
-                        help='Standard deviation used of the action')
     parser.add_argument('--lr', default=1e-6, type=float,
                         help='Learning rate')
     parser.add_argument('--gamma', default=0.925, type=float,

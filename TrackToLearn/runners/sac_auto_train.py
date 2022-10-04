@@ -8,7 +8,7 @@ from argparse import RawTextHelpFormatter
 from comet_ml import Experiment
 from os.path import join as pjoin
 
-from TrackToLearn.algorithms.td3 import TD3
+from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.runners.experiment import (
     add_data_args,
     add_environment_args,
@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 assert(torch.cuda.is_available())
 
 
-class TD3TrackToLearnTraining(TrackToLearnTraining):
+class SACAutoTrackToLearnTraining(TrackToLearnTraining):
     """
     Main RL tracking experiment
     """
@@ -40,13 +40,13 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
         test_subject_id: str,
         reference_file: str,
         ground_truth_folder: str,
-        # TD3 params
+        # SAC params
         max_ep: int,
         log_interval: int,
-        action_std: float,
         valid_noise: float,
         lr: float,
         gamma: float,
+        alpha: float,
         training_batch_size: int,
         # Env params
         n_seeds_per_voxel: int,
@@ -54,6 +54,8 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
         min_length: int,
         max_length: int,
         step_size: float,  # Step size (in mm)
+        cmc: bool,
+        asymmetric: bool,
         alignment_weighting: float,
         straightness_weighting: float,
         length_weighting: float,
@@ -66,8 +68,7 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
         interface_seeding: bool,
         no_retrack: bool,
         # Model params
-        n_latent_var: int,
-        hidden_layers: int,
+        hidden_dims: str,
         add_neighborhood: float,
         # Experiment params
         use_gpu: bool,
@@ -75,7 +76,6 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
         comet_experiment: Experiment,
         render: bool,
         run_tractometer: bool,
-        load_teacher: str,
         load_policy: str,
     ):
         """
@@ -85,21 +85,33 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             Path to the file containing the signal data
         subject_id: str
             Subject being trained on (in the signal data)
+        seeding_file: str
+            Path to the mask where seeds can be generated
+        tracking_file: str
+            Path to the mask where tracking can happen
         ground_truth_folder: str
             Path to reference streamlines that can be used for
             jumpstarting seeds
+        target_file: str
+            Path to the mask representing the tracking endpoints
+        exclude_file: str
+            Path to the mask reprensenting the tracking no-go zones
         max_ep: int
             How many episodes to run the training.
             An episode corresponds to tracking two-ways on one seed and
             training along the way
         log_interval: int
             Interval at which a test run is done
-        action_std: float
-            Starting standard deviation on actions for exploration
         lr: float
             Learning rate for optimizer
         gamma: float
             Gamma parameter future reward discounting
+        lmbda: float
+            Lambda parameter for Generalized Advantage Estimation (GAE):
+            John Schulman, Philipp Moritz, Sergey Levine, Michael Jordan:
+            “High-Dimensional Continuous Control Using Generalized
+             Advantage Estimation”, 2015;
+            http://arxiv.org/abs/1506.02438 arXiv:1506.02438
         training_batch_size: int
             How many samples to use in policy update
         n_seeds_per_voxel: int
@@ -142,11 +154,11 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
         run_tractometer: bool
             Run tractometer during validation to see how it's
             doing w.r.t. ground truth data
-        load_teacher: str
-            Path to pretrained model for imitation learning
         load_policy: str
             Path to pretrained policy
         """
+
+        self.training_batch_size = training_batch_size
 
         super().__init__(
             # Dataset params
@@ -159,10 +171,10 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             test_subject_id,
             reference_file,
             ground_truth_folder,
-            # TD3 params
+            # SAC params
             max_ep,
             log_interval,
-            action_std,
+            alpha,
             valid_noise,
             lr,
             gamma,
@@ -172,6 +184,8 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             min_length,
             max_length,
             step_size,  # Step size (in mm)
+            cmc,
+            asymmetric,
             alignment_weighting,
             straightness_weighting,
             length_weighting,
@@ -184,8 +198,7 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             interface_seeding,
             no_retrack,
             # Model params
-            n_latent_var,
-            hidden_layers,
+            hidden_dims,
             add_neighborhood,
             # Experiment params
             use_gpu,
@@ -193,23 +206,22 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             comet_experiment,
             render,
             run_tractometer,
-            load_teacher,
             load_policy
         )
 
-        self.training_batch_size = training_batch_size
+        self.alpha = alpha
 
     def save_hyperparameters(self):
         self.hyperparameters = {
             # RL parameters
             'id': self.name,
             'experiment': self.experiment,
-            'algorithm': 'TD3',
+            'algorithm': 'SACAuto',
             'max_ep': self.max_ep,
             'log_interval': self.log_interval,
-            'action_std': self.action_std,
             'lr': self.lr,
             'gamma': self.gamma,
+            'alpha': self.alpha,
             # Data parameters
             'input_size': self.input_size,
             'add_neighborhood': self.add_neighborhood,
@@ -221,11 +233,12 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             'max_angle': self.max_angle,
             'min_length': self.min_length,
             'max_length': self.max_length,
+            'cmc': self.cmc,
+            'asymmetric': self.asymmetric,
             # Model parameters
             'experiment_path': self.experiment_path,
             'use_gpu': self.use_gpu,
-            'hidden_size': self.n_latent_var,
-            'hidden_layers': self.hidden_layers,
+            'hidden_dims': self.hidden_dims,
             'last_episode': self.last_episode,
             'tracking_batch_size': self.tracking_batch_size,
             'n_signal': self.n_signal,
@@ -240,6 +253,7 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor
         }
+
         directory = pjoin(self.experiment_path, "model")
         with open(
             pjoin(directory, "hyperparameters.json"),
@@ -252,14 +266,13 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
                     separators=(',', ': ')))
 
     def get_alg(self):
-        alg = TD3(
+        alg = SACAuto(
             self.input_size,
             3,
-            self.n_latent_var,
-            self.hidden_layers,
-            self.action_std,
+            self.hidden_dims,
             self.lr,
             self.gamma,
+            self.alpha,
             self.training_batch_size,
             self.interface_seeding,
             self.rng,
@@ -267,9 +280,9 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
         return alg
 
 
-def add_td3_args(parser):
-    parser.add_argument('--action_std', default=0.3, type=float,
-                        help='Action STD')
+def add_sac_args(parser):
+    parser.add_argument('--alpha', default=1.0, type=float,
+                        help='Temperature parameter')
     parser.add_argument('--training_batch_size', default=2**14, type=int,
                         help='Number of seeds used per episode')
 
@@ -288,7 +301,7 @@ def parse_args():
     add_rl_args(parser)
     add_tracking_args(parser)
 
-    add_td3_args(parser)
+    add_sac_args(parser)
 
     arguments = parser.parse_args()
     return arguments
@@ -304,7 +317,7 @@ def main():
                             auto_metric_logging=False,
                             disabled=not args.use_comet)
 
-    td3_experiment = TD3TrackToLearnTraining(
+    sac_experiment = SACAutoTrackToLearnTraining(
         # Dataset params
         args.path,
         args.experiment,
@@ -318,11 +331,11 @@ def main():
         # RL params
         args.max_ep,
         args.log_interval,
-        args.action_std,
         args.valid_noise,
         args.lr,
         args.gamma,
-        # TD3
+        args.alpha,
+        # SAC
         args.training_batch_size,
         # Env params
         args.n_seeds_per_voxel,
@@ -330,6 +343,8 @@ def main():
         args.min_length,
         args.max_length,
         args.step_size,  # Step size (in mm)
+        args.cmc,
+        args.asymmetric,
         args.alignment_weighting,
         args.straightness_weighting,
         args.length_weighting,
@@ -342,8 +357,7 @@ def main():
         args.interface_seeding,
         args.no_retrack,
         # Model params
-        args.n_latent_var,
-        args.hidden_layers,
+        args.hidden_dims,
         args.add_neighborhood,
         # Experiment params
         args.use_gpu,
@@ -351,10 +365,9 @@ def main():
         experiment,
         args.render,
         args.run_tractometer,
-        args.load_teacher,
         args.load_policy,
     )
-    td3_experiment.run()
+    sac_experiment.run()
 
 
 if __name__ == '__main__':

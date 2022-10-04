@@ -2,7 +2,6 @@
 import argparse
 import comet_ml  # noqa: F401 ugh
 import json
-import os
 import torch
 
 from argparse import RawTextHelpFormatter
@@ -44,7 +43,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         # SAC params
         max_ep: int,
         log_interval: int,
-        action_std: float,
         valid_noise: float,
         lr: float,
         gamma: float,
@@ -56,9 +54,17 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         min_length: int,
         max_length: int,
         step_size: float,  # Step size (in mm)
+        alignment_weighting: float,
+        straightness_weighting: float,
+        length_weighting: float,
+        target_bonus_factor: float,
+        exclude_penalty_factor: float,
+        angle_penalty_factor: float,
         tracking_batch_size: int,
         n_signal: int,
         n_dirs: int,
+        interface_seeding: bool,
+        no_retrack: bool,
         # Model params
         n_latent_var: int,
         hidden_layers: int,
@@ -69,6 +75,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         comet_experiment: Experiment,
         render: bool,
         run_tractometer: bool,
+        load_teacher: str,
         load_policy: str,
     ):
         """
@@ -95,8 +102,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             training along the way
         log_interval: int
             Interval at which a test run is done
-        action_std: float
-            Starting standard deviation on actions for exploration
         lr: float
             Learning rate for optimizer
         gamma: float
@@ -119,6 +124,18 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             Maximum length for streamlines
         step_size: float
             Step size for tracking
+        alignment_weighting: float
+            Reward coefficient for alignment with local odfs peaks
+        straightness_weighting: float
+            Reward coefficient for streamline straightness
+        length_weighting: float
+            Reward coefficient for streamline length
+        target_bonus_factor: `float`
+            Bonus for streamlines reaching the target mask
+        exclude_penalty_factor: `float`
+            Penalty for streamlines reaching the exclusion mask
+        angle_penalty_factor: `float`
+            Penalty for looping or too-curvy streamlines
         tracking_batch_size: int
             Batch size for tracking during test
         n_latent_var: int
@@ -137,12 +154,13 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         run_tractometer: bool
             Run tractometer during validation to see how it's
             doing w.r.t. ground truth data
+        load_teacher: str
+            Path to pretrained model for imitation learning
         load_policy: str
             Path to pretrained policy
         """
 
         self.training_batch_size = training_batch_size
-        self.alpha = alpha
 
         super().__init__(
             # Dataset params
@@ -158,7 +176,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             # SAC params
             max_ep,
             log_interval,
-            action_std,
+            alpha,
             valid_noise,
             lr,
             gamma,
@@ -168,9 +186,17 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             min_length,
             max_length,
             step_size,  # Step size (in mm)
+            alignment_weighting,
+            straightness_weighting,
+            length_weighting,
+            target_bonus_factor,
+            exclude_penalty_factor,
+            angle_penalty_factor,
             tracking_batch_size,
             n_signal,
             n_dirs,
+            interface_seeding,
+            no_retrack,
             # Model params
             n_latent_var,
             hidden_layers,
@@ -181,8 +207,11 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             comet_experiment,
             render,
             run_tractometer,
+            load_teacher,
             load_policy
         )
+
+        self.alpha = alpha
 
     def save_hyperparameters(self):
         self.hyperparameters = {
@@ -192,7 +221,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             'algorithm': 'SAC',
             'max_ep': self.max_ep,
             'log_interval': self.log_interval,
-            'action_std': self.action_std,
             'lr': self.lr,
             'gamma': self.gamma,
             'alpha': self.alpha,
@@ -216,10 +244,18 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             'tracking_batch_size': self.tracking_batch_size,
             'n_signal': self.n_signal,
             'n_dirs': self.n_dirs,
+            'interface_seeding': self.interface_seeding,
+            'no_retrack': self.no_retrack,
             # Reward parameters
+            'alignment_weighting': self.alignment_weighting,
+            'straightness_weighting': self.straightness_weighting,
+            'length_weighting': self.length_weighting,
+            'target_bonus_factor': self.target_bonus_factor,
+            'exclude_penalty_factor': self.exclude_penalty_factor,
+            'angle_penalty_factor': self.angle_penalty_factor
         }
-        directory = os.path.dirname(pjoin(self.experiment_path, "model"))
 
+        directory = pjoin(self.experiment_path, "model")
         with open(
             pjoin(directory, "hyperparameters.json"),
             'w'
@@ -236,11 +272,11 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             3,
             self.n_latent_var,
             self.hidden_layers,
-            self.action_std,
             self.lr,
             self.gamma,
             self.alpha,
             self.training_batch_size,
+            self.interface_seeding,
             self.rng,
             device)
         return alg
@@ -248,7 +284,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
 
 def add_sac_args(parser):
     parser.add_argument('--alpha', default=0.2, type=float,
-                        help='Temperature parameter for SAC')
+                        help='Temperature parameter')
     parser.add_argument('--training_batch_size', default=2**14, type=int,
                         help='Number of seeds used per episode')
 
@@ -297,11 +333,11 @@ def main():
         # RL params
         args.max_ep,
         args.log_interval,
-        args.action_std,
         args.valid_noise,
         args.lr,
         args.gamma,
         args.alpha,
+        # SAC
         args.training_batch_size,
         # Env params
         args.n_seeds_per_voxel,
@@ -309,9 +345,17 @@ def main():
         args.min_length,
         args.max_length,
         args.step_size,  # Step size (in mm)
+        args.alignment_weighting,
+        args.straightness_weighting,
+        args.length_weighting,
+        args.target_bonus_factor,
+        args.exclude_penalty_factor,
+        args.angle_penalty_factor,
         args.tracking_batch_size,
         args.n_signal,
         args.n_dirs,
+        args.interface_seeding,
+        args.no_retrack,
         # Model params
         args.n_latent_var,
         args.hidden_layers,
@@ -322,6 +366,7 @@ def main():
         experiment,
         args.render,
         args.run_tractometer,
+        args.load_teacher,
         args.load_policy,
     )
     sac_experiment.run()

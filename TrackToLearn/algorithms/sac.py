@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from collections import defaultdict
 from nibabel.streamlines import Tractogram
 from os.path import join as pjoin
 from torch import nn
@@ -14,6 +15,31 @@ from TrackToLearn.environments.env import BaseEnv
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+LOG_STD_MAX = 2
+LOG_STD_MIN = -20
+
+
+def add_to_means(means, dic):
+    return {k: means[k] + [dic[k]] for k in dic.keys()}
+
+
+def format_widths(widths_str):
+    return [int(i) for i in widths_str.split('-')]
+
+
+def make_fc_network(
+    widths, input_size, output_size, activation=nn.ReLU,
+    last_activation=nn.Identity
+):
+    layers = [nn.Linear(input_size, widths[0]), activation()]
+    for i in range(len(widths[:-1])):
+        layers.extend(
+            [nn.Linear(widths[i], widths[i+1]), activation()])
+    # no activ. on last layer
+    layers.extend([nn.Linear(widths[-1], output_size)])
+    return nn.Sequential(*layers)
 
 
 class ReplayBuffer(object):
@@ -123,9 +149,11 @@ class ReplayBuffer(object):
             torch.as_tensor(
                 self.next_state[ind], dtype=torch.float32, device=self.device)
         r = torch.as_tensor(
-            self.reward[ind], dtype=torch.float32, device=self.device)
+            self.reward[ind], dtype=torch.float32, device=self.device
+        ).squeeze(-1)
         d = torch.as_tensor(
-            self.not_done[ind], dtype=torch.float32, device=self.device)
+            self.not_done[ind], dtype=torch.float32, device=self.device
+        ).squeeze(-1)
 
         return s, a, ns, r, d
 
@@ -135,12 +163,22 @@ class ReplayBuffer(object):
         self.ptr = 0
         self.size = 0
 
-    def save_to_file(self, path):
+    def save(self, path, name, i):
         """ TODO for imitation learning
         """
-        pass
+        states_file = pjoin(path, name + "_states_{}.npy".format(i))
+        actions_file = pjoin(path, name + "_actions_{}.npy".format(i))
+        next_states_file = pjoin(path, name + "_next_states_{}.npy".format(i))
+        rewards_file = pjoin(path, name + "_rewards_{}.npy".format(i))
+        dones_file = pjoin(path, name + "_dones_{}.npy".format(i))
 
-    def load_from_file(self, path):
+        np.save(states_file, self.state[:self.size])
+        np.save(actions_file, self.action[:self.size])
+        np.save(next_states_file, self.next_state[:self.size])
+        np.save(rewards_file, self.reward[:self.size])
+        np.save(dones_file, 1. - self.not_done[:self.size])
+
+    def load(self, path, i):
         """ TODO for imitation learning
         """
         pass
@@ -155,8 +193,7 @@ class Actor(nn.Module):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dim: int,
-        hidden_layers: int = 3,
+        hidden_dims: str,
     ):
         """
         Parameters:
@@ -172,18 +209,14 @@ class Actor(nn.Module):
         """
         super(Actor, self).__init__()
 
-        self.hidden_layers = hidden_layers
+        self.action_dim = action_dim
+
+        self.hidden_layers = format_widths(hidden_dims)
+
+        self.layers = make_fc_network(
+            self.hidden_layers, state_dim, action_dim * 2)
+
         self.output_activation = nn.Tanh()
-
-        self.l1 = nn.Linear(state_dim, hidden_dim)
-        self.l2 = nn.Linear(hidden_dim, hidden_dim)
-        self.mu = nn.Linear(hidden_dim, action_dim)
-
-        # State-dependent STD, as opposed to VPG/PPO which uses a
-        # state-independent STD.
-        # See https://spinningup.openai.com/en/latest/algorithms/sac.html
-        # in the "You Should Know" box
-        self.log_std = nn.Linear(hidden_dim, action_dim)
 
     def forward(
         self,
@@ -194,14 +227,12 @@ class Actor(nn.Module):
         """ Forward propagation of the actor.
         Outputs an un-noisy un-normalized action
         """
-        p = state
-        p = torch.relu(self.l1(p))
-        p = torch.relu(self.l2(p))
 
-        mu = self.mu(p)
-        log_std = self.log_std(p)
+        p = self.layers(state)
+        mu = p[:, :self.action_dim]
+        log_std = p[:, self.action_dim:]
+
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
-
         std = torch.exp(log_std)
 
         pi_distribution = Normal(mu, std)
@@ -225,6 +256,33 @@ class Actor(nn.Module):
 
         return pi_action, logp_pi
 
+    def logprob(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor
+    ) -> torch.Tensor:
+
+        p = self.layers(state)
+        mu = p[:, :self.action_dim]
+        log_std = p[:, self.action_dim:]
+
+        log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
+        std = torch.exp(log_std)
+
+        pi_distribution = Normal(mu, std)
+
+        # Trick from Spinning Up's implementation:
+        # Compute logprob from Gaussian, and then apply correction for Tanh
+        # squashing. NOTE: The correction formula is a little bit magic. To
+        # get an understanding of where it comes from, check out the
+        # original SAC paper (arXiv 1801.01290) and look in appendix C.
+        # This is a more numerically-stable equivalent to Eq 21.
+        logp_pi = pi_distribution.log_prob(action).sum(axis=-1)
+        logp_pi -= (2*(np.log(2) - action -
+                       F.softplus(-2*action))).sum(axis=1)
+
+        return logp_pi
+
 
 class Critic(nn.Module):
     """ Critic module that takes in a pair of state-action and outputs its
@@ -236,8 +294,7 @@ class Critic(nn.Module):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dim: int,
-        hidden_layers: int = 3,
+        hidden_dims: str,
     ):
         """
         Parameters:
@@ -253,31 +310,22 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
 
-        self.hidden_layers = hidden_layers
-        # Q1 architecture
-        self.l1 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.l2 = nn.Linear(hidden_dim, hidden_dim)
-        self.l3 = nn.Linear(hidden_dim, 1)
+        self.hidden_layers = format_widths(hidden_dims)
 
-        # Q2 architecture
-        self.l4 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.l5 = nn.Linear(hidden_dim, hidden_dim)
-        self.l6 = nn.Linear(hidden_dim, 1)
+        self.q1 = make_fc_network(
+            self.hidden_layers, state_dim + action_dim, 1)
+        self.q2 = make_fc_network(
+            self.hidden_layers, state_dim + action_dim, 1)
 
     def forward(self, state, action) -> torch.Tensor:
         """ Forward propagation of the actor.
         Outputs a q estimate from both critics
         """
-        q1 = torch.cat([state, action], -1)
-        q2 = torch.cat([state, action], -1)
+        q1_input = torch.cat([state, action], -1)
+        q2_input = torch.cat([state, action], -1)
 
-        q1 = torch.relu(self.l1(q1))
-        q1 = torch.relu(self.l2(q1))
-        q1 = self.l3(q1)
-
-        q2 = torch.relu(self.l4(q2))
-        q2 = torch.relu(self.l5(q2))
-        q2 = self.l6(q2)
+        q1 = self.q1(q1_input).squeeze(-1)
+        q2 = self.q2(q2_input).squeeze(-1)
 
         return q1, q2
 
@@ -285,17 +333,11 @@ class Critic(nn.Module):
         """ Forward propagation of the actor.
         Outputs a q estimate from first critic
         """
-        q1 = torch.cat([state, action], -1)
+        q1_input = torch.cat([state, action], -1)
 
-        q1 = torch.relu(self.l1(q1))
-        q1 = torch.relu(self.l2(q1))
-        q1 = self.l3(q1)
+        q1 = self.q1(q1_input)
 
         return q1
-
-
-LOG_STD_MAX = 2
-LOG_STD_MIN = -20
 
 
 class ActorCritic(object):
@@ -306,8 +348,7 @@ class ActorCritic(object):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dim: int,
-        hidden_layers: int = 3,
+        hidden_dims: int,
     ):
         """
         Parameters:
@@ -322,11 +363,11 @@ class ActorCritic(object):
 
         """
         self.actor = Actor(
-            state_dim, action_dim, hidden_dim, hidden_layers,
+            state_dim, action_dim, hidden_dims
         ).to(device)
 
         self.critic = Critic(
-            state_dim, action_dim, hidden_dim, hidden_layers,
+            state_dim, action_dim, hidden_dims
         ).to(device)
 
     def act(
@@ -372,7 +413,7 @@ class ActorCritic(object):
         state = torch.as_tensor(state, dtype=torch.float32, device=device)
         action, _ = self.act(state, stochastic)
 
-        return action.cpu().data.numpy()
+        return action.cpu().data.numpy(), None
 
     def parameters(self):
         """ Access parameters for grad clipping
@@ -441,6 +482,9 @@ class SAC(RLAlgorithm):
     TODO: Cite
     Implementation is based on Spinning Up's and rlkit
 
+    See https://github.com/vitchyr/rlkit/blob/master/rlkit/torch/sac/sac.py
+    See https://github.com/openai/spinningup/blob/master/spinup/algos/pytorch/sac/sac.py  # noqa E501
+
     Some alterations have been made to the algorithms so it could be
     fitted to the tractography problem.
 
@@ -450,13 +494,12 @@ class SAC(RLAlgorithm):
         self,
         input_size: int,
         action_size: int = 3,
-        hidden_size: int = 256,
-        hidden_layers: int = 3,
-        action_std: float = 0.35,
+        hidden_dims: int = 256,
         lr: float = 3e-4,
         gamma: float = 0.99,
         alpha: float = 0.2,
         batch_size: int = 2048,
+        gm_seeding: bool = False,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -475,10 +518,10 @@ class SAC(RLAlgorithm):
             Learning rate for optimizer
         gamma: float
             Gamma parameter future reward discounting
-        alpha: float
-            Temperature parameter
         batch_size: int
             Batch size for replay buffer sampling
+        gm_seeding: bool
+            If seeding from GM, don't "go back"
         rng: np.random.RandomState
             rng for randomness. Should be fixed with a seed
         device: torch.device,
@@ -489,18 +532,19 @@ class SAC(RLAlgorithm):
         super(SAC, self).__init__(
             input_size,
             action_size,
-            hidden_size,
-            action_std,
+            hidden_dims,
+            0.,
             lr,
             gamma,
             batch_size,
+            gm_seeding,
             rng,
             device,
         )
 
         # Initialize main policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_size, hidden_layers,
+            input_size, action_size, hidden_dims,
         )
 
         # Initialize target policy to provide baseline
@@ -515,16 +559,17 @@ class SAC(RLAlgorithm):
         self.critic_optimizer = torch.optim.Adam(
             self.policy.critic.parameters(), lr=lr)
 
+        # Temperature
+        self.alpha = alpha
+
         # SAC-specific parameters
         self.max_action = 1.
         self.on_policy = False
 
-        self.start_timesteps = 1000
+        self.start_timesteps = 0
         self.total_it = 0
         self.policy_freq = 2
         self.tau = 0.005
-        self.noise_clip = 0.5
-        self.alpha = alpha
 
         # Replay buffer
         self.replay_buffer = ReplayBuffer(
@@ -569,15 +614,15 @@ class SAC(RLAlgorithm):
         state = initial_state
         tractogram = None
         done = False
-        actor_loss = 0
-        critic_loss = 0
 
         episode_length = 0
+
+        running_losses = defaultdict(list)
 
         while not np.all(done):
 
             # Select action according to policy + noise for exploration
-            action = self.policy.select_action(
+            action, h = self.policy.select_action(
                 np.array(state), stochastic=True)
 
             self.t += action.shape[0]
@@ -603,29 +648,22 @@ class SAC(RLAlgorithm):
             # Train agent after collecting sufficient data
             # TODO: Add monitors so that losses are properly tracked
             if self.t >= self.start_timesteps:
-                actor_loss, critic_loss = self.update(
+                losses = self.update(
                     self.replay_buffer)
-
+                running_losses = add_to_means(running_losses, losses)
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
             # This line also set the next_state as the state
-            new_tractogram, state, _ = env.harvest(next_state)
-
-            # Add streamlines to the lot
-            if len(new_tractogram.streamlines) > 0:
-                if tractogram is None:
-                    tractogram = new_tractogram
-                else:
-                    tractogram += new_tractogram
+            state, h, _ = env.harvest(next_state, h)
 
             # Keeping track of episode length
             episode_length += 1
 
+        tractogram = env.get_streamlines()
         return (
             tractogram,
             running_reward,
-            actor_loss,
-            critic_loss,
+            running_losses,
             episode_length)
 
     def update(
@@ -663,6 +701,15 @@ class SAC(RLAlgorithm):
         state, action, next_state, reward, not_done = \
             replay_buffer.sample(batch_size)
 
+        pi, logp_pi = self.policy.act(state)
+        alpha = self.alpha
+
+        q1, q2 = self.policy.critic(state, pi)
+        q_pi = torch.min(q1, q2)
+
+        # Entropy-regularized policy loss
+        actor_loss = (alpha * logp_pi - q_pi).mean()
+
         with torch.no_grad():
             # Target actions come from *current* policy
             next_action, logp_next_action = self.policy.act(next_state)
@@ -673,33 +720,26 @@ class SAC(RLAlgorithm):
             target_Q = torch.min(target_Q1, target_Q2)
 
             backup = reward + self.gamma * not_done * \
-                (target_Q - self.alpha * logp_next_action)
+                (target_Q - alpha * logp_next_action)
 
         # Get current Q estimates
         current_Q1, current_Q2 = self.policy.critic(
             state, action)
 
         # MSE loss against Bellman backup
-        loss_q1 = ((current_Q1 - backup)**2).mean()
-        loss_q2 = ((current_Q2 - backup)**2).mean()
+        loss_q1 = ((current_Q1.squeeze(-1) - backup)**2).mean()
+        loss_q2 = ((current_Q2.squeeze(-1) - backup)**2).mean()
         critic_loss = loss_q1 + loss_q2
-
-        # Optimize the critic
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
-
-        pi, logp_pi = self.policy.act(state)
-        q1, q2 = self.policy.critic(state, pi)
-        q_pi = torch.min(q1, q2)
-
-        # Entropy-regularized policy loss
-        actor_loss = (self.alpha * logp_pi - q_pi).mean()
 
         # Optimize the actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+
+        # Optimize the critic
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
 
         # Update the frozen target models
         for param, target_param in zip(
@@ -720,7 +760,5 @@ class SAC(RLAlgorithm):
         running_actor_loss = actor_loss.detach().cpu().numpy()
 
         running_critic_loss = critic_loss.detach().cpu().numpy()
-
-        torch.cuda.empty_cache()
 
         return running_actor_loss, running_critic_loss

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from collections import defaultdict
 from nibabel.streamlines import Tractogram
 from tqdm import tqdm
 from typing import Tuple
@@ -8,6 +9,10 @@ from typing import Tuple
 from TrackToLearn.environments.env import BaseEnv
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def add_to_means(means, dic):
+    return {k: means[k] + dic[k] for k in dic.keys()}
 
 
 class RLAlgorithm(object):
@@ -24,6 +29,7 @@ class RLAlgorithm(object):
         lr: float = 3e-4,
         gamma: float = 0.99,
         batch_size: int = 10000,
+        interface_seeding: bool = False,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -62,11 +68,13 @@ class RLAlgorithm(object):
         self.batch_size = batch_size
 
         self.rng = rng
+        self.interface_seeding = interface_seeding
 
     def _validation_episode(
         self,
         initial_state,
         env,
+        compress=False,
     ):
         """
         Main loop for the algorithm
@@ -92,12 +100,12 @@ class RLAlgorithm(object):
         state = initial_state
         tractogram = None
         done = False
+        h = None
         while not np.all(done):
             # Select action according to policy + noise to make tracking
             # probabilistic
-            action = self.policy.select_action(
-                np.array(state))
-
+            action, h = self.policy.select_action(
+                np.array(state), h)
             # Perform action
             next_state, reward, done, _ = env.step(action)
 
@@ -107,14 +115,10 @@ class RLAlgorithm(object):
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
             # This line also set the next_state as the state
-            new_tractogram, state, _ = env.harvest(next_state, compress=True)
+            state, h, *_ = env.harvest(
+                next_state, h)
 
-            # Add streamlines to the lot
-            if len(new_tractogram.streamlines) > 0:
-                if tractogram is None:
-                    tractogram = new_tractogram
-                else:
-                    tractogram += new_tractogram
+        tractogram = env.get_streamlines(compress=compress)
 
         return tractogram, running_reward
 
@@ -122,7 +126,8 @@ class RLAlgorithm(object):
         self,
         batch_size,
         env: BaseEnv,
-        backward_env: BaseEnv
+        backward_env: BaseEnv,
+        compress=False,
     ):
 
         # Track for every seed in the environment
@@ -135,16 +140,18 @@ class RLAlgorithm(object):
 
             # Track forward
             batch_tractogram, reward = self._validation_episode(
-                state, env)
+                state, env, compress=self.interface_seeding
+                and compress)
 
-            # Flip streamlines to initialize backwards tracking
-            streamlines = [s[::-1] for s in batch_tractogram.streamlines]
-            state = backward_env.reset(streamlines)
-            del batch_tractogram
+            if not self.interface_seeding:
+                # Flip streamlines to initialize backwards tracking
+                # streamlines = [s[::-1] for s in batch_tractogram.streamlines]
+                state = backward_env.reset(batch_tractogram.streamlines)
 
-            # Track backwards
-            batch_tractogram, reward = self._validation_episode(
-                state, backward_env)
+                # Track backwards
+                batch_tractogram, reward = self._validation_episode(
+                    state, backward_env, compress=not self.interface_seeding
+                    and compress)
 
             yield batch_tractogram, reward
 
@@ -153,6 +160,7 @@ class RLAlgorithm(object):
         batch_size,
         env: BaseEnv,
         backward_env: BaseEnv,
+        compress: bool = False,
     ) -> Tuple[Tractogram, float]:
         """
         Call the main loop
@@ -179,14 +187,16 @@ class RLAlgorithm(object):
         # Reward gotten during validation
         cummulative_reward = 0
 
-        for t, r in self.generate_streamlines(batch_size, env, backward_env):
+        for t, r in self.generate_streamlines(
+            batch_size, env, backward_env, compress
+        ):
             if tractogram is None:
                 tractogram = t
             else:
                 tractogram += t
             cummulative_reward += r
 
-        return tractogram, cummulative_reward
+        return tractogram,  cummulative_reward
 
     def run_train(
         self,
@@ -223,9 +233,9 @@ class RLAlgorithm(object):
         self.policy.train()
 
         running_reward = 0
-        running_actor_loss = 0
-        running_critic_loss = 0
         running_length = 0
+
+        running_losses = defaultdict(list)
 
         # Track for every seed in the environment
         # Tracking should not be done in batches for every seed
@@ -234,25 +244,90 @@ class RLAlgorithm(object):
         state = env.nreset(batch_size)
 
         # Track forward
-        batch_tractogram, reward, actor_loss, critic_loss, length = \
+        batch_tractogram, reward, losses, length = \
             self._episode(state, env)
+        running_losses = add_to_means(running_losses, losses)
 
-        # Flip streamlines to initialize backwards tracking
-        streamlines = [s[::-1] for s in batch_tractogram.streamlines]
-        state = back_env.reset(streamlines)
+        if not self.interface_seeding:
+            # Flip streamlines to initialize backwards tracking
+            state = back_env.reset(batch_tractogram.streamlines)
 
-        # Track backwards
-        batch_tractogram, reward, actor_loss, critic_loss, length = \
-            self._episode(state, back_env)
+            # Track backwards
+            batch_tractogram, reward, losses, length = \
+                self._episode(state, back_env)
+            running_losses = add_to_means(running_losses, losses)
 
         running_reward += reward
-        running_actor_loss += actor_loss
-        running_critic_loss += critic_loss
         running_length += length
 
         return (
             batch_tractogram,
-            running_actor_loss,
-            running_critic_loss,
+            running_losses,
             running_reward,
             running_length)
+
+    def gym_train(
+        self,
+        env: BaseEnv,
+    ) -> Tuple[float, float, float]:
+        """
+        Call the main training loop
+
+        Parameters
+        ----------
+        env: BaseEnv
+            The environment actions are applied on. Provides the state fed to
+            the RL algorithm
+
+        Returns
+        -------
+        actor_loss: float
+            Cumulative policy training loss
+        critic_loss: float
+            Cumulative critic training loss
+        running_reward: float
+            Cummulative training steps reward
+        """
+
+        self.policy.train()
+
+        state = env.reset()
+
+        # Track forward
+        _, reward, actor_loss, critic_loss, length = \
+            self._episode(state, env)
+
+        return (
+            actor_loss,
+            critic_loss,
+            reward,
+            length)
+
+    def gym_validation(
+        self,
+        env: BaseEnv,
+    ) -> Tuple[Tractogram, float]:
+        """
+        Call the main loop
+
+        Parameters
+        ----------
+        env: BaseEnv
+            The environment actions are applied on. Provides the state fed to
+            the RL algorithm
+
+        Returns
+        -------
+        streamlines: Tractogram
+            Tractogram containing the tracked streamline
+        running_reward: float
+            Cummulative training steps reward
+        """
+        # Switch policy to eval mode so no gradients are computed
+        self.policy.eval()
+        state = env.reset()
+
+        # Track forward
+        _, reward = self._validation_episode(
+            state, env)
+        return reward

@@ -9,140 +9,11 @@ from torch import nn
 from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
+from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 from TrackToLearn.environments.env import BaseEnv
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-class ReplayBuffer(object):
-    """ Replay buffer to store transitions. Implemented in a "ring-buffer"
-    fashion. Efficiency could probably be improved
-
-    TODO: Add possibility to save and load to disk for imitation learning
-    """
-
-    def __init__(
-        self, state_dim: int, action_dim: int, max_size=int(1e6)
-    ):
-        """
-        Parameters:
-        -----------
-        state_dim: int
-            Size of states
-        action_dim: int
-            Size of actions
-        max_size: int
-            Number of transitions to store
-        """
-        self.device = device
-        self.max_size = int(max_size)
-        self.ptr = 0
-        self.size = 0
-
-        # Buffers "filled with zeros"
-        self.state = np.zeros((self.max_size, state_dim), dtype=np.float32)
-        self.action = np.zeros((self.max_size, action_dim), dtype=np.float32)
-        self.next_state = np.zeros(
-            (self.max_size, state_dim), dtype=np.float32)
-        self.reward = np.zeros((self.max_size, 1), dtype=np.float32)
-        self.not_done = np.zeros((self.max_size, 1), dtype=np.float32)
-
-    def add(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        reward: np.ndarray,
-        done: np.ndarray
-    ):
-        """ Add new transitions to buffer in a "ring buffer" way
-
-        Parameters:
-        -----------
-        state: np.ndarray
-            Batch of states to be added to buffer
-        action: np.ndarray
-            Batch of actions to be added to buffer
-        next_state: np.ndarray
-            Batch of next-states to be added to buffer
-        reward: np.ndarray
-            Batch of rewards obtained for this transition
-        done: np.ndarray
-            Batch of "done" flags for this batch of transitions
-        """
-
-        ind = (np.arange(0, len(state)) + self.ptr) % self.max_size
-
-        self.state[ind] = state
-        self.action[ind] = action
-        self.next_state[ind] = next_state
-        self.reward[ind] = reward
-        self.not_done[ind] = 1. - done
-
-        self.ptr = (self.ptr + len(ind)) % self.max_size
-        self.size = min(self.size + len(ind), self.max_size)
-
-    def sample(
-        self,
-        batch_size=1024
-    ) -> Tuple[
-        torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
-    ]:
-        """ Off-policy sampling. Will sample min(batch_size, self.size)
-        transitions in an unordered way. This removes the ability to do
-        GAE and reward discounting after the transitions are sampled
-
-        Parameters:
-        -----------
-        batch_size: int
-            Number of transitions to sample
-
-        Returns:
-        --------
-        s: torch.Tensor
-            Sampled states
-        a: torch.Tensor
-            Sampled actions
-        ns: torch.Tensor
-            Sampled s'
-        r: torch.Tensor
-            Sampled non-discounted rewards
-        d: torch.Tensor
-            Sampled 1-done flags
-        """
-
-        ind = np.random.randint(0, self.size, size=int(batch_size))
-
-        s = torch.as_tensor(
-            self.state[ind], dtype=torch.float32, device=self.device)
-        a = torch.as_tensor(
-            self.action[ind], dtype=torch.float32, device=self.device)
-        ns = \
-            torch.as_tensor(
-                self.next_state[ind], dtype=torch.float32, device=self.device)
-        r = torch.as_tensor(
-            self.reward[ind], dtype=torch.float32, device=self.device)
-        d = torch.as_tensor(
-            self.not_done[ind], dtype=torch.float32, device=self.device)
-
-        return s, a, ns, r, d
-
-    def clear_memory(self):
-        """ Reset the buffer
-        """
-        self.ptr = 0
-        self.size = 0
-
-    def save_to_file(self, path):
-        """ TODO for imitation learning
-        """
-        pass
-
-    def load_from_file(self, path):
-        """ TODO for imitation learning
-        """
-        pass
 
 
 class Actor(nn.Module):
@@ -178,6 +49,20 @@ class Actor(nn.Module):
         self.l2 = nn.Linear(hidden_dim, hidden_dim)
         self.l3 = nn.Linear(hidden_dim, action_dim)
 
+        # TODO: ModuleList with 3 layers doesn't give the same results
+        # as sequential layer definition. Need to investigate
+
+        # self.layers = nn.ModuleList([])
+        # self.layers.append(nn.Linear(state_dim, hidden_dim))
+        # self.layers.append(nn.ReLU())
+
+        # for i in range(1, hidden_layers-1):
+        #     self.layers.append(nn.Linear(hidden_dim, hidden_dim))
+        #     self.layers.append(nn.ReLU())
+
+        # self.layers.append(nn.Linear(hidden_dim, action_dim))
+        # self.layers.append(self.output_activation)
+
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """ Forward propagation of the actor.
         Outputs an un-noisy un-normalized action
@@ -186,6 +71,10 @@ class Actor(nn.Module):
         p = torch.relu(self.l1(p))
         p = torch.relu(self.l2(p))
         p = self.output_activation(self.l3(p))
+
+        # p = state
+        # for layer in self.layers:
+        #     p = layer(p)
 
         return p
 
@@ -228,6 +117,28 @@ class Critic(nn.Module):
         self.l5 = nn.Linear(hidden_dim, hidden_dim)
         self.l6 = nn.Linear(hidden_dim, 1)
 
+        # TODO: ModuleList with 3 layers doesn't give the same results
+        # as sequential layer definition. Need to investigate
+
+        # # Q1 architecture
+        # self.q1_layers = nn.ModuleList([])
+        # self.q1_layers.append(nn.Linear(state_dim + action_dim, hidden_dim))
+        # self.q1_layers.append(nn.ReLU())
+
+        # # Q2 architecture
+        # self.q2_layers = nn.ModuleList([])
+        # self.q2_layers.append(nn.Linear(state_dim + action_dim, hidden_dim))
+        # self.q2_layers.append(nn.ReLU())
+
+        # for i in range(1, hidden_layers-1):
+        #     self.q1_layers.append(nn.Linear(hidden_dim, hidden_dim))
+        #     self.q1_layers.append(nn.ReLU())
+        #     self.q2_layers.append(nn.Linear(hidden_dim, hidden_dim))
+        #     self.q2_layers.append(nn.ReLU())
+
+        # self.q1_layers.append(nn.Linear(hidden_dim, 1))
+        # self.q2_layers.append(nn.Linear(hidden_dim, 1))
+
     def forward(self, state, action) -> torch.Tensor:
         """ Forward propagation of the actor.
         Outputs a q estimate from both critics
@@ -243,6 +154,15 @@ class Critic(nn.Module):
         q2 = torch.relu(self.l5(q2))
         q2 = self.l6(q2)
 
+        # q1 = torch.cat([state, action], -1)
+        # q2 = torch.cat([state, action], -1)
+
+        # for layer in self.q1_layers:
+        #     q1 = layer(q1)
+
+        # for layer in self.q2_layers:
+        #     q2 = layer(q2)
+
         return q1, q2
 
     def Q1(self, state, action) -> torch.Tensor:
@@ -254,6 +174,11 @@ class Critic(nn.Module):
         q1 = torch.relu(self.l1(q1))
         q1 = torch.relu(self.l2(q1))
         q1 = self.l3(q1)
+
+        # q1 = torch.cat([state, action], -1)
+
+        # for layer in self.q1_layers:
+        #     q1 = layer(q1)
 
         return q1
 
@@ -414,6 +339,7 @@ class TD3(RLAlgorithm):
         lr: float = 3e-4,
         gamma: float = 0.99,
         batch_size: int = 2048,
+        interface_seeding: bool = False,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -434,6 +360,8 @@ class TD3(RLAlgorithm):
             Gamma parameter future reward discounting
         batch_size: int
             Batch size for replay buffer sampling
+        interface_seeding: bool
+            If seeding from GM, don't "go back"
         rng: np.random.RandomState
             rng for randomness. Should be fixed with a seed
         device: torch.device,
@@ -449,6 +377,7 @@ class TD3(RLAlgorithm):
             lr,
             gamma,
             batch_size,
+            interface_seeding,
             rng,
             device,
         )
@@ -460,6 +389,9 @@ class TD3(RLAlgorithm):
 
         # Initialize target policy to provide baseline
         self.target = copy.deepcopy(self.policy)
+
+        # Initialize teacher policy for imitation learning
+        self.teacher = copy.deepcopy(self.policy)
 
         # TD3 requires a different model for actors and critics
         # Optimizer for actor
@@ -481,7 +413,7 @@ class TD3(RLAlgorithm):
         self.noise_clip = 1
 
         # Replay buffer
-        self.replay_buffer = ReplayBuffer(
+        self.replay_buffer = OffPolicyReplayBuffer(
             input_size, action_size)
 
         self.rng = rng
@@ -566,17 +498,12 @@ class TD3(RLAlgorithm):
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
             # This line also set the next_state as the state
-            new_tractogram, state, _ = env.harvest(next_state)
-
-            # Add streamlines to the lot
-            if len(new_tractogram.streamlines) > 0:
-                if tractogram is None:
-                    tractogram = new_tractogram
-                else:
-                    tractogram += new_tractogram
+            state, _ = env.harvest(next_state)
 
             # Keeping track of episode length
             episode_length += 1
+
+        tractogram = env.get_streamlines()
 
         return (
             tractogram,
@@ -587,7 +514,7 @@ class TD3(RLAlgorithm):
 
     def update(
         self,
-        replay_buffer: ReplayBuffer,
+        replay_buffer: OffPolicyReplayBuffer,
         batch_size: int = 2**12
     ) -> Tuple[float, float]:
         """
