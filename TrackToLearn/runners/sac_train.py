@@ -74,7 +74,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         comet_experiment: Experiment,
         render: bool,
         run_tractometer: bool,
-        load_teacher: str,
         load_policy: str,
     ):
         """
@@ -153,8 +152,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         run_tractometer: bool
             Run tractometer during validation to see how it's
             doing w.r.t. ground truth data
-        load_teacher: str
-            Path to pretrained model for imitation learning
         load_policy: str
             Path to pretrained policy
         """
@@ -205,7 +202,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             comet_experiment,
             render,
             run_tractometer,
-            load_teacher,
             load_policy
         )
 
@@ -361,7 +357,6 @@ def main():
         experiment,
         args.render,
         args.run_tractometer,
-        args.load_teacher,
         args.load_policy,
     )
     sac_experiment.run()

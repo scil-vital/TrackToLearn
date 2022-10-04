@@ -11,16 +11,6 @@ here = path.abspath(path.dirname(__file__))
 #     long_description = f.read()
 
 external_dependencies = []
-with open('requirements.txt') as f:
-    required_dependencies = f.read().splitlines()
-    for dependency in required_dependencies:
-        if dependency[0:2] == '-e':
-            repo_name = dependency.split('=')[-1]
-            repo_url = dependency[3:]
-            external_dependencies.append('{} @ {}'.format(repo_name, repo_url))
-        else:
-            external_dependencies.append(dependency)
-
 
 setup(
     name='TrackToLearn',
