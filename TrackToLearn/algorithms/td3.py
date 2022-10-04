@@ -3,313 +3,18 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from collections import defaultdict
 from nibabel.streamlines import Tractogram
-from os.path import join as pjoin
-from torch import nn
 from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
+from TrackToLearn.algorithms.shared.offpolicy import ActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
+from TrackToLearn.algorithms.shared.utils import add_to_means
 from TrackToLearn.environments.env import BaseEnv
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-class Actor(nn.Module):
-    """ Actor module that takes in a state and outputs an action.
-    Its policy is the neural network layers
-    """
-
-    def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        hidden_dim: int,
-        hidden_layers: int = 3,
-    ):
-        """
-        Parameters:
-        -----------
-            state_dim: int
-                Size of input state
-            action_dim: int
-                Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
-
-        """
-        super(Actor, self).__init__()
-
-        self.hidden_layers = hidden_layers
-        self.output_activation = nn.Tanh()
-
-        self.l1 = nn.Linear(state_dim, hidden_dim)
-        self.l2 = nn.Linear(hidden_dim, hidden_dim)
-        self.l3 = nn.Linear(hidden_dim, action_dim)
-
-        # TODO: ModuleList with 3 layers doesn't give the same results
-        # as sequential layer definition. Need to investigate
-
-        # self.layers = nn.ModuleList([])
-        # self.layers.append(nn.Linear(state_dim, hidden_dim))
-        # self.layers.append(nn.ReLU())
-
-        # for i in range(1, hidden_layers-1):
-        #     self.layers.append(nn.Linear(hidden_dim, hidden_dim))
-        #     self.layers.append(nn.ReLU())
-
-        # self.layers.append(nn.Linear(hidden_dim, action_dim))
-        # self.layers.append(self.output_activation)
-
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """ Forward propagation of the actor.
-        Outputs an un-noisy un-normalized action
-        """
-        p = state
-        p = torch.relu(self.l1(p))
-        p = torch.relu(self.l2(p))
-        p = self.output_activation(self.l3(p))
-
-        # p = state
-        # for layer in self.layers:
-        #     p = layer(p)
-
-        return p
-
-
-class Critic(nn.Module):
-    """ Critic module that takes in a pair of state-action and outputs its
-5   q-value according to the network's q function. TD3 uses two critics
-    and takes the lowest value of the two during backprop.
-    """
-
-    def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        hidden_dim: int,
-        hidden_layers: int = 3,
-    ):
-        """
-        Parameters:
-        -----------
-            state_dim: int
-                Size of input state
-            action_dim: int
-                Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
-
-        """
-        super(Critic, self).__init__()
-
-        self.hidden_layers = hidden_layers
-        # Q1 architecture
-        self.l1 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.l2 = nn.Linear(hidden_dim, hidden_dim)
-        self.l3 = nn.Linear(hidden_dim, 1)
-
-        # Q2 architecture
-        self.l4 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.l5 = nn.Linear(hidden_dim, hidden_dim)
-        self.l6 = nn.Linear(hidden_dim, 1)
-
-        # TODO: ModuleList with 3 layers doesn't give the same results
-        # as sequential layer definition. Need to investigate
-
-        # # Q1 architecture
-        # self.q1_layers = nn.ModuleList([])
-        # self.q1_layers.append(nn.Linear(state_dim + action_dim, hidden_dim))
-        # self.q1_layers.append(nn.ReLU())
-
-        # # Q2 architecture
-        # self.q2_layers = nn.ModuleList([])
-        # self.q2_layers.append(nn.Linear(state_dim + action_dim, hidden_dim))
-        # self.q2_layers.append(nn.ReLU())
-
-        # for i in range(1, hidden_layers-1):
-        #     self.q1_layers.append(nn.Linear(hidden_dim, hidden_dim))
-        #     self.q1_layers.append(nn.ReLU())
-        #     self.q2_layers.append(nn.Linear(hidden_dim, hidden_dim))
-        #     self.q2_layers.append(nn.ReLU())
-
-        # self.q1_layers.append(nn.Linear(hidden_dim, 1))
-        # self.q2_layers.append(nn.Linear(hidden_dim, 1))
-
-    def forward(self, state, action) -> torch.Tensor:
-        """ Forward propagation of the actor.
-        Outputs a q estimate from both critics
-        """
-        q1 = torch.cat([state, action], -1)
-        q2 = torch.cat([state, action], -1)
-
-        q1 = torch.relu(self.l1(q1))
-        q1 = torch.relu(self.l2(q1))
-        q1 = self.l3(q1)
-
-        q2 = torch.relu(self.l4(q2))
-        q2 = torch.relu(self.l5(q2))
-        q2 = self.l6(q2)
-
-        # q1 = torch.cat([state, action], -1)
-        # q2 = torch.cat([state, action], -1)
-
-        # for layer in self.q1_layers:
-        #     q1 = layer(q1)
-
-        # for layer in self.q2_layers:
-        #     q2 = layer(q2)
-
-        return q1, q2
-
-    def Q1(self, state, action) -> torch.Tensor:
-        """ Forward propagation of the actor.
-        Outputs a q estimate from first critic
-        """
-        q1 = torch.cat([state, action], -1)
-
-        q1 = torch.relu(self.l1(q1))
-        q1 = torch.relu(self.l2(q1))
-        q1 = self.l3(q1)
-
-        # q1 = torch.cat([state, action], -1)
-
-        # for layer in self.q1_layers:
-        #     q1 = layer(q1)
-
-        return q1
-
-
-class ActorCritic(object):
-    """ Module that handles the actor and the critic
-    """
-
-    def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        hidden_dim: int,
-        hidden_layers: int = 3,
-    ):
-        """
-        Parameters:
-        -----------
-            state_dim: int
-                Size of input state
-            action_dim: int
-                Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
-
-        """
-        self.actor = Actor(
-            state_dim, action_dim, hidden_dim, hidden_layers,
-        ).to(device)
-
-        self.critic = Critic(
-            state_dim, action_dim, hidden_dim, hidden_layers,
-        ).to(device)
-
-    def act(self, state: torch.Tensor) -> torch.Tensor:
-        """ Select action according to actor
-
-        Parameters:
-        -----------
-            state: torch.Tensor
-                Current state of the environment
-
-        Returns:
-        --------
-            action: torch.Tensor
-                Action selected by the policy
-        """
-        return self.actor(state)
-
-    def select_action(self, state: np.array, stochastic=False) -> np.ndarray:
-        """ Move state to torch tensor, select action and
-        move it back to numpy array
-
-        Parameters:
-        -----------
-            state: np.array
-                State of the environment
-
-        Returns:
-        --------
-            action: np.array
-                Action selected by the policy
-        """
-        # if state is not batched, expand it to "batch of 1"
-        if len(state.shape) < 2:
-            state = state[None, :]
-
-        state = torch.as_tensor(state, dtype=torch.float32, device=device)
-        action = self.act(state).cpu().data.numpy()
-
-        return action
-
-    def parameters(self):
-        """ Access parameters for grad clipping
-        """
-        return self.actor.parameters()
-
-    def load_state_dict(self, state_dict):
-        """ Load parameters into actor and critic
-        """
-        actor_state_dict, critic_state_dict = state_dict
-        self.actor.load_state_dict(actor_state_dict)
-        self.critic.load_state_dict(critic_state_dict)
-
-    def state_dict(self):
-        """ Returns state dicts so they can be loaded into another policy
-        """
-        return self.actor.state_dict(), self.critic.state_dict()
-
-    def save(self, path: str, filename: str):
-        """ Save policy at specified path and filename
-        Parameters:
-        -----------
-            path: string
-                Path to folder that will contain saved state dicts
-            filename: string
-                Name of saved models. Suffixes for actors and critics
-                will be appended
-        """
-        torch.save(
-            self.critic.state_dict(), pjoin(path, filename + "_critic.pth"))
-        torch.save(
-            self.actor.state_dict(), pjoin(path, filename + "_actor.pth"))
-
-    def load(self, path: str, filename: str):
-        """ Load policy from specified path and filename
-        Parameters:
-        -----------
-            path: string
-                Path to folder containing saved state dicts
-            filename: string
-                Name of saved models. Suffixes for actors and critics
-                will be appended
-        """
-        self.critic.load_state_dict(
-            torch.load(pjoin(path, filename + '_critic.pth')))
-        self.actor.load_state_dict(
-            torch.load(pjoin(path, filename + '_actor.pth')))
-
-    def eval(self):
-        """ Switch actors and critics to eval mode
-        """
-        self.actor.eval()
-        self.critic.eval()
-
-    def train(self):
-        """ Switch actors and critics to train mode
-        """
-        self.actor.train()
-        self.critic.train()
 
 
 class TD3(RLAlgorithm):
@@ -333,11 +38,10 @@ class TD3(RLAlgorithm):
         self,
         input_size: int,
         action_size: int = 3,
-        hidden_size: int = 256,
-        hidden_layers: int = 3,
-        action_std: float = 0.35,
+        hidden_dims: str = '',
         lr: float = 3e-4,
         gamma: float = 0.99,
+        action_std: float = 0.35,
         batch_size: int = 2048,
         interface_seeding: bool = False,
         rng: np.random.RandomState = None,
@@ -372,7 +76,7 @@ class TD3(RLAlgorithm):
         super(TD3, self).__init__(
             input_size,
             action_size,
-            hidden_size,
+            hidden_dims,
             action_std,
             lr,
             gamma,
@@ -384,14 +88,11 @@ class TD3(RLAlgorithm):
 
         # Initialize main policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_size, hidden_layers,
+            input_size, action_size, hidden_dims,
         )
 
         # Initialize target policy to provide baseline
         self.target = copy.deepcopy(self.policy)
-
-        # Initialize teacher policy for imitation learning
-        self.teacher = copy.deepcopy(self.policy)
 
         # TD3 requires a different model for actors and critics
         # Optimizer for actor
@@ -406,7 +107,7 @@ class TD3(RLAlgorithm):
         self.max_action = 1.
         self.on_policy = False
 
-        self.start_timesteps = 1000
+        self.start_timesteps = 0
         self.total_it = 0
         self.policy_freq = 2
         self.tau = 0.005
@@ -455,15 +156,15 @@ class TD3(RLAlgorithm):
         state = initial_state
         tractogram = None
         done = False
-        actor_loss = 0
-        critic_loss = 0
 
         episode_length = 0
+
+        running_losses = defaultdict(list)
 
         while not np.all(done):
 
             # Select action according to policy + noise for exploration
-            a = self.policy.select_action(np.array(state))
+            a, h = self.policy.select_action(np.array(state))
             action = (
                 a + self.rng.normal(
                     0, self.max_action * self.action_std,
@@ -479,37 +180,35 @@ class TD3(RLAlgorithm):
             # WARNING: This is a bit of a trick and I'm not entirely sure this
             # is legal. This is effectively adding to the replay buffer as if
             # I had n agents gathering transitions instead of a single one.
-            # This is not mentionned in the TD3 paper. PPO2 does use multiple
+            # This is not mentionned in the SAC paper. PPO2 does use multiple
             # learners, though.
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state, action, next_state,
-                reward[..., None], done_bool[..., None])
+                state, action,
+                next_state, reward[..., None],
+                done_bool[..., None])
 
             running_reward += sum(reward)
 
             # Train agent after collecting sufficient data
-            # TODO: Add monitors so that losses are properly tracked
             if self.t >= self.start_timesteps:
-                actor_loss, critic_loss = self.update(
+                losses = self.update(
                     self.replay_buffer)
-
+                running_losses = add_to_means(running_losses, losses)
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
             # This line also set the next_state as the state
-            state, _ = env.harvest(next_state)
+            state, h, _ = env.harvest(next_state, h)
 
             # Keeping track of episode length
             episode_length += 1
 
         tractogram = env.get_streamlines()
-
         return (
             tractogram,
             running_reward,
-            actor_loss,
-            critic_loss,
+            running_losses,
             episode_length)
 
     def update(
@@ -537,11 +236,6 @@ class TD3(RLAlgorithm):
         """
         self.total_it += 1
 
-        running_actor_loss = 0
-        running_critic_loss = 0
-
-        self.total_it += 1
-
         # Sample replay buffer
         # TODO: Make batch size parametrizable
         state, action, next_state, reward, not_done = \
@@ -562,13 +256,24 @@ class TD3(RLAlgorithm):
             target_Q = torch.min(target_Q1, target_Q2)
             target_Q = reward + not_done * self.gamma * target_Q
 
-        # Get current Q estimates for s
+        # Get current Q estimates
         current_Q1, current_Q2 = self.policy.critic(
             state, action)
 
-        # Compute critic loss Q(s,a) - r + yQ(s',a)
-        critic_loss = F.mse_loss(current_Q1, target_Q) + \
-            F.mse_loss(current_Q2, target_Q)
+        # MSE loss against Bellman backup
+        loss_q1 = F.mse_loss(current_Q1, target_Q.detach()).mean()
+        loss_q2 = F.mse_loss(current_Q2, target_Q.detach()).mean()
+
+        critic_loss = loss_q1 + loss_q2
+
+        losses = {
+            'actor_loss': 0.0,
+            'critic_loss': critic_loss.item(),
+            'q1': current_Q1.mean().item(),
+            'q2': current_Q2.mean().item(),
+            'q1_loss': loss_q1.item(),
+            'q2_loss': loss_q2.item(),
+        }
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
@@ -577,36 +282,31 @@ class TD3(RLAlgorithm):
 
         # Delayed policy updates
         if self.total_it % self.policy_freq == 0:
-
             # Compute actor loss -Q(s,a)
             actor_loss = -self.policy.critic.Q1(
-                state, self.policy.actor(state)).mean()
+                state, self.policy.act(state)).mean()
+
+            losses['actor_loss'] = actor_loss.item()
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
 
-            # Update the frozen target models
-            for param, target_param in zip(
-                self.policy.critic.parameters(),
-                self.target.critic.parameters()
-            ):
-                target_param.data.copy_(
-                    self.tau * param.data + (1 - self.tau) * target_param.data)
+        # Update the frozen target models
+        for param, target_param in zip(
+            self.policy.critic.parameters(),
+            self.target.critic.parameters()
+        ):
+            target_param.data.copy_(
+                self.tau * param.data + (1 - self.tau) * target_param.data)
 
-            for param, target_param in zip(
-                self.policy.actor.parameters(),
-                self.target.actor.parameters()
-            ):
-                target_param.data.copy_(
-                    self.tau * param.data + (1 - self.tau) * target_param.data
-                )
+        for param, target_param in zip(
+            self.policy.actor.parameters(),
+            self.target.actor.parameters()
+        ):
+            target_param.data.copy_(
+                self.tau * param.data + (1 - self.tau) * target_param.data
+            )
 
-            running_actor_loss = actor_loss.detach().cpu().numpy()
-
-        running_critic_loss = critic_loss.detach().cpu().numpy()
-
-        torch.cuda.empty_cache()
-
-        return running_actor_loss, running_critic_loss
+        return losses

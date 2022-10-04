@@ -54,6 +54,8 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         min_length: int,
         max_length: int,
         step_size: float,  # Step size (in mm)
+        cmc: bool,
+        asymmetric: bool,
         alignment_weighting: float,
         straightness_weighting: float,
         length_weighting: float,
@@ -66,8 +68,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         interface_seeding: bool,
         no_retrack: bool,
         # Model params
-        n_latent_var: int,
-        hidden_layers: int,
+        hidden_dims: str,
         add_neighborhood: float,
         # Experiment params
         use_gpu: bool,
@@ -75,7 +76,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         comet_experiment: Experiment,
         render: bool,
         run_tractometer: bool,
-        load_teacher: str,
         load_policy: str,
     ):
         """
@@ -154,8 +154,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         run_tractometer: bool
             Run tractometer during validation to see how it's
             doing w.r.t. ground truth data
-        load_teacher: str
-            Path to pretrained model for imitation learning
         load_policy: str
             Path to pretrained policy
         """
@@ -186,6 +184,8 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             min_length,
             max_length,
             step_size,  # Step size (in mm)
+            cmc,
+            asymmetric,
             alignment_weighting,
             straightness_weighting,
             length_weighting,
@@ -198,8 +198,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             interface_seeding,
             no_retrack,
             # Model params
-            n_latent_var,
-            hidden_layers,
+            hidden_dims,
             add_neighborhood,
             # Experiment params
             use_gpu,
@@ -207,7 +206,6 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             comet_experiment,
             render,
             run_tractometer,
-            load_teacher,
             load_policy
         )
 
@@ -235,11 +233,12 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             'max_angle': self.max_angle,
             'min_length': self.min_length,
             'max_length': self.max_length,
+            'cmc': self.cmc,
+            'asymmetric': self.asymmetric,
             # Model parameters
             'experiment_path': self.experiment_path,
             'use_gpu': self.use_gpu,
-            'hidden_size': self.n_latent_var,
-            'hidden_layers': self.hidden_layers,
+            'hidden_dims': self.hidden_dims,
             'last_episode': self.last_episode,
             'tracking_batch_size': self.tracking_batch_size,
             'n_signal': self.n_signal,
@@ -270,8 +269,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         alg = SAC(
             self.input_size,
             3,
-            self.n_latent_var,
-            self.hidden_layers,
+            self.hidden_dims,
             self.lr,
             self.gamma,
             self.alpha,
@@ -283,7 +281,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
 
 
 def add_sac_args(parser):
-    parser.add_argument('--alpha', default=0.2, type=float,
+    parser.add_argument('--alpha', default=1.0, type=float,
                         help='Temperature parameter')
     parser.add_argument('--training_batch_size', default=2**14, type=int,
                         help='Number of seeds used per episode')
@@ -345,6 +343,8 @@ def main():
         args.min_length,
         args.max_length,
         args.step_size,  # Step size (in mm)
+        args.cmc,
+        args.asymmetric,
         args.alignment_weighting,
         args.straightness_weighting,
         args.length_weighting,
@@ -357,8 +357,7 @@ def main():
         args.interface_seeding,
         args.no_retrack,
         # Model params
-        args.n_latent_var,
-        args.hidden_layers,
+        args.hidden_dims,
         args.add_neighborhood,
         # Experiment params
         args.use_gpu,
@@ -366,7 +365,6 @@ def main():
         experiment,
         args.render,
         args.run_tractometer,
-        args.load_teacher,
         args.load_policy,
     )
     sac_experiment.run()
