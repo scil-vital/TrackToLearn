@@ -66,8 +66,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         interface_seeding: bool,
         no_retrack: bool,
         # Model params
-        n_latent_var: int,
-        hidden_layers: int,
+        hidden_dims: str,
         add_neighborhood: float,
         # Experiment params
         use_gpu: bool,
@@ -198,8 +197,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             interface_seeding,
             no_retrack,
             # Model params
-            n_latent_var,
-            hidden_layers,
+            hidden_dims,
             add_neighborhood,
             # Experiment params
             use_gpu,
@@ -238,8 +236,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             # Model parameters
             'experiment_path': self.experiment_path,
             'use_gpu': self.use_gpu,
-            'hidden_size': self.n_latent_var,
-            'hidden_layers': self.hidden_layers,
+            'hidden_dims': self.hidden_dims,
             'last_episode': self.last_episode,
             'tracking_batch_size': self.tracking_batch_size,
             'n_signal': self.n_signal,
@@ -270,8 +267,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         alg = SAC(
             self.input_size,
             3,
-            self.n_latent_var,
-            self.hidden_layers,
+            self.hidden_dims,
             self.lr,
             self.gamma,
             self.alpha,
@@ -357,8 +353,7 @@ def main():
         args.interface_seeding,
         args.no_retrack,
         # Model params
-        args.n_latent_var,
-        args.hidden_layers,
+        args.hidden_dims,
         args.add_neighborhood,
         # Experiment params
         args.use_gpu,
