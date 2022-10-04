@@ -3,6 +3,7 @@ import scipy.signal
 import torch
 
 from typing import Tuple
+from os.path import join as pjoin
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -337,9 +338,11 @@ class OffPolicyReplayBuffer(object):
             torch.as_tensor(
                 self.next_state[ind], dtype=torch.float32, device=self.device)
         r = torch.as_tensor(
-            self.reward[ind], dtype=torch.float32, device=self.device)
+            self.reward[ind], dtype=torch.float32, device=self.device
+        ).squeeze(-1)
         d = torch.as_tensor(
-            self.not_done[ind], dtype=torch.float32, device=self.device)
+            self.not_done[ind], dtype=torch.float32, device=self.device
+        ).squeeze(-1)
 
         return s, a, ns, r, d
 
@@ -349,12 +352,22 @@ class OffPolicyReplayBuffer(object):
         self.ptr = 0
         self.size = 0
 
-    def save_to_file(self, path):
+    def save(self, path, name, i):
         """ TODO for imitation learning
         """
-        pass
+        states_file = pjoin(path, name + "_states_{}.npy".format(i))
+        actions_file = pjoin(path, name + "_actions_{}.npy".format(i))
+        next_states_file = pjoin(path, name + "_next_states_{}.npy".format(i))
+        rewards_file = pjoin(path, name + "_rewards_{}.npy".format(i))
+        dones_file = pjoin(path, name + "_dones_{}.npy".format(i))
 
-    def load_from_file(self, path):
+        np.save(states_file, self.state[:self.size])
+        np.save(actions_file, self.action[:self.size])
+        np.save(next_states_file, self.next_state[:self.size])
+        np.save(rewards_file, self.reward[:self.size])
+        np.save(dones_file, 1. - self.not_done[:self.size])
+
+    def load(self, path, i):
         """ TODO for imitation learning
         """
         pass

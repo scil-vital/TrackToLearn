@@ -54,6 +54,8 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
         min_length: int,
         max_length: int,
         step_size: float,  # Step size (in mm)
+        cmc: bool,
+        asymmetric: bool,
         alignment_weighting: float,
         straightness_weighting: float,
         length_weighting: float,
@@ -182,6 +184,8 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             min_length,
             max_length,
             step_size,  # Step size (in mm)
+            cmc,
+            asymmetric,
             alignment_weighting,
             straightness_weighting,
             length_weighting,
@@ -229,6 +233,8 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
             'max_angle': self.max_angle,
             'min_length': self.min_length,
             'max_length': self.max_length,
+            'cmc': self.cmc,
+            'asymmetric': self.asymmetric,
             # Model parameters
             'experiment_path': self.experiment_path,
             'use_gpu': self.use_gpu,
@@ -275,7 +281,7 @@ class SACTrackToLearnTraining(TrackToLearnTraining):
 
 
 def add_sac_args(parser):
-    parser.add_argument('--alpha', default=0.2, type=float,
+    parser.add_argument('--alpha', default=1.0, type=float,
                         help='Temperature parameter')
     parser.add_argument('--training_batch_size', default=2**14, type=int,
                         help='Number of seeds used per episode')
@@ -337,6 +343,8 @@ def main():
         args.min_length,
         args.max_length,
         args.step_size,  # Step size (in mm)
+        args.cmc,
+        args.asymmetric,
         args.alignment_weighting,
         args.straightness_weighting,
         args.length_weighting,

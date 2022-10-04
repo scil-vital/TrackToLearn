@@ -11,3 +11,7 @@ def stack_states(full, single):
                 for (f, s) in zip(full, single))
     else:
         return (s[None, :, ...] for s in single)
+
+
+def add_to_means(means, dic):
+    return {k: means[k] + [dic[k]] for k in dic.keys()}
