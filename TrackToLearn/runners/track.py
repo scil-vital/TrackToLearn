@@ -8,16 +8,9 @@ import torch
 
 from argparse import RawTextHelpFormatter
 
-from TrackToLearn.algorithms.a2c import A2C
-from TrackToLearn.algorithms.acer import ACER
-from TrackToLearn.algorithms.acktr import ACKTR
-from TrackToLearn.algorithms.ddpg import DDPG
-from TrackToLearn.algorithms.ppo import PPO
-from TrackToLearn.algorithms.trpo import TRPO
 from TrackToLearn.algorithms.td3 import TD3
 from TrackToLearn.algorithms.sac import SAC
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.algorithms.vpg import VPG
 from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.runners.experiment import (
     add_environment_args,
@@ -139,14 +132,7 @@ class TrackToLearnTrack(TrackToLearnTest):
         example_state = env.reset(0, 1)
         self.input_size = example_state.shape[1]
 
-        algs = {'VPG': VPG,
-                'A2C': A2C,
-                'ACER': ACER,
-                'ACKTR': ACKTR,
-                'PPO': PPO,
-                'TRPO': TRPO,
-                'DDPG': DDPG,
-                'TD3': TD3,
+        algs = {'TD3': TD3,
                 'SAC': SAC,
                 'SACAuto': SACAuto}
 
