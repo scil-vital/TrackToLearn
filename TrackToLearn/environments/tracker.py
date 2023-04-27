@@ -335,6 +335,7 @@ class Retracker(Tracker):
         self,
         idx: np.ndarray,
         states: np.ndarray,
+        hidden: Tuple[torch.Tensor, torch.Tensor] = None
     ) -> Tuple[np.ndarray, np.ndarray]:
         """ Keep only streamlines corresponding to the given indices, and remove
         all others. The model states will be updated accordingly.
@@ -351,7 +352,7 @@ class Retracker(Tracker):
         self.n_init_steps = self.n_init_steps[idx]
 
         return super()._keep(
-            idx, states)
+            idx, states, hidden)
 
     def reset(self, streamlines: np.ndarray) -> np.ndarray:
         """ Initialize tracking seeds and streamlines
