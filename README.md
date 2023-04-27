@@ -141,6 +141,8 @@ A bug in the original implementation prevents the reproduction of the published 
 
 ## Incorporating anatomical priors into Track-to-Learn
 
-This work is presented at the *ISMRM Workshop on Diffusion MRI: From Research to Clinic*, poster i\#34. This work adds the use of Continuous Map Criterion (CMC, https://www.sciencedirect.com/science/article/pii/S1053811914003541), asymmetric fODFs (https://archive.ismrm.org/2021/0865.html) and interface, WM/GM boundary seeding. They can be used with the `--cmc`, `--asymmetric` and `--interface_seeding` options respectively. Data and trained models are available here: https://zenodo.org/record/7153362
+The reference commit to the master branch for this work is `dbae9305b4a3e9f21c3249121ef5dc5ed9faa899`.
+
+This work is presented at the *ISMRM Workshop on Diffusion MRI: From Research to Clinic*, poster \#34. This work adds the use of Continuous Map Criterion (CMC, https://www.sciencedirect.com/science/article/pii/S1053811914003541), asymmetric fODFs (https://archive.ismrm.org/2021/0865.html) and interface, WM/GM boundary seeding. They can be used with the `--cmc`, `--asymmetric` and `--interface_seeding` options respectively. Data and trained models are available here: https://zenodo.org/record/7153362
 
 Dataset files are in `raw` and weights and results are in `experiments`. Results can be replicated using bash scripts (`sac_auto_train[_cmc|_asym|_cmc_asym].sh`) in the `scripts` folder of the code. The `DATASET_FOLDER` variable must be initialized to the folder where the `raw` and `experiments` folders are.
