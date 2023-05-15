@@ -1,7 +1,138 @@
 # Track-to-Learn: A general framework for tractography with deep reinforcement learning
 
-See preprint: https://www.biorxiv.org/content/10.1101/2020.11.16.385229v1
+## Getting started
+
+### Installation and setup
+
+It is recommended to use `virtualenv` to run the code
+
+``` bash
+virtualenv .env
+```
+
+Then, install the dependencies and setup the repo with
+
+``` bash
+# Install common requirements
+pip install -r requirements.txt
+# Install some specific requirments from git
+pip install git+https://github.com/scilus/scilpy@1.3.0#egg=scilpy
+pip install git+https://github.com/scil-vital/dwi_ml#egg=dwi_ml
+pip install git+https://github.com/scilus/ismrm_2015_tractography_challenge_scoring.git
+# Load the project into the environment
+pip install -e .
+```
+
+TrackToLearn was developed using `torch==1.9.1` with CUDA 11. You may have to change the torch version in `requirements.txt` to suit your local installation.
+
+Right now, only python 3.8 is supported.
+
+### Tracking
+
+You will need a trained agent for tracking. One is provided in the `example_model` folder. You can then track by running `TrackToLearn/runners/track.py`.
+
+```
+usage: track.py [-h] [--n_actor N_ACTOR] [--remove_invalid_streamlines]
+                [--fa_map FA_MAP] [--use_gpu] [--rng_seed RNG_SEED]
+                [--n_signal N_SIGNAL] [--n_dirs N_DIRS]
+                [--add_neighborhood ADD_NEIGHBORHOOD]
+                [--n_seeds_per_voxel N_SEEDS_PER_VOXEL]
+                [--max_angle MAX_ANGLE] [--min_length MIN_LENGTH]
+                [--max_length MAX_LENGTH] [--cmc]
+                [--asymmetric] [--valid_noise VALID_NOISE]
+                [--interface_seeding] [--no_retrack]
+
+                fodf_file wm_file seeding_file tracking_file reference_file
+                policy hyperparameters out_tractogram
+```
+
+You will need to provide fODFs, a WM mask, a seeding mask, a tracking mask and a reference anatomy. The `policy` parameter needs to point to the folder containing .pth (pytorch weights) files (for example, `example_model/SAC_Auto_ISMRM2015_WM/`). The `hyperparameters` parameter needs to point to the `.json` containing the agent's hyperparameters (for example `example_model/SAC_Auto_ISMRM2015_WM/hyperparameters.json`).
+
+Agents used for tracking are constrained by their training regime. For example, the agent provided in `example_model` was trained on a volume with a resolution of 2mm iso voxels and a step size of 0.75mm using fODFs of order 6, `descoteaux07` basis. When tracking on arbitrary data, the step-size will be adjusted accordingly automatically (for example, the step size will be 0.375mm at 1mm iso resolution) but you will have to provide fODFs of the same order and basis.
+
+Other trained agents are available here: https://zenodo.org/record/7853590
+
+### Training
+
+First, make a dataset `.hdf5` file with `TrackToLearn/dataset/create_dataset.py`.
+```
+usage: create_dataset.py [-h] [--normalize] path config_file output
+
+positional arguments:
+  path         Location of the dataset files.
+  config_file  Configuration file to load subjects and their volumes.
+  output       Output filename including path
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --normalize  If set, normalize first input signal.
+```
+
+Example datasets and config files are available here: https://zenodo.org/record/7853832
+
+Then, you may train a PPO agent, for example, by running `python TrackToLearn/trainers/ppo_train.py`.
+
+```
+usage: ppo_train.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
+                    [--run_tractometer] [--render] [--n_signal N_SIGNAL]
+                    [--n_dirs N_DIRS] [--add_neighborhood ADD_NEIGHBORHOOD]
+                    [--cmc] [--asymmetric] [--n_actor N_ACTOR]
+                    [--hidden_dims HIDDEN_DIMS] [--load_policy LOAD_POLICY]
+                    [--max_ep MAX_EP] [--log_interval LOG_INTERVAL] [--lr LR]
+                    [--gamma GAMMA]
+                    [--alignment_weighting ALIGNMENT_WEIGHTING]
+                    [--straightness_weighting STRAIGHTNESS_WEIGHTING]
+                    [--length_weighting LENGTH_WEIGHTING]
+                    [--target_bonus_factor TARGET_BONUS_FACTOR]
+                    [--exclude_penalty_factor EXCLUDE_PENALTY_FACTOR]
+                    [--angle_penalty_factor ANGLE_PENALTY_FACTOR]
+                    [--n_seeds_per_voxel N_SEEDS_PER_VOXEL]
+                    [--max_angle MAX_ANGLE] [--min_length MIN_LENGTH]
+                    [--max_length MAX_LENGTH] [--step_size STEP_SIZE]
+                    [--valid_noise VALID_NOISE] [--interface_seeding]
+                    [--no_retrack] [--entropy_loss_coeff ENTROPY_LOSS_COEFF]
+                    [--action_std ACTION_STD] [--lmbda LMBDA]
+                    [--K_epochs K_EPOCHS] [--eps_clip EPS_CLIP]
+                    path experiment id dataset_file subject_id
+                    test_dataset_file test_subject_id reference_file
+                    scoring_data
+```
+
+Other trainers are available in `TrackToLearn/trainers`.
+
+You can recreate an experiment by running a script in the `scripts` folder. These scripts should provide an excellent starting point for improving upon this work. You will only need to first set the `TRACK_TO_LEARN_DATA` environment variable to where you extracted the datasets (i.e. a network disk or somewhere with lots of space) and the `LOCAL_TRACK_TO_LEARN_DATA` environment variable your working folder (i.e. a faster local disk). Then, the script can be launched.
+
+To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder. **Usage of comet-ml is necessary for hyperparameter search**, but this constraint should be removed in future releases.
+
+The option for recurrent agents is there but recurrent agents are not yet implemented. Training and validation can be performed on different subjects, but training (or validation) on multiple subjects is not yet supported. 
+
+## Contributing
+
+Contributions are welcome ! There are several TODOs sprinkled through the project which may inspire you. A lot of the code's architecure could be improved, better organized, split and reworked to make the code cleaner. Several performance improvements could also easily be added.
+
+See `ARCHITECURE.md` for an overview of the code.
+
+## What matters in Reinforcement Learning for Tractography (2023)
+
+See preprint: TODO
+
+This version of Track-to-Learn should serve as a reference going forward to use and improve upon Track-to-Learn. Refer to the readme above for usage.
+
+## Incorporating anatomical priors into Track-to-Learn (2022)
+
+The reference commit to the master branch for this work is `dbae9305b4a3e9f21c3249121ef5dc5ed9faa899`.
+
+This work is presented at the *ISMRM Workshop on Diffusion MRI: From Research to Clinic*, poster \#34 (email me for the abstract and poster). This work adds the use of Continuous Map Criterion (CMC, https://www.sciencedirect.com/science/article/pii/S1053811914003541), asymmetric fODFs (https://archive.ismrm.org/2021/0865.html). They can be used with the `--cmc` and `--asymmetric` options respectively. Data and trained models are available here: https://zenodo.org/record/7153362
+
+Dataset files are in `raw` and weights and results are in `experiments`. Results can be replicated using bash scripts (`sac_auto_train[_cmc|_asym|_cmc_asym].sh`) in the `scripts` folder of the code. The `DATASET_FOLDER` variable must be initialized to the folder where the `raw` and `experiments` folders are.
+
+## Track-to-Learn (2021)
+
 See published version: https://www.sciencedirect.com/science/article/pii/S1361841521001390
+
+See preprint: https://www.biorxiv.org/content/10.1101/2020.11.16.385229v1
+
+A bug in the original implementation prevents the reproduction of the published results. The results presented in "What matters in Reinforcement Learning for Tractography" should be reproducible and considered as reference.
 
 ## How to cite
 
@@ -21,128 +152,3 @@ keywords = {Tractography, Deep Learning, Reinforcement Learning},
 abstract = {Diffusion MRI tractography is currently the only non-invasive tool able to assess the white-matter structural connectivity of a brain. Since its inception, it has been widely documented that tractography is prone to producing erroneous tracks while missing true positive connections. Recently, supervised learning algorithms have been proposed to learn the tracking procedure implicitly from data, without relying on anatomical priors. However, these methods rely on curated streamlines that are very hard to obtain. To remove the need for such data but still leverage the expressiveness of neural networks, we introduce Track-To-Learn: A general framework to pose tractography as a deep reinforcement learning problem. Deep reinforcement learning is a type of machine learning that does not depend on ground-truth data but rather on the concept of “reward”. We implement and train algorithms to maximize returns from a reward function based on the alignment of streamlines with principal directions extracted from diffusion data. We show competitive results on known data and little loss of performance when generalizing to new, unseen data, compared to prior machine learning-based tractography algorithms. To the best of our knowledge, this is the first successful use of deep reinforcement learning for tractography.}
 }
 ```
-
-## Installation and setup
-
-It is recommended to use a virtualenv to run the code
-
-``` bash
-virtualenv .env
-```
-
-Then, install the dependencies and setup the repo with
-
-``` bash
-pip install -r requirements.txt
-pip install -e .
-```
-
-You will need to install extra dependencies to score the tractograms
-
-``` bash
-pip install -r extra-requirements.txt
-```
-
-Right now, only python 3.7 is supported.
-
-## Running
-
-First, make a dataset `.hdf5` file with `TrackToLearn/dataset/create_dataset.py`.
-
-Then, you may train the TD3 agent by running `python TrackToLearn/runners/td3_train.py`.
-```
-usage: td3_train.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
-                    [--run_tractometer] [--render]
-                    [--ground_truth_folder GROUND_TRUTH_FOLDER]
-                    [--n_signal N_SIGNAL] [--n_dirs N_DIRS]
-                    [--add_neighborhood ADD_NEIGHBORHOOD]
-                    [--n_seeds_per_voxel N_SEEDS_PER_VOXEL]
-                    [--max_angle MAX_ANGLE] [--min_length MIN_LENGTH]
-                    [--max_length MAX_LENGTH]
-                    [--alignment_weighting ALIGNMENT_WEIGHTING]
-                    [--straightness_weighting STRAIGHTNESS_WEIGHTING]
-                    [--length_weighting LENGTH_WEIGHTING]
-                    [--target_bonus_factor TARGET_BONUS_FACTOR]
-                    [--exclude_penalty_factor EXCLUDE_PENALTY_FACTOR]
-                    [--angle_penalty_factor ANGLE_PENALTY_FACTOR]
-                    [--step_size STEP_SIZE] [--cmc] [--asymmetric]
-                    [--recurrent RECURRENT] [--hidden_dims HIDDEN_DIMS]
-                    [--load_policy LOAD_POLICY] [--max_ep MAX_EP]
-                    [--log_interval LOG_INTERVAL] [--lr LR] [--gamma GAMMA]
-                    [--tracking_batch_size TRACKING_BATCH_SIZE]
-                    [--valid_noise VALID_NOISE] [--interface_seeding]
-                    [--no_retrack] [--stochastic] [--action_std ACTION_STD]
-                    [--training_batch_size TRAINING_BATCH_SIZE]
-                    path experiment name dataset_file subject_id
-                    test_dataset_file test_subject_id reference_file
-
-```
-
-Similarly, you may train the SAC or SAC with automatic entropy tuning using `sac_train.py` or `sac_auto_train.py`.
-
-To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder
-
-The option for recurrent agents is there but recurrent agents are not yet implemented. Only single-subject training is supported. 
-
-Once your agent is trained, you may track using `python TrackToLearn/runners/track.py` (directly on files) or `python TrackToLearn/runners/test.py` (from a dataset).
-
-```bash
-usage: track.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
-                [--run_tractometer] [--render]
-                [--ground_truth_folder GROUND_TRUTH_FOLDER]
-                [--out_tractogram OUT_TRACTOGRAM]
-                [--remove_invalid_streamlines] [--fa_map FA_MAP]
-                [--n_signal N_SIGNAL] [--n_dirs N_DIRS]
-                [--add_neighborhood ADD_NEIGHBORHOOD]
-                [--n_seeds_per_voxel N_SEEDS_PER_VOXEL]
-                [--max_angle MAX_ANGLE] [--min_length MIN_LENGTH]
-                [--max_length MAX_LENGTH]
-                [--alignment_weighting ALIGNMENT_WEIGHTING]
-                [--straightness_weighting STRAIGHTNESS_WEIGHTING]
-                [--length_weighting LENGTH_WEIGHTING]
-                [--target_bonus_factor TARGET_BONUS_FACTOR]
-                [--exclude_penalty_factor EXCLUDE_PENALTY_FACTOR]
-                [--angle_penalty_factor ANGLE_PENALTY_FACTOR]
-                [--step_size STEP_SIZE] [--cmc] [--asymmetric]
-                [--tracking_batch_size TRACKING_BATCH_SIZE]
-                [--valid_noise VALID_NOISE] [--interface_seeding]
-                [--no_retrack] [--stochastic]
-                path experiment name signal_file peaks_file seeding_file
-                tracking_file target_file include_file exclude_file subject_id
-                reference_file policy hyperparameters
-```
-
-```bash
-usage: test.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
-               [--run_tractometer] [--render]
-               [--ground_truth_folder GROUND_TRUTH_FOLDER]
-               [--remove_invalid_streamlines] [--fa_map FA_MAP]
-               [--test_max_angle TEST_MAX_ANGLE] [--n_signal N_SIGNAL]
-               [--n_dirs N_DIRS] [--add_neighborhood ADD_NEIGHBORHOOD]
-               [--n_seeds_per_voxel N_SEEDS_PER_VOXEL] [--max_angle MAX_ANGLE]
-               [--min_length MIN_LENGTH] [--max_length MAX_LENGTH]
-               [--alignment_weighting ALIGNMENT_WEIGHTING]
-               [--straightness_weighting STRAIGHTNESS_WEIGHTING]
-               [--length_weighting LENGTH_WEIGHTING]
-               [--target_bonus_factor TARGET_BONUS_FACTOR]
-               [--exclude_penalty_factor EXCLUDE_PENALTY_FACTOR]
-               [--angle_penalty_factor ANGLE_PENALTY_FACTOR]
-               [--step_size STEP_SIZE] [--cmc] [--asymmetric]
-               [--tracking_batch_size TRACKING_BATCH_SIZE]
-               [--valid_noise VALID_NOISE] [--interface_seeding]
-               [--no_retrack] [--stochastic]
-               path experiment name dataset_file subject_id reference_file
-               policy hyperparameters
-```
-
-## Track-to-Learn
-
-A bug in the original implementation prevents the reproduction of the published results. **However** I am currently working on an updated and expanded version of the paper, which should be submitted in the comings months. For now, you should refer to the next section.
-
-## Incorporating anatomical priors into Track-to-Learn
-
-The reference commit to the master branch for this work is `dbae9305b4a3e9f21c3249121ef5dc5ed9faa899`.
-
-This work is presented at the *ISMRM Workshop on Diffusion MRI: From Research to Clinic*, poster \#34. This work adds the use of Continuous Map Criterion (CMC, https://www.sciencedirect.com/science/article/pii/S1053811914003541), asymmetric fODFs (https://archive.ismrm.org/2021/0865.html) and interface, WM/GM boundary seeding. They can be used with the `--cmc`, `--asymmetric` and `--interface_seeding` options respectively. Data and trained models are available here: https://zenodo.org/record/7153362
-
-Dataset files are in `raw` and weights and results are in `experiments`. Results can be replicated using bash scripts (`sac_auto_train[_cmc|_asym|_cmc_asym].sh`) in the `scripts` folder of the code. The `DATASET_FOLDER` variable must be initialized to the folder where the `raw` and `experiments` folders are.

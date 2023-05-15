@@ -1,27 +1,27 @@
 import copy
 import numpy as np
 import torch
-import torch.nn.functional as F
 
-from collections import defaultdict
-from nibabel.streamlines import Tractogram
 from typing import Tuple
 
-from TrackToLearn.algorithms.rl import RLAlgorithm
-from TrackToLearn.algorithms.shared.offpolicy import MaxEntropyActorCritic
+from TrackToLearn.algorithms.ddpg import DDPG
+from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
-from TrackToLearn.algorithms.shared.utils import add_to_means
-from TrackToLearn.environments.env import BaseEnv
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class SAC(RLAlgorithm):
+class SAC(DDPG):
     """
     The sample-gathering and training algorithm.
     Based on
-    TODO: Cite
+
+        Haarnoja, T., Zhou, A., Abbeel, P., & Levine, S. (2018, July). Soft
+        actor-critic: Off-policy maximum entropy deep reinforcement learning with
+        a stochastic actor. In International conference on machine learning
+        (pp. 1861-1870). PMLR.
+
     Implementation is based on Spinning Up's and rlkit
 
     See https://github.com/vitchyr/rlkit/blob/master/rlkit/torch/sac/sac.py
@@ -35,13 +35,12 @@ class SAC(RLAlgorithm):
     def __init__(
         self,
         input_size: int,
-        action_size: int = 3,
-        hidden_dims: str = '',
+        action_size: int,
+        hidden_dims: str,
         lr: float = 3e-4,
         gamma: float = 0.99,
         alpha: float = 0.2,
-        batch_size: int = 2048,
-        interface_seeding: bool = False,
+        n_actors: int = 4096,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -54,16 +53,14 @@ class SAC(RLAlgorithm):
             Output size for the actor
         hidden_size: int
             Width of the model
-        action_std: float
-            Standard deviation on actions for exploration
         lr: float
             Learning rate for optimizer
         gamma: float
             Gamma parameter future reward discounting
-        batch_size: int
+        alpha: float
+            Parameter for entropy bonus
+        n_actors: int
             Batch size for replay buffer sampling
-        gm_seeding: bool
-            If seeding from GM, don't "go back"
         rng: np.random.RandomState
             rng for randomness. Should be fixed with a seed
         device: torch.device,
@@ -71,21 +68,19 @@ class SAC(RLAlgorithm):
             Should always on GPU
         """
 
-        super(SAC, self).__init__(
-            input_size,
-            action_size,
-            hidden_dims,
-            0.,
-            lr,
-            gamma,
-            batch_size,
-            interface_seeding,
-            rng,
-            device,
-        )
+        self.max_action = 1.
+        self.t = 1
+
+        self.action_size = action_size
+        self.lr = lr
+        self.gamma = gamma
+        self.device = device
+        self.n_actors = n_actors
+
+        self.rng = rng
 
         # Initialize main policy
-        self.policy = MaxEntropyActorCritic(
+        self.policy = SACActorCritic(
             input_size, action_size, hidden_dims,
         )
 
@@ -105,9 +100,10 @@ class SAC(RLAlgorithm):
         self.alpha = alpha
 
         # SAC-specific parameters
+        self.max_action = 1.
         self.on_policy = False
 
-        self.start_timesteps = 0
+        self.start_timesteps = 1000
         self.total_it = 0
         self.tau = 0.005
 
@@ -117,93 +113,17 @@ class SAC(RLAlgorithm):
 
         self.rng = rng
 
-    def _episode(
+    def sample_action(
         self,
-        initial_state: np.ndarray,
-        env: BaseEnv,
-    ) -> Tuple[Tractogram, float, float, float, int]:
-        """
-        Main loop for the algorithm
-        From a starting state, run the model until the env. says its done
-        Gather transitions and train on them according to the RL algorithm's
-        rules.
-
-        Parameters
-        ----------
-        initial_state: np.ndarray
-            Initial state of the environment
-        env: BaseEnv
-            The environment actions are applied on. Provides the state fed to
-            the RL algorithm
-
-        Returns
-        -------
-        tractogram: Tractogram
-            Tractogram containing the tracked streamline
-        running_reward: float
-            Cummulative training steps reward
-        actor_loss: float
-            Policty gradient loss of actor
-        critic_loss: float
-            MSE loss of critic
-        episode_length: int
-            Length of episode aka how many transitions were gathered
+        state: torch.Tensor
+    ) -> np.ndarray:
+        """ Sample an action according to the algorithm.
         """
 
-        running_reward = 0
-        state = initial_state
-        tractogram = None
-        done = False
+        # Select action according to policy + noise for exploration
+        action = self.policy.select_action(state, stochastic=True)
 
-        episode_length = 0
-
-        running_losses = defaultdict(list)
-
-        while not np.all(done):
-
-            # Select action according to policy + noise for exploration
-            action, h = self.policy.select_action(
-                np.array(state), stochastic=True)
-
-            self.t += action.shape[0]
-            # Perform action
-            next_state, reward, done, _ = env.step(action)
-            done_bool = done
-
-            # Store data in replay buffer
-            # WARNING: This is a bit of a trick and I'm not entirely sure this
-            # is legal. This is effectively adding to the replay buffer as if
-            # I had n agents gathering transitions instead of a single one.
-            # This is not mentionned in the SAC paper. PPO2 does use multiple
-            # learners, though.
-            # I'm keeping it since since it reaaaally speeds up training with
-            # no visible costs
-            self.replay_buffer.add(
-                state, action,
-                next_state, reward[..., None],
-                done_bool[..., None])
-
-            running_reward += sum(reward)
-
-            # Train agent after collecting sufficient data
-            if self.t >= self.start_timesteps:
-                losses = self.update(
-                    self.replay_buffer)
-                running_losses = add_to_means(running_losses, losses)
-            # "Harvesting" here means removing "done" trajectories
-            # from state as well as removing the associated streamlines
-            # This line also set the next_state as the state
-            state, h, _ = env.harvest(next_state, h)
-
-            # Keeping track of episode length
-            episode_length += 1
-
-        tractogram = env.get_streamlines()
-        return (
-            tractogram,
-            running_reward,
-            running_losses,
-            episode_length)
+        return action
 
     def update(
         self,
@@ -211,8 +131,10 @@ class SAC(RLAlgorithm):
         batch_size: int = 2**12
     ) -> Tuple[float, float]:
         """
-        TODO: Add motivation behind SAC update ("pessimistic" two-critic
-        update, policy that implicitely maximizes the q-function, etc.)
+
+        SAC improves upon DDPG by:
+            - Introducing entropy into the objective
+            - Using Double Q-Learning to fight overestimation
 
         Parameters
         ----------
@@ -231,7 +153,6 @@ class SAC(RLAlgorithm):
         self.total_it += 1
 
         # Sample replay buffer
-        # TODO: Make batch size parametrizable
         state, action, next_state, reward, not_done = \
             replay_buffer.sample(batch_size)
 
@@ -261,18 +182,18 @@ class SAC(RLAlgorithm):
             state, action)
 
         # MSE loss against Bellman backup
-        loss_q1 = F.mse_loss(current_Q1, backup.detach()).mean()
-        loss_q2 = F.mse_loss(current_Q2, backup.detach()).mean()
-
+        loss_q1 = ((current_Q1 - backup)**2).mean()
+        loss_q2 = ((current_Q2 - backup)**2).mean()
         critic_loss = loss_q1 + loss_q2
 
         losses = {
             'actor_loss': actor_loss.item(),
             'critic_loss': critic_loss.item(),
-            'q1': current_Q1.mean().item(),
-            'q2': current_Q2.mean().item(),
-            'q1_loss': loss_q1.item(),
-            'q2_loss': loss_q2.item(),
+            'loss_q1': loss_q1.item(),
+            'loss_q2': loss_q2.item(),
+            'Q1': current_Q1.mean().item(),
+            'Q2': current_Q2.mean().item(),
+            'backup': backup.mean().item(),
         }
 
         # Optimize the actor

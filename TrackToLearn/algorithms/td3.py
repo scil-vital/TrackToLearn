@@ -3,21 +3,17 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from collections import defaultdict
-from nibabel.streamlines import Tractogram
 from typing import Tuple
 
-from TrackToLearn.algorithms.rl import RLAlgorithm
-from TrackToLearn.algorithms.shared.offpolicy import ActorCritic
+from TrackToLearn.algorithms.ddpg import DDPG
+from TrackToLearn.algorithms.shared.offpolicy import TD3ActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
-from TrackToLearn.algorithms.shared.utils import add_to_means
-from TrackToLearn.environments.env import BaseEnv
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class TD3(RLAlgorithm):
+class TD3(DDPG):
     """
     The sample-gathering and training algorithm.
     Based on
@@ -37,13 +33,12 @@ class TD3(RLAlgorithm):
     def __init__(
         self,
         input_size: int,
-        action_size: int = 3,
-        hidden_dims: str = '',
+        action_size: int,
+        hidden_dims: str,
+        action_std: float = 0.35,
         lr: float = 3e-4,
         gamma: float = 0.99,
-        action_std: float = 0.35,
-        batch_size: int = 2048,
-        interface_seeding: bool = False,
+        n_actors: int = 4096,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -62,10 +57,8 @@ class TD3(RLAlgorithm):
             Learning rate for optimizer
         gamma: float
             Gamma parameter future reward discounting
-        batch_size: int
-            Batch size for replay buffer sampling
-        interface_seeding: bool
-            If seeding from GM, don't "go back"
+        n_actors : int
+            Nb. of learners.
         rng: np.random.RandomState
             rng for randomness. Should be fixed with a seed
         device: torch.device,
@@ -73,28 +66,20 @@ class TD3(RLAlgorithm):
             Should always on GPU
         """
 
-        super(TD3, self).__init__(
-            input_size,
-            action_size,
-            hidden_dims,
-            action_std,
-            lr,
-            gamma,
-            batch_size,
-            interface_seeding,
-            rng,
-            device,
-        )
+        self.input_size = input_size
+        self.action_size = action_size
+        self.lr = lr
+        self.gamma = gamma
 
         # Initialize main policy
-        self.policy = ActorCritic(
+        self.policy = TD3ActorCritic(
             input_size, action_size, hidden_dims,
         )
 
         # Initialize target policy to provide baseline
         self.target = copy.deepcopy(self.policy)
 
-        # TD3 requires a different model for actors and critics
+        # DDPG requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.Adam(
             self.policy.actor.parameters(), lr=lr)
@@ -104,112 +89,42 @@ class TD3(RLAlgorithm):
             self.policy.critic.parameters(), lr=lr)
 
         # TD3-specific parameters
+        self.action_std = action_std
         self.max_action = 1.
-        self.on_policy = False
-
-        self.start_timesteps = 0
-        self.total_it = 0
+        self.noise_clip = 1.
         self.policy_freq = 2
+
+        # Off-policy parameters
+        self.on_policy = False
+        self.start_timesteps = 1000
+        self.total_it = 0
         self.tau = 0.005
-        self.noise_clip = 1
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
             input_size, action_size)
 
+        self.t = 1
         self.rng = rng
+        self.device = device
+        self.n_actors = n_actors
 
-    def _episode(
+    def sample_action(
         self,
-        initial_state: np.ndarray,
-        env: BaseEnv,
-    ) -> Tuple[Tractogram, float, float, float, int]:
-        """
-        Main loop for the algorithm
-        From a starting state, run the model until the env. says its done
-        Gather transitions and train on them according to the RL algorithm's
-        rules.
-
-        Parameters
-        ----------
-        initial_state: np.ndarray
-            Initial state of the environment
-        env: BaseEnv
-            The environment actions are applied on. Provides the state fed to
-            the RL algorithm
-
-        Returns
-        -------
-        tractogram: Tractogram
-            Tractogram containing the tracked streamline
-        running_reward: float
-            Cummulative training steps reward
-        actor_loss: float
-            Policty gradient loss of actor
-        critic_loss: float
-            MSE loss of critic
-        episode_length: int
-            Length of episode aka how many transitions were gathered
+        state: torch.Tensor
+    ) -> np.ndarray:
+        """ Sample an action according to the algorithm.
         """
 
-        running_reward = 0
-        state = initial_state
-        tractogram = None
-        done = False
+        # Select action according to policy + noise for exploration
+        a = self.policy.select_action(state)
+        action = (
+            a + self.rng.normal(
+                0, self.max_action * self.action_std,
+                size=a.shape)
+        ).clip(-self.max_action, self.max_action)
 
-        episode_length = 0
-
-        running_losses = defaultdict(list)
-
-        while not np.all(done):
-
-            # Select action according to policy + noise for exploration
-            a, h = self.policy.select_action(np.array(state))
-            action = (
-                a + self.rng.normal(
-                    0, self.max_action * self.action_std,
-                    size=a.shape)
-            ).clip(-self.max_action, self.max_action)
-
-            self.t += action.shape[0]
-            # Perform action
-            next_state, reward, done, _ = env.step(action)
-            done_bool = done
-
-            # Store data in replay buffer
-            # WARNING: This is a bit of a trick and I'm not entirely sure this
-            # is legal. This is effectively adding to the replay buffer as if
-            # I had n agents gathering transitions instead of a single one.
-            # This is not mentionned in the SAC paper. PPO2 does use multiple
-            # learners, though.
-            # I'm keeping it since since it reaaaally speeds up training with
-            # no visible costs
-            self.replay_buffer.add(
-                state, action,
-                next_state, reward[..., None],
-                done_bool[..., None])
-
-            running_reward += sum(reward)
-
-            # Train agent after collecting sufficient data
-            if self.t >= self.start_timesteps:
-                losses = self.update(
-                    self.replay_buffer)
-                running_losses = add_to_means(running_losses, losses)
-            # "Harvesting" here means removing "done" trajectories
-            # from state as well as removing the associated streamlines
-            # This line also set the next_state as the state
-            state, h, _ = env.harvest(next_state, h)
-
-            # Keeping track of episode length
-            episode_length += 1
-
-        tractogram = env.get_streamlines()
-        return (
-            tractogram,
-            running_reward,
-            running_losses,
-            episode_length)
+        return action
 
     def update(
         self,
@@ -217,8 +132,11 @@ class TD3(RLAlgorithm):
         batch_size: int = 2**12
     ) -> Tuple[float, float]:
         """
-        TODO: Add motivation behind TD3 update ("pessimistic" two-critic
-        update, policy that implicitely maximizes the q-function, etc.)
+        TD3 improves upon DDPG with three additions:
+            - Double Q-Learning to fight overestimation
+            - Delaying the update of actors to prevent the "moving target"
+              problem
+            - Clipping the actions used when estimation q-returns
 
         Parameters
         ----------
@@ -237,7 +155,6 @@ class TD3(RLAlgorithm):
         self.total_it += 1
 
         # Sample replay buffer
-        # TODO: Make batch size parametrizable
         state, action, next_state, reward, not_done = \
             replay_buffer.sample(batch_size)
 
@@ -256,23 +173,23 @@ class TD3(RLAlgorithm):
             target_Q = torch.min(target_Q1, target_Q2)
             target_Q = reward + not_done * self.gamma * target_Q
 
-        # Get current Q estimates
+        # Get current Q estimates for s
         current_Q1, current_Q2 = self.policy.critic(
             state, action)
 
-        # MSE loss against Bellman backup
-        loss_q1 = F.mse_loss(current_Q1, target_Q.detach()).mean()
-        loss_q2 = F.mse_loss(current_Q2, target_Q.detach()).mean()
-
+        # Compute critic loss Q(s,a) - r + yQ(s',a)
+        loss_q1 = F.mse_loss(current_Q1, target_Q)
+        loss_q2 = F.mse_loss(current_Q2, target_Q)
         critic_loss = loss_q1 + loss_q2
 
         losses = {
             'actor_loss': 0.0,
             'critic_loss': critic_loss.item(),
-            'q1': current_Q1.mean().item(),
-            'q2': current_Q2.mean().item(),
-            'q1_loss': loss_q1.item(),
-            'q2_loss': loss_q2.item(),
+            'loss_q1': loss_q1.item(),
+            'loss_q2': loss_q2.item(),
+            'Q1': current_Q1.mean().item(),
+            'Q2': current_Q2.mean().item(),
+            'Q\'': target_Q.mean().item(),
         }
 
         # Optimize the critic
@@ -282,31 +199,32 @@ class TD3(RLAlgorithm):
 
         # Delayed policy updates
         if self.total_it % self.policy_freq == 0:
+
             # Compute actor loss -Q(s,a)
             actor_loss = -self.policy.critic.Q1(
-                state, self.policy.act(state)).mean()
+                state, self.policy.actor(state)).mean()
 
-            losses['actor_loss'] = actor_loss.item()
+            losses.update({'actor_loss': actor_loss.item()})
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
 
-        # Update the frozen target models
-        for param, target_param in zip(
-            self.policy.critic.parameters(),
-            self.target.critic.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data)
+            # Update the frozen target models
+            for param, target_param in zip(
+                self.policy.critic.parameters(),
+                self.target.critic.parameters()
+            ):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data)
 
-        for param, target_param in zip(
-            self.policy.actor.parameters(),
-            self.target.actor.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data
-            )
+            for param, target_param in zip(
+                self.policy.actor.parameters(),
+                self.target.actor.parameters()
+            ):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data
+                )
 
         return losses

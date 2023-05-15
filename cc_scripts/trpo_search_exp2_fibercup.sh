@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Request resources --------------
+# Graham GPU node: 12 cores, 10G ram, 1 GPU
+#SBATCH --account $SALLOC_ACCOUNT
+#SBATCH --gres=gpu:1               # Number of GPUs (per node)
+#SBATCH --cpus-per-task=12         # Number of cores (not cpus)
+#SBATCH --mem=10000M               # memory (per node)
+#SBATCH --time=06-23:00            # time (DD-HH:MM)
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=REQUEUE
+#SBATCH --mail-type=ALL
+
+cd /home/$USER/projects/$SALLOC_ACCOUNT/$USER/TractoRL
+
+module load python/3.8
+pwd
+source .env/bin/activate
+module load httpproxy
+export DISPLAY=:0
+
+set -e  # exit if any command fails
+
+# This should point to your dataset folder
+HOME=~
+WORK=$SLURM_TMPDIR
+DATASET_FOLDER=${HOME}/projects/$SALLOC_ACCOUNT/$USER/tracktolearn
+WORK_DATASET_FOLDER=${WORK}/tracktolearn
+mkdir -p $WORK_DATASET_FOLDER
+
+set -e  # exit if any command fails
+
+VALIDATION_SUBJECT_ID=fibercup
+SUBJECT_ID=fibercup
+EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
+WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
+SCORING_DATA=${WORK_DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID}/scoring_data
+
+# Move stuff from data folder to working folder
+mkdir -p $WORK_DATASET_FOLDER/datasets
+
+echo "Transfering data to working folder..."
+cp -rn ${DATASET_FOLDER}/datasets/${SUBJECT_ID} ${WORK_DATASET_FOLDER}/datasets/
+cp -rn ${DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID} ${WORK_DATASET_FOLDER}/datasets/
+
+# Data params
+dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
+validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/${VALIDATION_SUBJECT_ID}.hdf5
+reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VALIDATION_SUBJECT_ID}_wm.nii.gz
+# RL params
+max_ep=1000 # Chosen empirically
+log_interval=50 # Log at n steps
+
+# Model params
+valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
+
+# Env parameters
+n_seeds_per_voxel=100 # Seed per voxel
+max_angle=30 # Maximum angle for streamline curvature
+# n_dirs=0
+
+EXPERIMENT=TRPO_FiberCupSearchExp2
+
+ID=$(date +"%F-%H_%M_%S")
+
+rng_seed=1111
+
+DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
+
+python TrackToLearn/searchers/trpo_searcher.py \
+  $DEST_FOLDER \
+  "$EXPERIMENT" \
+  "$ID" \
+  "${dataset_file}" \
+  "${SUBJECT_ID}" \
+  "${validation_dataset_file}" \
+  "${VALIDATION_SUBJECT_ID}" \
+  "${reference_file}" \
+  "${SCORING_DATA}" \
+  --max_ep=${max_ep} \
+  --log_interval=${log_interval} \
+  --rng_seed=${rng_seed} \
+  --n_seeds_per_voxel=${n_seeds_per_voxel} \
+  --max_angle=${max_angle} \
+  --valid_noise=$valid_noise \
+  --interface_seeding \
+  --use_gpu \
+  --use_comet \
+  --run_tractometer
+  # --render
+
+mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
+mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
+mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"/"$rng_seed"
+cp -f -r $DEST_FOLDER "$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"

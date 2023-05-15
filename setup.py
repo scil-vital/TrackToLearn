@@ -1,6 +1,7 @@
 
 
 from setuptools import setup, find_packages
+
 # To use a consistent encoding
 from os import path
 
@@ -11,9 +12,19 @@ here = path.abspath(path.dirname(__file__))
 #     long_description = f.read()
 
 external_dependencies = []
+# with open('requirements.txt') as f:
+#     required_dependencies = f.read().splitlines()
+#     for dependency in required_dependencies:
+#         if dependency[0:2] == '-e':
+#             repo_name = dependency.split('=')[-1]
+#             repo_url = dependency[3:]
+#             external_dependencies.append('{} @ {}'.format(repo_name, repo_url))
+#         else:
+#             external_dependencies.append(dependency)
+
 
 setup(
-    name='TrackToLearn',
+    name='Track-to-Learn',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
@@ -24,7 +35,7 @@ setup(
     long_description="",
 
     # The project's main homepage.
-    url='https://github.com/scil-vital/TrackToLearn',
+    url='https://github.com/scil-vital/TractoRL',
 
     # Author details
     author='Antoine Théberge',
@@ -39,7 +50,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 7 - Inactive',
+        'Development Status :: 3 - Alpha',
 
         # Indicate who your project is intended for
         'Intended Audience :: Science/Research',

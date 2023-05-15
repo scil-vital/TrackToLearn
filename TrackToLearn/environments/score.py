@@ -130,7 +130,7 @@ def score_tractogram(sft,
 
     # Extract VCs and VBs, compute OL, OR, f1 for each.
     VC_indices, found_vbs_info = auto_extract_VCs(sft, ref_bundles)
-    VC = np.asarray(VC_indices, dtype=np.int)
+    VC = np.asarray(VC_indices, dtype=np.int32)
 
     candidate_ic_strl_indices = np.setdiff1d(range(total_strl_count),
                                              VC_indices)

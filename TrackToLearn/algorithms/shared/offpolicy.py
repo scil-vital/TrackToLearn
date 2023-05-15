@@ -1,34 +1,20 @@
 import numpy as np
 import torch
+
 import torch.nn.functional as F
 
 from os.path import join as pjoin
 from torch import nn
 from torch.distributions.normal import Normal
 
+from TrackToLearn.algorithms.shared.utils import (
+    format_widths, make_fc_network)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
-
-
-def format_widths(widths_str):
-    return [int(i) for i in widths_str.split('-')]
-
-
-def make_fc_network(
-    widths, input_size, output_size, activation=nn.ReLU,
-    last_activation=nn.Identity
-):
-    layers = [nn.Linear(input_size, widths[0]), activation()]
-    for i in range(len(widths[:-1])):
-        layers.extend(
-            [nn.Linear(widths[i], widths[i+1]), activation()])
-    # no activ. on last layer
-    layers.extend([nn.Linear(widths[-1], output_size)])
-    return nn.Sequential(*layers)
 
 
 class Actor(nn.Module):
@@ -49,9 +35,8 @@ class Actor(nn.Module):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
+            hidden_dims: int
+                String representing layer widths
 
         """
         super(Actor, self).__init__()
@@ -69,11 +54,13 @@ class Actor(nn.Module):
         """ Forward propagation of the actor.
         Outputs an un-noisy un-normalized action
         """
+        p = self.layers(state)
+        p = self.output_activation(p)
 
-        return self.output_activation(self.layers(state))
+        return p
 
 
-class SACActor(Actor):
+class MaxEntropyActor(Actor):
     """ Actor module that takes in a state and outputs an action.
     Its policy is the neural network layers
     """
@@ -91,12 +78,12 @@ class SACActor(Actor):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
+            hidden_dims: int
+                String representing layer widths
 
         """
-        super(Actor, self).__init__()
+        super(MaxEntropyActor, self).__init__(
+            state_dim, action_dim, hidden_dims)
 
         self.action_dim = action_dim
 
@@ -105,13 +92,13 @@ class SACActor(Actor):
         self.layers = make_fc_network(
             self.hidden_layers, state_dim, action_dim * 2)
 
+        print(self.layers)
         self.output_activation = nn.Tanh()
 
     def forward(
         self,
         state: torch.Tensor,
         stochastic: bool,
-        with_logprob: bool = False,
     ) -> torch.Tensor:
         """ Forward propagation of the actor.
         Outputs an un-noisy un-normalized action
@@ -145,37 +132,50 @@ class SACActor(Actor):
 
         return pi_action, logp_pi
 
-    def logprob(
-        self,
-        state: torch.Tensor,
-        action: torch.Tensor
-    ) -> torch.Tensor:
-
-        p = self.layers(state)
-        mu = p[:, :self.action_dim]
-        log_std = p[:, self.action_dim:]
-
-        log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
-        std = torch.exp(log_std)
-
-        pi_distribution = Normal(mu, std)
-
-        # Trick from Spinning Up's implementation:
-        # Compute logprob from Gaussian, and then apply correction for Tanh
-        # squashing. NOTE: The correction formula is a little bit magic. To
-        # get an understanding of where it comes from, check out the
-        # original SAC paper (arXiv 1801.01290) and look in appendix C.
-        # This is a more numerically-stable equivalent to Eq 21.
-        logp_pi = pi_distribution.log_prob(action).sum(axis=-1)
-        logp_pi -= (2*(np.log(2) - action -
-                       F.softplus(-2*action))).sum(axis=1)
-
-        return logp_pi
-
 
 class Critic(nn.Module):
     """ Critic module that takes in a pair of state-action and outputs its
-    q-value according to the network's q function. SAC uses two critics
+    q-value according to the network's q function.
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+    ):
+        """
+        Parameters:
+        -----------
+            state_dim: int
+                Size of input state
+            action_dim: int
+                Size of output action
+            hidden_dims: int
+                String representing layer widths
+
+        """
+        super(Critic, self).__init__()
+
+        self.hidden_layers = format_widths(hidden_dims)
+
+        self.q1 = make_fc_network(
+            self.hidden_layers, state_dim + action_dim, 1)
+
+    def forward(self, state, action) -> torch.Tensor:
+        """ Forward propagation of the actor.
+        Outputs a q estimate from both critics
+        """
+        q1_input = torch.cat([state, action], -1)
+
+        q1 = self.q1(q1_input).squeeze(-1)
+
+        return q1
+
+
+class DoubleCritic(Critic):
+    """ Critic module that takes in a pair of state-action and outputs its
+5   q-value according to the network's q function. TD3 uses two critics
     and takes the lowest value of the two during backprop.
     """
 
@@ -192,12 +192,12 @@ class Critic(nn.Module):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
+            hidden_dims: int
+                String representing layer widths
 
         """
-        super(Critic, self).__init__()
+        super(DoubleCritic, self).__init__(
+            state_dim, action_dim, hidden_dims)
 
         self.hidden_layers = format_widths(hidden_dims)
 
@@ -237,7 +237,7 @@ class ActorCritic(object):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dims: int,
+        hidden_dims: str,
     ):
         """
         Parameters:
@@ -246,23 +246,19 @@ class ActorCritic(object):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
+            hidden_dims: int
+                String representing layer widths
 
         """
         self.actor = Actor(
-            state_dim, action_dim, hidden_dims
+            state_dim, action_dim, hidden_dims,
         ).to(device)
 
         self.critic = Critic(
-            state_dim, action_dim, hidden_dims
+            state_dim, action_dim, hidden_dims,
         ).to(device)
 
-    def act(
-        self,
-        state: torch.Tensor,
-    ) -> torch.Tensor:
+    def act(self, state: torch.Tensor) -> torch.Tensor:
         """ Select action according to actor
 
         Parameters:
@@ -275,10 +271,9 @@ class ActorCritic(object):
             action: torch.Tensor
                 Action selected by the policy
         """
-        a = self.actor(state)
-        return a
+        return self.actor(state)
 
-    def select_action(self, state: np.array, stochastic=True) -> np.ndarray:
+    def select_action(self, state: np.array, stochastic=False) -> np.ndarray:
         """ Move state to torch tensor, select action and
         move it back to numpy array
 
@@ -286,8 +281,6 @@ class ActorCritic(object):
         -----------
             state: np.array
                 State of the environment
-            deterministic: bool
-                Return deterministic action (at test time)
 
         Returns:
         --------
@@ -297,11 +290,10 @@ class ActorCritic(object):
         # if state is not batched, expand it to "batch of 1"
         if len(state.shape) < 2:
             state = state[None, :]
-
         state = torch.as_tensor(state, dtype=torch.float32, device=device)
-        action = self.act(state)
+        action = self.act(state).cpu().data.numpy()
 
-        return action.cpu().data.numpy(), None
+        return action
 
     def parameters(self):
         """ Access parameters for grad clipping
@@ -363,7 +355,7 @@ class ActorCritic(object):
         self.critic.train()
 
 
-class MaxEntropyActorCritic(ActorCritic):
+class TD3ActorCritic(ActorCritic):
     """ Module that handles the actor and the critic
     """
 
@@ -371,7 +363,37 @@ class MaxEntropyActorCritic(ActorCritic):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dims: int,
+        hidden_dims: str,
+    ):
+        """
+        Parameters:
+        -----------
+            state_dim: int
+                Size of input state
+            action_dim: int
+                Size of output action
+            hidden_dims: int
+                String representing layer widths
+
+        """
+        self.actor = Actor(
+            state_dim, action_dim, hidden_dims,
+        ).to(device)
+
+        self.critic = DoubleCritic(
+            state_dim, action_dim, hidden_dims,
+        ).to(device)
+
+
+class SACActorCritic(ActorCritic):
+    """ Module that handles the actor and the critic
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
     ):
         """
         Parameters:
@@ -385,19 +407,15 @@ class MaxEntropyActorCritic(ActorCritic):
                 layers are of same size for simplicity
 
         """
-        self.actor = SACActor(
-            state_dim, action_dim, hidden_dims
+        self.actor = MaxEntropyActor(
+            state_dim, action_dim, hidden_dims,
         ).to(device)
 
-        self.critic = Critic(
-            state_dim, action_dim, hidden_dims
+        self.critic = DoubleCritic(
+            state_dim, action_dim, hidden_dims,
         ).to(device)
 
-    def act(
-        self,
-        state: torch.Tensor,
-        stochastic: bool = True,
-    ) -> torch.Tensor:
+    def act(self, state: torch.Tensor, stochastic=True) -> torch.Tensor:
         """ Select action according to actor
 
         Parameters:
@@ -410,10 +428,10 @@ class MaxEntropyActorCritic(ActorCritic):
             action: torch.Tensor
                 Action selected by the policy
         """
-        a, logprob = self.actor(state, stochastic)
-        return a, logprob
+        action, logprob = self.actor(state, stochastic)
+        return action, logprob
 
-    def select_action(self, state: np.array, stochastic=True) -> np.ndarray:
+    def select_action(self, state: np.array, stochastic=False) -> np.ndarray:
         """ Move state to torch tensor, select action and
         move it back to numpy array
 
@@ -421,8 +439,6 @@ class MaxEntropyActorCritic(ActorCritic):
         -----------
             state: np.array
                 State of the environment
-            deterministic: bool
-                Return deterministic action (at test time)
 
         Returns:
         --------
@@ -436,4 +452,4 @@ class MaxEntropyActorCritic(ActorCritic):
         state = torch.as_tensor(state, dtype=torch.float32, device=device)
         action, _ = self.act(state, stochastic)
 
-        return action.cpu().data.numpy(), None
+        return action.cpu().data.numpy()
