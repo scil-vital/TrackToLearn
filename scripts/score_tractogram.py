@@ -43,17 +43,17 @@ DESCRIPTION = """
 """
 
 
-def buildArgsParser():
+def build_args_parser():
     p = argparse.ArgumentParser(description=DESCRIPTION,
                                 formatter_class=argparse.RawTextHelpFormatter)
 
-    p.add_argument('tractogram', metavar='TRACTS', type=str,
-                   help='Tractogram file')
-    p.add_argument('base_dir', metavar='BASE_DIR', type=str,
+    p.add_argument('tractogram', metavar='TRACTS',
+                   help='Tractogram file. File must be tck or trk.')
+    p.add_argument('base_dir', metavar='BASE_DIR',
                    help='base directory for scoring data.\n'
                         'See www.tractometer.org/downloads/downloads/'
                         'scoring_data_tractography_challenge.tar.gz')
-    p.add_argument('out_dir', metavar='OUT_DIR', type=str,
+    p.add_argument('out_dir', metavar='OUT_DIR',
                    help='directory where to send score files')
     p.add_argument('--out_tract_type', choices=['tck', 'trk'], default='tck',
                    help='output type for tracts')
@@ -63,6 +63,9 @@ def buildArgsParser():
                    help='save one file containing all ICs')
     p.add_argument('--save_full_nc', action='store_true',
                    help='save one file containing all NCs')
+    p.add_argument('--compute_ic_ib', action='store_true',
+                   help="Segment rejected streamlines into NC + IC.\n"
+                        "Else, all non-vb streamlines are stored as NC.")
     p.add_argument('--save_ib', action='store_true',
                    help='save IB independently.')
     p.add_argument('--save_vb', action='store_true',
@@ -76,7 +79,7 @@ def buildArgsParser():
 
 
 def main():
-    parser = buildArgsParser()
+    parser = build_args_parser()
     args = parser.parse_args()
 
     tractogram = args.tractogram
@@ -88,6 +91,11 @@ def main():
 
     if not os.path.isfile(tractogram):
         parser.error('"{0}" must be a file!'.format(tractogram))
+
+    _, ext = os.path.splitext(tractogram)
+    if not (ext == '.tck' or ext == '.trk'):
+        parser.error("Tractogram file should be a .tck or .trk, not {}"
+                     .format(ext))
 
     if not os.path.isdir(base_dir):
         parser.error('"{0}" must be a directory!'.format(base_dir))
@@ -114,8 +122,7 @@ def main():
         base_name = os.path.splitext(os.path.basename(tractogram))[0]
 
         segmented_files = glob.glob(os.path.join(
-            segments_dir, '{}*.{}'.format(
-                base_name, args.out_tract_type)))
+            segments_dir, '{}*.{}'.format(base_name, args.out_tract_type)))
 
     if score_exists or len(segmented_files):
         if not args.force:
@@ -137,18 +144,17 @@ def main():
 
     basic_bundles_attribs = load_attribs(gt_bundles_attribs_path)
 
-    scores = score_submission(
-        tractogram,
-        {'orientation': 'unknown'},
-        base_dir, basic_bundles_attribs,
-        args.save_full_vc,
-        args.save_full_ic,
-        args.save_full_nc,
-        args.save_ib, args.save_vb,
-        segments_dir, base_name,
-        args.out_tract_type, args.verbose)
+    scores = score_submission(tractogram, base_dir, basic_bundles_attribs,
+                              args.save_full_vc,
+                              args.save_full_ic,
+                              args.save_full_nc,
+                              args.compute_ic_ib,
+                              args.save_ib, args.save_vb,
+                              segments_dir, base_name,
+                              args.out_tract_type, args.verbose)
 
     if scores is not None:
+        print("Saving results in {}".format(scores_filename))
         save_results(scores_filename, scores)
 
 

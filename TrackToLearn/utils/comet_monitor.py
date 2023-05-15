@@ -10,7 +10,7 @@ class CometMonitor():
     def __init__(
         self,
         experiment: Experiment,
-        name: str,
+        experiment_id: str,
         experiment_path: str,
         prefix: str,
         render: bool = False,
@@ -22,8 +22,8 @@ class CometMonitor():
             experiment: str
                 Name of experiment. Will contain many interations
                 of experiment based on different parameters
-            name: str
-                Actual name of iteration of experiment. Most likey
+            experiment_id: str
+                Actual experiment_id of iteration of experiment. Most likey
                 datetime it was started at
             experiment_path: str
                 Experiment path used to fetch images or other stuff
@@ -34,12 +34,12 @@ class CometMonitor():
                 Comet access is limited
         """
         self.experiment_path = experiment_path
-        self.name = name
+        self.experiment_id = experiment_id
         # IMPORTANT
         # This presumes that your API key is in your home folder or at
         # the project root.
         self.e = experiment
-        self.e.add_tag(name)
+        self.e.add_tag(experiment_id)
         self.prefix = prefix
         self.render = render
 

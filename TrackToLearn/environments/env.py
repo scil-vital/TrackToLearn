@@ -4,27 +4,28 @@ import numpy as np
 import nibabel as nib
 import torch
 
-from dwi_ml.data.processing.space.world_to_vox import convert_world_to_vox
+from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from typing import Callable, Dict, Tuple
 
 from TrackToLearn.datasets.utils import (
+    convert_length_mm2vox,
     MRIDataVolume,
     SubjectData,
 )
-from TrackToLearn.environments.reward import (
-    Reward
-)
-from TrackToLearn.environments.utils import (
+
+from TrackToLearn.environments.reward import Reward
+
+from TrackToLearn.environments.stopping_criteria import (
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
-    format_state,
-    get_neighborhood_directions,
-    # is_looping,
-    # has_reached_gm,
-    is_too_curvy,
-    is_too_long,
     StoppingFlags)
+
+from TrackToLearn.environments.utils import (
+    get_neighborhood_directions,
+    get_sh,
+    is_too_curvy,
+    is_too_long)
 
 
 class BaseEnv(object):
@@ -37,32 +38,12 @@ class BaseEnv(object):
         self,
         input_volume: MRIDataVolume,
         tracking_mask: MRIDataVolume,
-        include_mask: MRIDataVolume,
-        exclude_mask: MRIDataVolume,
         target_mask: MRIDataVolume,
         seeding_mask: MRIDataVolume,
         peaks: MRIDataVolume,
-        n_signal: int = 1,
-        n_dirs: int = 4,
-        step_size: float = 0.2,
-        max_angle: float = 45,
-        min_length: float = 10,
-        max_length: float = 200,
-        n_seeds_per_voxel: int = 4,
-        rng: np.random.RandomState = None,
-        alignment_weighting: float = 1.,
-        straightness_weighting: float = 0.0,
-        length_weighting: float = 0.0,
-        target_bonus_factor: float = 0.0,
-        exclude_penalty_factor: float = 0.0,
-        angle_penalty_factor: float = 0.0,
-        add_neighborhood: float = 1.5,
-        compute_reward: bool = True,
-        reference_file: str = None,
-        ground_truth_folder: str = None,
-        cmc: bool = False,
-        asymmetric: bool = False,
-        device=None
+        env_dto: dict,
+        include_mask: MRIDataVolume = None,
+        exclude_mask: MRIDataVolume = None,
     ):
         """
         Parameters
@@ -79,133 +60,87 @@ class BaseEnv(object):
             Mask representing the tracking no-go zones
         peaks: MRIDataVolume
             Volume containing the fODFs peaks
-        n_signal: int
-            Number of signal "history" to keep in input.
-            Similar to using last n-frames in vision task
-        n_dirs: int
-            Number of last actions to append to input
-        step_size: float
-            Step size for tracking
-        max_angle: float
-            Maximum angle for tracking
-        min_length: int
-            Minimum length for streamlines
-        max_length: int
-            Maximum length for streamlines in mm
-        n_seeds_per_voxel: int
-            How many seeds to generate per voxel
-        rng : `numpy.random.RandomState`
-            Random number generator
-        alignment_weighting: float
-            Reward coefficient for alignment with local odfs peaks
-        straightness_weighting: float
-            Reward coefficient for streamline straightness
-        length_weighting: float
-            Reward coefficient for streamline length
-        target_bonus_factor: `float`
-            Bonus for streamlines reaching the target mask
-        exclude_penalty_factor: `float`
-            Penalty for streamlines reaching the exclusion mask
-        angle_penalty_factor: `float`
-            Penalty for looping or too-curvy streamlines
-        add_neighborhood: float
-            Use signal in neighboring voxels for model input
-        device: torch.device
-            Device to run training on.
-            Should always be GPU
+        env_dto: dict
+            DTO containing env. parameters
         """
+
+        # Volumes and masks
+        self.reference = input_volume
+        self.affine_vox2rasmm = input_volume.affine_vox2rasmm
+        self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+
         self.data_volume = torch.tensor(
-            input_volume.data, dtype=torch.float32, device=device)
+            input_volume.data, dtype=torch.float32, device=env_dto['device'])
         self.tracking_mask = tracking_mask
         self.target_mask = target_mask
         self.include_mask = include_mask
         self.exclude_mask = exclude_mask
         self.peaks = peaks
+
+        self.normalize_obs = False  # env_dto['normalize']
+        self.obs_rms = None
+
+        self._state_size = None  # to be calculated later
+
         # Tracking parameters
-        self.n_signal = n_signal
-        self.n_dirs = n_dirs
-        self.max_angle = max_angle
-        self.cmc = cmc
+        self.n_signal = env_dto['n_signal']
+        self.n_dirs = env_dto['n_dirs']
+        self.max_angle = max_angle = env_dto['max_angle']
+        self.n_seeds_per_voxel = env_dto['n_seeds_per_voxel']
+        self.cmc = env_dto['cmc']
+        self.asymmetric = env_dto['asymmetric']
+
+        step_size_mm = env_dto['step_size']
+        min_length_mm = env_dto['min_length']
+        max_length_mm = env_dto['max_length']
+        add_neighborhood_mm = env_dto['add_neighborhood']
 
         # Reward parameters
-        self.asymmetric = asymmetric
-        self.alignment_weighting = alignment_weighting
-        self.straightness_weighting = straightness_weighting
-        self.length_weighting = length_weighting
-        self.target_bonus_factor = target_bonus_factor
-        self.exclude_penalty_factor = exclude_penalty_factor
-        self.angle_penalty_factor = angle_penalty_factor
-        self.compute_reward = compute_reward
-        self.ground_truth_folder = ground_truth_folder
-        self.reference_file = reference_file
+        self.alignment_weighting = env_dto['alignment_weighting']
+        self.straightness_weighting = env_dto['straightness_weighting']
+        self.length_weighting = env_dto['length_weighting']
+        self.target_bonus_factor = env_dto['target_bonus_factor']
+        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
+        self.angle_penalty_factor = env_dto['angle_penalty_factor']
+        self.compute_reward = env_dto['compute_reward']
 
-        self.rng = rng
-        self.device = device
-
-        # TODO: Clean affine stuff
+        self.rng = env_dto['rng']
+        self.device = env_dto['device']
 
         # Stopping criteria is a dictionary that maps `StoppingFlags`
         # to functions that indicate whether streamlines should stop or not
         self.stopping_criteria = {}
-        self.input_dv_affine_vox2rasmm = input_volume.affine_vox2rasmm
         mask_data = tracking_mask.data.astype(np.uint8)
 
-        seeding_data = seeding_mask.data.astype(np.uint8)
+        self.seeding_data = seeding_mask.data.astype(np.uint8)
 
-        # Compute the affine to align dwi voxel coordinates with
-        # mask voxel coordinates
-        affine_rasmm2maskvox = np.linalg.inv(tracking_mask.affine_vox2rasmm)
-        # affine_dwivox2maskvox :
-        # dwi voxel space => rasmm space => mask voxel space
-        affine_dwivox2maskvox = np.dot(
-            affine_rasmm2maskvox,
-            self.input_dv_affine_vox2rasmm)
-
-        self.affine_vox2mask = affine_dwivox2maskvox
-
-        # Compute affine to bring seeds into DWI voxel space
-        # affine_seedsvox2dwivox :
-        # seeds voxel space => rasmm space => dwi voxel space
-        affine_seedsvox2rasmm = tracking_mask.affine_vox2rasmm
-        affine_rasmm2dwivox = np.linalg.inv(self.input_dv_affine_vox2rasmm)
-        self.affine_seedsvox2dwivox = np.dot(
-            affine_rasmm2dwivox, affine_seedsvox2rasmm)
-        self.affine_vox2rasmm = self.input_dv_affine_vox2rasmm
-        self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
-        # Tracking seeds
-        self.seeds = self._get_tracking_seeds_from_mask(
-            seeding_data,
-            self.affine_seedsvox2dwivox,
-            n_seeds_per_voxel,
-            self.rng)
-
-        self.step_size_vox = convert_world_to_vox(
-            step_size,
-            self.input_dv_affine_vox2rasmm)
-        self.min_length = min_length
-        self.max_length = max_length
+        self.step_size = convert_length_mm2vox(
+            step_size_mm,
+            self.affine_vox2rasmm)
+        self.min_length = min_length_mm
+        self.max_length = max_length_mm
 
         # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size)
-        self.min_nb_steps = int(self.min_length / step_size)
+        self.max_nb_steps = int(self.max_length / step_size_mm)
+        self.min_nb_steps = int(self.min_length / step_size_mm)
 
-        self.reward_function = Reward(
-            peaks=self.peaks,
-            exclude=self.exclude_mask,
-            target=self.target_mask,
-            max_nb_steps=self.max_nb_steps,
-            max_angle=self.max_angle,
-            min_nb_steps=self.min_nb_steps,
-            asymmetric=self.asymmetric,
-            alignment_weighting=self.alignment_weighting,
-            straightness_weighting=self.straightness_weighting,
-            length_weighting=self.length_weighting,
-            target_bonus_factor=self.target_bonus_factor,
-            exclude_penalty_factor=self.exclude_penalty_factor,
-            angle_penalty_factor=self.angle_penalty_factor,
-            affine_vox2mask=self.affine_vox2mask,
-            ground_truth_folder=self.ground_truth_folder,
-            reference=self.reference_file)
+        if self.compute_reward:
+            self.reward_function = Reward(
+                peaks=self.peaks,
+                exclude=self.exclude_mask,
+                target=self.target_mask,
+                max_nb_steps=self.max_nb_steps,
+                max_angle=self.max_angle,
+                min_nb_steps=self.min_nb_steps,
+                asymmetric=self.asymmetric,
+                alignment_weighting=self.alignment_weighting,
+                straightness_weighting=self.straightness_weighting,
+                length_weighting=self.length_weighting,
+                target_bonus_factor=self.target_bonus_factor,
+                exclude_penalty_factor=self.exclude_penalty_factor,
+                angle_penalty_factor=self.angle_penalty_factor,
+                scoring_data=None,  # TODO: Add scoring back
+                reference=input_volume)
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
@@ -213,20 +148,19 @@ class BaseEnv(object):
 
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
-            functools.partial(is_too_curvy,
-                              max_theta=max_angle)
+            functools.partial(is_too_curvy, max_theta=max_angle)
+
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
                 self.include_mask.data,
                 self.exclude_mask.data,
-                self.input_dv_affine_vox2rasmm,
-                self.step_size_vox,
+                self.affine_vox2rasmm,
+                self.step_size,
                 self.min_nb_steps)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
         else:
             binary_criterion = BinaryStoppingCriterion(
                 mask_data,
-                affine_dwivox2maskvox,
                 0.5)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
@@ -238,173 +172,95 @@ class BaseEnv(object):
 
         # Convert neighborhood to voxel space
         self.add_neighborhood_vox = None
-        if add_neighborhood:
-            self.add_neighborhood_vox = convert_world_to_vox(
-                step_size,
-                self.input_dv_affine_vox2rasmm)
+        if add_neighborhood_mm:
+            self.add_neighborhood_vox = convert_length_mm2vox(
+                add_neighborhood_mm,
+                self.affine_vox2rasmm)
             self.neighborhood_directions = torch.tensor(
                 get_neighborhood_directions(
                     radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(device)
+                dtype=torch.float16).to(self.device)
+
+        # Tracking seeds
+        self.seeds = self._get_tracking_seeds_from_mask(
+            self.seeding_data,
+            self.n_seeds_per_voxel,
+            self.rng)
+        print(
+            'Environment has {} seeds to choose from.'.format(len(self.seeds)))
 
     @classmethod
     def from_dataset(
         cls,
-        dataset_file: str,
-        subject_id: str,
-        interface_seeding: bool = False,
-        n_signal: int = 1,
-        n_dirs: int = 4,
-        step_size: float = 0.2,
-        max_angle: float = 45,
-        min_length: float = 10,
-        max_length: float = 200,
-        n_seeds_per_voxel: int = 4,
-        rng: np.random.RandomState = None,
-        alignment_weighting: float = 1.,
-        straightness_weighting: float = 0.0,
-        length_weighting: float = 0.0,
-        target_bonus_factor: float = 1.0,
-        exclude_penalty_factor: float = -1.0,
-        angle_penalty_factor: float = -1.0,
-        add_neighborhood: float = 1.5,
-        compute_reward: bool = True,
-        reference_file: str = None,
-        ground_truth_folder: str = None,
-        cmc: bool = False,
-        asymmetric: bool = False,
-        device=None
+        env_dto: dict,
+        split: str,
     ):
+        dataset_file = env_dto['dataset_file']
+        subject_id = env_dto['subject_id']
+        interface_seeding = env_dto['interface_seeding']
+
         (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
          seeding_mask, peaks) = \
-            BaseEnv._load_dataset(dataset_file, subject_id, interface_seeding)
+            BaseEnv._load_dataset(
+                dataset_file, split, subject_id, interface_seeding
+        )
 
         return cls(
             input_volume,
             tracking_mask,
-            include_mask,
-            exclude_mask,
             target_mask,
             seeding_mask,
             peaks,
-            n_signal=n_signal,
-            n_dirs=n_dirs,
-            step_size=step_size,
-            max_angle=max_angle,
-            min_length=min_length,
-            max_length=max_length,
-            n_seeds_per_voxel=n_seeds_per_voxel,
-            rng=rng,
-            alignment_weighting=alignment_weighting,
-            straightness_weighting=straightness_weighting,
-            length_weighting=length_weighting,
-            target_bonus_factor=target_bonus_factor,
-            exclude_penalty_factor=exclude_penalty_factor,
-            angle_penalty_factor=angle_penalty_factor,
-            add_neighborhood=add_neighborhood,
-            compute_reward=True,
-            reference_file=reference_file,
-            ground_truth_folder=ground_truth_folder,
-            cmc=cmc,
-            asymmetric=asymmetric,
-            device=device)
+            env_dto,
+            include_mask,
+            exclude_mask,
+        )
 
     @classmethod
     def from_files(
         cls,
-        signal_file: str,
-        peaks_file: str,
-        seeding_file: str,
-        tracking_file: str,
-        target_file: str,
-        include_file: str,
-        exclude_file: str,
-        interface_seeding: bool = False,
-        n_signal: int = 1,
-        n_dirs: int = 4,
-        step_size: float = 0.2,
-        max_angle: float = 45,
-        min_length: float = 10,
-        max_length: float = 200,
-        n_seeds_per_voxel: int = 4,
-        rng: np.random.RandomState = None,
-        alignment_weighting: float = 1.,
-        straightness_weighting: float = 0.0,
-        length_weighting: float = 0.0,
-        target_bonus_factor: float = 1.0,
-        exclude_penalty_factor: float = -1.0,
-        angle_penalty_factor: float = -1.0,
-        add_neighborhood: float = 1.5,
-        compute_reward: bool = True,
-        reference_file: str = None,
-        ground_truth_folder: str = None,
-        cmc: bool = False,
-        asymmetric: bool = False,
-        device=None
+        env_dto: dict,
     ):
+        fodf_file = env_dto['fodf_file']
+        wm_file = env_dto['wm_file']
+        seeding_file = env_dto['seeding_file']
+        tracking_file = env_dto['tracking_file']
 
-        (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
-         seeding_mask, peaks) = \
-            BaseEnv._load_files(signal_file,
-                                peaks_file,
-                                seeding_file,
-                                tracking_file,
-                                target_file,
-                                include_file,
-                                exclude_file)
+        input_volume, tracking_mask, seeding_mask = BaseEnv._load_files(
+            fodf_file,
+            wm_file,
+            seeding_file,
+            tracking_file)
 
         return cls(
             input_volume,
             tracking_mask,
-            include_mask,
-            exclude_mask,
-            target_mask,
+            None,
             seeding_mask,
-            peaks,
-            n_signal,
-            n_dirs,
-            step_size,
-            max_angle,
-            min_length,
-            max_length,
-            n_seeds_per_voxel,
-            rng,
-            alignment_weighting,
-            straightness_weighting,
-            length_weighting,
-            target_bonus_factor,
-            exclude_penalty_factor,
-            angle_penalty_factor,
-            add_neighborhood,
-            compute_reward,
-            reference_file,
-            ground_truth_folder,
-            cmc,
-            asymmetric,
-            device)
+            None,
+            env_dto)
 
     @classmethod
-    def _load_dataset(cls, dataset_file, split_id, interface_seeding=False):
+    def _load_dataset(
+        cls, dataset_file, split_id, subject_id, interface_seeding=False
+    ):
         """ Load data volumes and masks from the HDF5
 
         Should everything be put into `self` ? Should everything be returned
         instead ?
         """
 
+        print("Loading {} from the {} set.".format(subject_id, split_id))
         # Load input volume
         with h5py.File(
                 dataset_file, 'r'
         ) as hdf_file:
-            if split_id not in ['training', 'validation', 'testing']:
-                split_set = hdf_file
-                subject = split_id
-            else:
-                split_set = hdf_file[split_id]
-                subjects = list(split_set.keys())
-                subject = subjects[0]
+            print(list(hdf_file.keys()))
+            assert split_id in ['training', 'validation', 'testing']
+            split_set = hdf_file[split_id]
             tracto_data = SubjectData.from_hdf_subject(
-                split_set, subject)
-            tracto_data.input_dv.subject_id = subject
+                split_set, subject_id)
+            tracto_data.input_dv.subject_id = subject_id
         input_volume = tracto_data.input_dv
 
         # Load peaks for reward
@@ -420,8 +276,10 @@ class BaseEnv(object):
         exclude_mask = tracto_data.exclude
 
         if interface_seeding:
+            print("Seeding from the interface")
             seeding = tracto_data.interface
         else:
+            print("Seeding from the WM.")
             seeding = tracto_data.wm
 
         return (input_volume, tracking_mask, include_mask, exclude_mask,
@@ -431,55 +289,134 @@ class BaseEnv(object):
     def _load_files(
         cls,
         signal_file,
-        peaks_file,
+        wm_file,
         seeding_file,
         tracking_file,
-        target_file,
-        include_file,
-        exclude_file
     ):
 
         signal = nib.load(signal_file)
-        peaks = nib.load(peaks_file)
         seeding = nib.load(seeding_file)
         tracking = nib.load(tracking_file)
-        target = nib.load(target_file)
-        include = nib.load(include_file)
-        exclude = nib.load(exclude_file)
+
+        wm = nib.load(wm_file)
+        wm_data = wm.get_fdata()
+        if len(wm_data.shape) == 3:
+            wm_data = wm_data[..., None]
+
+        signal_data = np.concatenate(
+            [signal.get_fdata(), wm_data], axis=-1)
 
         signal_volume = MRIDataVolume(
-            signal.get_fdata(), signal.affine, filename=signal_file)
-        peaks_volume = MRIDataVolume(peaks.get_fdata(), peaks.affine,
-                                     filename=peaks_file)
+            signal_data, signal.affine, filename=signal_file)
+
         seeding_volume = MRIDataVolume(
             seeding.get_fdata(), seeding.affine, filename=seeding_file)
         tracking_volume = MRIDataVolume(
             tracking.get_fdata(), tracking.affine, filename=tracking_file)
-        target_volume = MRIDataVolume(
-            target.get_fdata(), target.affine, filename=target_file)
-        include_volume = MRIDataVolume(
-            include.get_fdata(), include.affine, filename=include_file)
-        exclude_volume = MRIDataVolume(
-            exclude.get_fdata(), exclude.affine, filename=exclude_file)
 
-        return (signal_volume, tracking_volume, include_volume, exclude_volume,
-                target_volume, seeding_volume, peaks_volume)
+        return (signal_volume, tracking_volume, seeding_volume)
+
+    def get_state_size(self):
+        example_state = self.reset(0, 1)
+        self._state_size = example_state.shape[1]
+        return self._state_size
+
+    def get_action_size(self):
+        """ TODO: Support spherical actions"""
+
+        return 3
+
+    def get_voxel_size(self):
+        """ Returns the voxel size by taking the mean value of the diagonal
+        of the affine. This implies that the vox size is always isometric.
+
+        Returns
+        -------
+        voxel_size: float
+            Voxel size in mm.
+
+        """
+        diag = np.diagonal(self.affine_vox2rasmm)[:3]
+        voxel_size = np.mean(np.abs(diag))
+
+        return voxel_size
+
+    def set_step_size(self, step_size_mm):
+        """ Set a different step size (in voxels) than computed by the
+        environment. This is necessary when the voxel size between training
+        and tracking envs is different.
+        """
+
+        self.step_size = convert_length_mm2vox(
+            step_size_mm,
+            self.affine_vox2rasmm)
+
+        if self.add_neighborhood_vox:
+            self.add_neighborhood_vox = convert_length_mm2vox(
+                step_size_mm,
+                self.affine_vox2rasmm)
+            self.neighborhood_directions = torch.tensor(
+                get_neighborhood_directions(
+                    radius=self.add_neighborhood_vox),
+                dtype=torch.float16).to(self.device)
+
+        # Compute maximum length
+        self.max_nb_steps = int(self.max_length / step_size_mm)
+        self.min_nb_steps = int(self.min_length / step_size_mm)
+
+        if self.compute_reward:
+            self.reward_function = Reward(
+                peaks=self.peaks,
+                exclude=self.exclude_mask,
+                target=self.target_mask,
+                max_nb_steps=self.max_nb_steps,
+                max_angle=self.max_angle,
+                min_nb_steps=self.min_nb_steps,
+                asymmetric=self.asymmetric,
+                alignment_weighting=self.alignment_weighting,
+                straightness_weighting=self.straightness_weighting,
+                length_weighting=self.length_weighting,
+                target_bonus_factor=self.target_bonus_factor,
+                exclude_penalty_factor=self.exclude_penalty_factor,
+                angle_penalty_factor=self.angle_penalty_factor,
+                scoring_data=None,  # TODO: Add scoring back
+                reference=self.reference)
+
+        self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
+            functools.partial(is_too_long,
+                              max_nb_steps=self.max_nb_steps)
+
+        if self.cmc:
+            cmc_criterion = CmcStoppingCriterion(
+                self.include_mask.data,
+                self.exclude_mask.data,
+                self.affine_vox2rasmm,
+                self.step_size,
+                self.min_nb_steps)
+            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
+
+    def _normalize(self, obs):
+        """Normalises the observation using the running mean and variance of
+        the observations. Taken from Gymnasium."""
+        if self.obs_rms is None:
+            self.obs_rms = RunningMeanStd(shape=(self._state_size,))
+        self.obs_rms.update(obs)
+        return (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8)
 
     def _get_tracking_seeds_from_mask(
         self,
         mask: np.ndarray,
-        affine_seedsvox2dwivox: np.ndarray,
         n_seeds_per_voxel: int,
         rng: np.random.RandomState
     ) -> np.ndarray:
         """ Given a binary seeding mask, get seeds in DWI voxel
-        space using the provided affine
+        space using the provided affine. TODO: Replace this
+        with scilpy's SeedGenerator
 
         Parameters
         ----------
         mask : 3D `numpy.ndarray`
             Binary seeding mask
-        affine_seedsvox2dwivox : `numpy.ndarray`
         n_seeds_per_voxel : int
         rng : `numpy.random.RandomState`
 
@@ -494,10 +431,7 @@ class BaseEnv(object):
                 -0.5,
                 0.5,
                 size=(n_seeds_per_voxel, 3))
-            seeds_in_dwi_voxel = nib.affines.apply_affine(
-                affine_seedsvox2dwivox,
-                seeds_in_seeding_voxel)
-            seeds.extend(seeds_in_dwi_voxel)
+            seeds.extend(seeds_in_seeding_voxel)
         seeds = np.array(seeds, dtype=np.float16)
         return seeds
 
@@ -516,25 +450,53 @@ class BaseEnv(object):
 
         Returns
         -------
-        signal: `numpy.ndarray`
-            SH coefficients at the coordinates
+        inputs: `numpy.ndarray`
+            Observations of the state, incl. previous directions.
         """
+        N, L, P = streamlines.shape
+        if N <= 0:
+            return []
+        segments = streamlines[:, -1, :][:, None, :]
 
-        return format_state(
-            streamlines,
+        signal = get_sh(
+            segments,
             self.data_volume,
             self.add_neighborhood_vox,
             self.neighborhood_directions,
             self.n_signal,
-            self.n_dirs,
-            self.device)
+            self.device
+        )
+
+        N, S = signal.shape
+
+        inputs = torch.zeros((N, S + (self.n_dirs * P)), device=self.device)
+
+        inputs[:, :S] = signal
+
+        previous_dirs = np.zeros((N, self.n_dirs, P), dtype=np.float32)
+        if L > 1:
+            dirs = np.diff(streamlines, axis=1)
+            previous_dirs[:, :min(dirs.shape[1], self.n_dirs), :] = \
+                dirs[:, :-(self.n_dirs+1):-1, :]
+
+        dir_inputs = torch.reshape(
+            torch.from_numpy(previous_dirs).to(self.device),
+            (N, self.n_dirs * P))
+
+        inputs[:, S:] = dir_inputs
+
+        # if self.normalize_obs and self._state_size is not None:
+        #     inputs = self._normalize(inputs)
+
+        return inputs
 
     def _filter_stopping_streamlines(
         self,
         streamlines: np.ndarray,
         stopping_criteria: Dict[StoppingFlags, Callable]
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """ Checks which streamlines should stop and which ones should continue.
+        """ Checks which streamlines should stop and which ones should
+        continue.
 
         Parameters
         ----------
@@ -546,10 +508,8 @@ class BaseEnv(object):
 
         Returns
         -------
-        should_continue : `numpy.ndarray`
-            Indices of the streamlines that should continue
         should_stop : `numpy.ndarray`
-            Indices of the streamlines that should stop
+            Boolean array, True is tracking should stop
         flags : `numpy.ndarray`
             `StoppingFlags` that triggered stopping for each stopping
             streamline
@@ -557,41 +517,22 @@ class BaseEnv(object):
         idx = np.arange(len(streamlines))
 
         should_stop = np.zeros(len(idx), dtype=np.bool_)
-        flags = np.zeros(len(idx), dtype=np.uint8)
+        flags = np.zeros(len(idx), dtype=int)
 
         # For each possible flag, determine which streamline should stop and
         # keep track of the triggered flag
         for flag, stopping_criterion in stopping_criteria.items():
             stopped_by_criterion = stopping_criterion(streamlines)
-            should_stop[stopped_by_criterion] = True
             flags[stopped_by_criterion] |= flag.value
+            should_stop[stopped_by_criterion] = True
 
-        should_continue = np.logical_not(should_stop)
-
-        return idx[should_continue], idx[should_stop], flags[should_stop]
+        return should_stop, flags
 
     def _is_stopping():
         """ Check which streamlines should stop or not according to the
         predefined stopping criteria
         """
         pass
-
-    def _get_from_flag(self, flag: StoppingFlags) -> np.ndarray:
-        """ Get streamlines that stopped only for a given stopping flag
-
-        Parameters
-        ----------
-        flag : `StoppingFlags` object
-
-        Returns
-        -------
-        stopping_idx : `numpy.ndarray`
-            The indices corresponding to the streamlines stopped
-            by the provided flag
-        """
-        _, stopping_idx, stopping_flags = self._is_stopping(
-            self.streamlines[:, :self.length])
-        return stopping_idx[(stopping_flags & flag) != 0]
 
     def reset():
         """ Initialize tracking seeds and streamlines

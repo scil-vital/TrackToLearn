@@ -4,7 +4,6 @@ from os.path import join as pjoin
 from time import time
 
 import numpy as np
-import torch
 
 COLOR_CODES = {
     'black': '\u001b[30m',
@@ -34,8 +33,8 @@ class LossHistory(object):
         monitor.epochs  # returns the loss curve as a list
     """
 
-    def __init__(self, name, filename, path):
-        self.name = name
+    def __init__(self, experiment_id, filename, path):
+        self.experiment_id = experiment_id
         self.history = []
         self.epochs = []
         self.sum = 0.0
@@ -109,7 +108,3 @@ class Timer:
 
 def normalize_vectors(v):
     return v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))
-
-
-def normalize_vectors_torch(v):
-    return v / torch.sqrt(torch.sum(v ** 2, dim=-1, keepdims=True))

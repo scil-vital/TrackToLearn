@@ -3,21 +3,25 @@ import scipy.signal
 import torch
 
 from typing import Tuple
-from os.path import join as pjoin
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class ReplayBuffer(object):
-    """ Replay buffer to store transitions. Efficiency could probably be improved
+    """ Replay buffer to store transitions. Efficiency could probably be
+    improved.
+
+    While it is called a ReplayBuffer, it is not actually one as no "Replay"
+    is performed. As it is used by on-policy algorithms, the buffer should
+    be cleared every time it is sampled.
 
     TODO: Add possibility to save and load to disk for imitation learning
     """
 
     def __init__(
         self, state_dim: int, action_dim: int, n_trajectories: int,
-        n_updates: int, gamma: float, lmbda: float = 0.95
+        max_traj_length: int, gamma: float, lmbda: float = 0.95
     ):
         """
         Parameters:
@@ -26,15 +30,21 @@ class ReplayBuffer(object):
             Size of states
         action_dim: int
             Size of actions
-        max_size: int
-            Number of transitions to store
+        n_trajectories: int
+            Number of learned accumulating transitions
+        max_traj_length: int
+            Maximum length of trajectories
+        gamma: float
+            Discount factor.
+        lmbda: float
+            GAE factor.
         """
-        self.size = 0
+        self.ptr = 0
 
         self.n_trajectories = n_trajectories
-        self.n_updates = n_updates
+        self.max_traj_length = max_traj_length
         self.device = device
-        self.lens = np.zeros((n_trajectories), dtype=np.int)
+        self.lens = np.zeros((n_trajectories), dtype=np.int32)
         self.gamma = gamma
         self.lmbda = lmbda
         self.state_dim = state_dim
@@ -42,24 +52,25 @@ class ReplayBuffer(object):
 
         # RL Buffers "filled with zeros"
         self.state = np.zeros((
-            self.n_trajectories, self.n_updates, self.state_dim))
+            self.n_trajectories, self.max_traj_length, self.state_dim))
         self.action = np.zeros((
-            self.n_trajectories, self.n_updates, self.action_dim))
+            self.n_trajectories, self.max_traj_length, self.action_dim))
         self.next_state = np.zeros((
-            self.n_trajectories, self.n_updates, self.state_dim))
-        self.reward = np.zeros((self.n_trajectories, self.n_updates))
-        self.not_done = np.zeros((self.n_trajectories, self.n_updates))
-        self.values = np.zeros((self.n_trajectories, self.n_updates))
-        self.next_values = np.zeros((self.n_trajectories, self.n_updates))
-        self.probs = np.zeros((self.n_trajectories, self.n_updates))
+            self.n_trajectories, self.max_traj_length, self.state_dim))
+        self.reward = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.not_done = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.values = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.next_values = np.zeros(
+            (self.n_trajectories, self.max_traj_length))
+        self.probs = np.zeros((self.n_trajectories, self.max_traj_length))
         self.mus = np.zeros(
-            (self.n_trajectories, self.n_updates, self.action_dim))
+            (self.n_trajectories, self.max_traj_length, self.action_dim))
         self.stds = np.zeros(
-            (self.n_trajectories, self.n_updates, self.action_dim))
+            (self.n_trajectories, self.max_traj_length, self.action_dim))
 
         # GAE buffers
-        self.ret = np.zeros((self.n_trajectories, self.n_updates))
-        self.adv = np.zeros((self.n_trajectories, self.n_updates))
+        self.ret = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.adv = np.zeros((self.n_trajectories, self.max_traj_length))
 
     def add(
         self,
@@ -97,62 +108,79 @@ class ReplayBuffer(object):
             Batch of "old" log-probs for this batch of transitions
 
         """
-        self.state[ind, self.size] = state
-        self.action[ind, self.size] = action
+        self.state[ind, self.ptr] = state
+        self.action[ind, self.ptr] = action
 
         # These are actually not needed
-        self.next_state[ind, self.size] = next_state
-        self.reward[ind, self.size] = reward
-        self.not_done[ind, self.size] = (1. - done)
+        self.next_state[ind, self.ptr] = next_state
+        self.reward[ind, self.ptr] = reward
+        self.not_done[ind, self.ptr] = (1. - done)
 
         # Values for losses
-        self.values[ind, self.size] = values
-        self.next_values[ind, self.size] = next_values
-        self.probs[ind, self.size] = probs
+        self.values[ind, self.ptr] = values
+        self.next_values[ind, self.ptr] = next_values
+        self.probs[ind, self.ptr] = probs
 
-        self.mus[ind, self.size] = mus
-        self.stds[ind, self.size] = stds
+        self.mus[ind, self.ptr] = mus
+        self.stds[ind, self.ptr] = stds
 
         self.lens[ind] += 1
+
         for j in range(len(ind)):
             i = ind[j]
 
-            if done[j] or self.size == self.n_updates - 1:
+            if done[j]:
                 # Calculate the expected returns: the value function target
-                self.ret[i, :self.size] = scipy.signal.lfilter(
-                    [1], [1, -self.gamma], self.reward[i, :self.size][::-1],
-                    axis=0)[::-1]
+                rew = self.reward[i, :self.ptr]
+                # rew = (rew - rew.mean()) / (rew.std() + 1.e-8)
+                self.ret[i, :self.ptr] = \
+                    self.discount_cumsum(
+                        rew, self.gamma)
 
                 # Calculate GAE-Lambda with this trick
                 # https://stackoverflow.com/a/47971187
-                deltas = self.reward[i, :self.size] + \
-                    (self.gamma * self.next_values[i, :self.size] *
-                     self.not_done[i, :self.size]) - \
-                    self.values[i, :self.size]
+                # TODO: make sure that this is actually correct
+                # TODO?: do it the usual way with a backwards loop
+                deltas = rew + \
+                    (self.gamma * self.next_values[i, :self.ptr] *
+                     self.not_done[i, :self.ptr]) - \
+                    self.values[i, :self.ptr]
 
                 if self.lmbda == 0:
-                    self.adv[i, :self.size] = self.ret[i, :self.size] - \
-                        self.values[i, :self.size]
+                    self.adv[i, :self.ptr] = self.ret[i, :self.ptr] - \
+                        self.values[i, :self.ptr]
                 else:
-                    self.adv[i, :self.size] = scipy.signal.lfilter(
-                        [1], [1, -self.gamma * self.lmbda], deltas[::-1],
-                        axis=0)[::-1]
+                    self.adv[i, :self.ptr] = \
+                        self.discount_cumsum(deltas, self.gamma * self.lmbda)
 
-        self.size += 1
+        self.ptr += 1
+
+    def discount_cumsum(self, x, discount):
+        """
+        # Taken from spinup implementation
+        magic from rllab for computing discounted cumulative sums of vectors.
+        input:
+                vector x,
+                [x0,
+                 x1,
+                 x2]
+        output:
+                [x0 + discount * x1 + discount^2 * x2,
+                 x1 + discount * x2,
+                 x2]
+        """
+        return scipy.signal.lfilter(
+            [1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
     def sample(
         self,
     ) -> Tuple[
         torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
     ]:
-        """ Off-policy sampling. Will sample min(batch_size, self.size)
-        transitions in an unordered way. This removes the ability to do
-        GAE and reward discounting after the transitions are sampled
+        """ Sample all transitions.
 
         Parameters:
         -----------
-        batch_size: int
-            Number of transitions to sample
 
         Returns:
         --------
@@ -167,55 +195,62 @@ class ReplayBuffer(object):
         probs: torch.Tensor
             Sampled old action probabilities
         """
-        # TODO: Not sample whole buffer ? Have M <= N*T
+        # TODO?: Not sample whole buffer ? Have M <= N*T ?
 
         # Generate indices
-        row, col = zip(*((i, l)
+        row, col = zip(*((i, le)
                          for i in range(len(self.lens))
-                         for l in range(self.lens[i])))
+                         for le in range(self.lens[i])))
 
-        s = torch.FloatTensor(self.state[row, col]).to(self.device)
-        a = torch.FloatTensor(self.action[row, col]).to(self.device)
-        ret = torch.FloatTensor(self.ret[row, col]).to(self.device)
-        adv = torch.FloatTensor(self.adv[row, col]).to(self.device)
-        probs = torch.FloatTensor(self.probs[row, col]).to(self.device)
-        mus = torch.FloatTensor(self.mus[row, col]).to(self.device)
-        stds = torch.FloatTensor(self.stds[row, col]).to(self.device)
+        s, a, ret, adv, probs, mus, stds = (
+            self.state[row, col], self.action[row, col], self.ret[row, col],
+            self.adv[row, col], self.probs[row, col], self.mus[row, col],
+            self.stds[row, col])
 
         # Normalize advantage. Needed ?
         # Trick used by OpenAI in their PPO impl
-        adv = (adv - adv.mean()) / (adv.std() + 1.e-8)
+        # adv = (adv - adv.mean()) / (adv.std() + 1.e-8)
 
-        return s, a, ret, adv, probs, mus, stds
+        shuf_ind = np.arange(s.shape[0])
+
+        # Shuffling makes the learner unable to track in "two directions".
+        # Why ?
+        # np.random.shuffle(shuf_ind)
+
+        self.clear_memory()
+
+        return (s[shuf_ind], a[shuf_ind], ret[shuf_ind], adv[shuf_ind],
+                probs[shuf_ind], mus[shuf_ind], stds[shuf_ind])
 
     def clear_memory(self):
         """ Reset the buffer
         """
 
-        self.lens = np.zeros((self.n_trajectories), dtype=np.int)
+        self.lens = np.zeros((self.n_trajectories), dtype=np.int32)
+        self.ptr = 0
 
         # RL Buffers "filled with zeros"
+        # TODO: Is that actually needed ? Can't just set self.ptr to 0 ?
         self.state = np.zeros((
-            self.n_trajectories, self.n_updates, self.state_dim))
+            self.n_trajectories, self.max_traj_length, self.state_dim))
         self.action = np.zeros((
-            self.n_trajectories, self.n_updates, self.action_dim))
+            self.n_trajectories, self.max_traj_length, self.action_dim))
         self.next_state = np.zeros((
-            self.n_trajectories, self.n_updates, self.state_dim))
-        self.reward = np.zeros((self.n_trajectories, self.n_updates))
-        self.not_done = np.zeros((self.n_trajectories, self.n_updates))
-        self.values = np.zeros((self.n_trajectories, self.n_updates))
-        self.next_values = np.zeros((self.n_trajectories, self.n_updates))
-        self.probs = np.zeros((self.n_trajectories, self.n_updates))
+            self.n_trajectories, self.max_traj_length, self.state_dim))
+        self.reward = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.not_done = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.values = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.next_values = np.zeros(
+            (self.n_trajectories, self.max_traj_length))
+        self.probs = np.zeros((self.n_trajectories, self.max_traj_length))
         self.mus = np.zeros(
-            (self.n_trajectories, self.n_updates, self.action_dim))
+            (self.n_trajectories, self.max_traj_length, self.action_dim))
         self.stds = np.zeros(
-            (self.n_trajectories, self.n_updates, self.action_dim))
+            (self.n_trajectories, self.max_traj_length, self.action_dim))
 
         # GAE buffers
-        self.ret = np.zeros((self.n_trajectories, self.n_updates))
-        self.adv = np.zeros((self.n_trajectories, self.n_updates))
-
-        self.size = 0
+        self.ret = np.zeros((self.n_trajectories, self.max_traj_length))
+        self.adv = np.zeros((self.n_trajectories, self.max_traj_length))
 
     def __len__(self):
         return np.sum(self.lens)
@@ -301,13 +336,13 @@ class OffPolicyReplayBuffer(object):
 
     def sample(
         self,
-        batch_size=1024
+        batch_size=4096
     ) -> Tuple[
         torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
     ]:
         """ Off-policy sampling. Will sample min(batch_size, self.size)
         transitions in an unordered way. This removes the ability to do
-        GAE and reward discounting after the transitions are sampled
+        GAE and reward discounting after the transitions are sampled.
 
         Parameters:
         -----------
@@ -352,22 +387,12 @@ class OffPolicyReplayBuffer(object):
         self.ptr = 0
         self.size = 0
 
-    def save(self, path, name, i):
+    def save_to_file(self, path):
         """ TODO for imitation learning
         """
-        states_file = pjoin(path, name + "_states_{}.npy".format(i))
-        actions_file = pjoin(path, name + "_actions_{}.npy".format(i))
-        next_states_file = pjoin(path, name + "_next_states_{}.npy".format(i))
-        rewards_file = pjoin(path, name + "_rewards_{}.npy".format(i))
-        dones_file = pjoin(path, name + "_dones_{}.npy".format(i))
+        pass
 
-        np.save(states_file, self.state[:self.size])
-        np.save(actions_file, self.action[:self.size])
-        np.save(next_states_file, self.next_state[:self.size])
-        np.save(rewards_file, self.reward[:self.size])
-        np.save(dones_file, 1. - self.not_done[:self.size])
-
-    def load(self, path, i):
+    def load_from_file(self, path):
         """ TODO for imitation learning
         """
         pass

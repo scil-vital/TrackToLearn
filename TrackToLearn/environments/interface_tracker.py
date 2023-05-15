@@ -2,12 +2,12 @@ import numpy as np
 
 from typing import Tuple
 
-from TrackToLearn.environments.tracker import Tracker
-from TrackToLearn.environments.noisy_tracker import NoisyTracker
+from TrackToLearn.environments.tracking_env import TrackingEnvironment
+from TrackToLearn.environments.noisy_tracker import NoisyTrackingEnvironment
 from TrackToLearn.utils.utils import normalize_vectors
 
 
-class InterfaceTracker(Tracker):
+class InterfaceTrackingEnvironment(TrackingEnvironment):
 
     def step(
         self,
@@ -38,25 +38,26 @@ class InterfaceTracker(Tracker):
         # step, flip it
         if self.length == 1:
             # Scale directions to step size
-            directions = normalize_vectors(directions) * self.step_size_vox
+            directions = normalize_vectors(directions) * self.step_size
 
             # Grow streamlines one step forward
-            streamlines = self.streamlines.copy()
+            streamlines = self.streamlines[self.continue_idx].copy()
             streamlines[:, self.length, :] = \
-                self.streamlines[:, self.length-1, :] + directions
+                self.streamlines[self.continue_idx,
+                                 self.length-1, :] + directions
 
             # Get stopping and keeping indexes
-            continue_idx, stopping_idx, stopping_flags = \
+            stopping, flags = \
                 self._is_stopping(
                     streamlines[:, :self.length + 1])
 
             # Flip stopping trajectories
-            directions[stopping_idx] *= -1
+            directions[stopping] *= -1
 
         return super().step(directions)
 
 
-class InterfaceNoisyTracker(NoisyTracker):
+class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
 
     def step(
         self,
@@ -87,20 +88,20 @@ class InterfaceNoisyTracker(NoisyTracker):
         # step, flip it
         if self.length == 1:
             # Scale directions to step size
-            directions = normalize_vectors(directions) * self.step_size_vox
+            directions = normalize_vectors(directions) * self.step_size
 
             # Grow streamlines one step forward
-            streamlines = self.streamlines.copy()
+            streamlines = self.streamlines[self.continue_idx].copy()
             streamlines[:, self.length, :] = \
-                self.streamlines[:, self.length-1, :] + \
-                directions
+                self.streamlines[self.continue_idx,
+                                 self.length-1, :] + directions
 
             # Get stopping and keeping indexes
-            continue_idx, stopping_idx, stopping_flags = \
+            stopping, flags = \
                 self._is_stopping(
                     streamlines[:, :self.length + 1])
 
             # Flip stopping trajectories
-            directions[stopping_idx] *= -1
+            directions[stopping] *= -1
 
         return super().step(directions)

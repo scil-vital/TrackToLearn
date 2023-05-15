@@ -1,10 +1,14 @@
+import copy
 import numpy as np
 import torch
 
 import torch.nn.functional as F
+
 from typing import Tuple
 
 from TrackToLearn.algorithms.sac import SAC
+from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
+from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,7 +22,11 @@ class SACAuto(SAC):
     """
     The sample-gathering and training algorithm.
     Based on
-    TODO: Cite
+
+        Haarnoja, T., Zhou, A., Hartikainen, K., Tucker, G., Ha, S., Tan, J., ...
+        & Levine, S. (2018). Soft actor-critic algorithms and applications.
+        arXiv preprint arXiv:1812.05905.
+
     Implementation is based on Spinning Up's and rlkit
 
     See https://github.com/vitchyr/rlkit/blob/master/rlkit/torch/sac/sac.py
@@ -32,13 +40,12 @@ class SACAuto(SAC):
     def __init__(
         self,
         input_size: int,
-        action_size: int = 3,
-        hidden_dims: str = '1024-1024',
+        action_size: int,
+        hidden_dims: int,
         lr: float = 3e-4,
         gamma: float = 0.99,
-        alpha: float = 1.0,
-        batch_size: int = 2048,
-        interface_seeding: bool = False,
+        alpha: float = 0.2,
+        n_actors: int = 4096,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -51,14 +58,15 @@ class SACAuto(SAC):
             Output size for the actor
         hidden_size: int
             Width of the model
-        action_std: float
-            Standard deviation on actions for exploration
         lr: float
             Learning rate for optimizer
         gamma: float
             Gamma parameter future reward discounting
-        interface_seeding: bool
-            If seeding from GM, don't "go back"
+        alpha: float
+            Initial value of parameter for entropy bonus.
+            Will get optimized.
+        n_actors: int
+            Batch size for replay buffer sampling
         rng: np.random.RandomState
             rng for randomness. Should be fixed with a seed
         device: torch.device,
@@ -66,17 +74,20 @@ class SACAuto(SAC):
             Should always on GPU
         """
 
-        super(SACAuto, self).__init__(
-            input_size,
-            action_size,
-            hidden_dims,
-            lr,
-            gamma,
-            alpha,
-            batch_size,
-            interface_seeding,
-            rng,
-            device,
+        self.max_action = 1.
+        self.t = 1
+
+        self.action_size = action_size
+        self.lr = lr
+        self.gamma = gamma
+        self.device = device
+        self.n_actors = n_actors
+
+        self.rng = rng
+
+        # Initialize main policy
+        self.policy = SACActorCritic(
+            input_size, action_size, hidden_dims,
         )
 
         # Auto-temperature adjustment
@@ -88,25 +99,45 @@ class SACAuto(SAC):
         self.alpha_optimizer = torch.optim.Adam(
           [self.log_alpha], lr=lr)
 
+        # Initialize target policy to provide baseline
+        self.target = copy.deepcopy(self.policy)
+
+        # SAC requires a different model for actors and critics
+        # Optimizer for actor
+        self.actor_optimizer = torch.optim.Adam(
+            self.policy.actor.parameters(), lr=lr)
+
+        # Optimizer for critic
+        self.critic_optimizer = torch.optim.Adam(
+            self.policy.critic.parameters(), lr=lr)
+
+        # Temperature
+        self.alpha = alpha
+
         # SAC-specific parameters
         self.max_action = 1.
         self.on_policy = False
 
         self.start_timesteps = 1000
         self.total_it = 0
-        self.policy_freq = 2
         self.tau = 0.005
+
+        # Replay buffer
+        self.replay_buffer = OffPolicyReplayBuffer(
+            input_size, action_size)
 
         self.rng = rng
 
     def update(
         self,
-        replay_buffer,
+        replay_buffer: OffPolicyReplayBuffer,
         batch_size: int = 2**12
     ) -> Tuple[float, float]:
         """
-        TODO: Add motivation behind SAC update ("pessimistic" two-critic
-        update, policy that implicitely maximizes the q-function, etc.)
+
+        SAC Auto improves upon SAC by learning the entropy coefficient
+        instead of making it a hyperparameter.
+
 
         Parameters
         ----------
@@ -125,7 +156,6 @@ class SACAuto(SAC):
         self.total_it += 1
 
         # Sample replay buffer
-        # TODO: Make batch size parametrizable
         state, action, next_state, reward, not_done = \
             replay_buffer.sample(batch_size)
 
@@ -166,11 +196,12 @@ class SACAuto(SAC):
             'actor_loss': actor_loss.item(),
             'critic_loss': critic_loss.item(),
             'alpha_loss': alpha_loss.item(),
-            'alpha': alpha.item(),
-            'q1': current_Q1.mean().item(),
-            'q2': current_Q2.mean().item(),
-            'q1_loss': loss_q1.item(),
-            'q2_loss': loss_q2.item(),
+            'loss_q1': loss_q1.item(),
+            'loss_q2': loss_q2.item(),
+            'a': alpha.item(),
+            'Q1': current_Q1.mean().item(),
+            'Q2': current_Q2.mean().item(),
+            'backup': backup.mean().item(),
         }
 
         # Optimize the temperature
