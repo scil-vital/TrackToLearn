@@ -54,9 +54,9 @@ class SAC_AutoGymTraining(GymTraining):
             Path to the file containing the signal data
         subject_id: str
             Subject being trained on (in the signal data)
-        seeding_file: str
+        in_seed: str
             Path to the mask where seeds can be generated
-        tracking_file: str
+        in_mask: str
             Path to the mask where tracking can happen
         scoring_data: str
             Path to reference streamlines that can be used for
@@ -89,9 +89,9 @@ class SAC_AutoGymTraining(GymTraining):
         entropy_loss_coeff: float,
             Loss coefficient on policy entropy
             Should sum to 1 with other loss coefficients
-        n_seeds_per_voxel: int
+        npv: int
             How many seeds to generate per voxel
-        max_angle: float
+        theta: float
             Maximum angle for tracking
         min_length: int
             Minimum length for streamlines

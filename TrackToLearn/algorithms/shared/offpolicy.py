@@ -92,7 +92,6 @@ class MaxEntropyActor(Actor):
         self.layers = make_fc_network(
             self.hidden_layers, state_dim, action_dim * 2)
 
-        print(self.layers)
         self.output_activation = nn.Tanh()
 
     def forward(

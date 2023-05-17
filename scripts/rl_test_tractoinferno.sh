@@ -6,7 +6,7 @@ noise=(0.1)
 for rng_seed in "${seeds[@]}"
 do
 
-  for valid_noise in "${noise[@]}"
+  for prob in "${noise[@]}"
   do
 
     experiment_path=${TRACK_TO_LEARN_DATA}/experiments/
@@ -16,7 +16,7 @@ do
 
     mkdir -p $tracking_folder
 
-    python TrackToLearn/runners/track.py \
+    python ttl_track.py \
       ${data_path}/fodf/sub-1006__fodf_6_descoteaux.nii.gz \
       ${data_path}/mask/sub-1006__mask_wm.nii.gz \
       ${data_path}/mask/sub-1006__mask_wm.nii.gz \
@@ -24,8 +24,8 @@ do
       ${data_path}/anat/sub-1006__T1w.nii.gz \
       ${experiment_path}/$1/$2/$rng_seed/model \
       ${experiment_path}/$1/$2/$rng_seed/model/hyperparameters.json \
-      ${tracking_folder}/tractogram_${valid_noise}_tractoinferno_1006_10.trk \
+      ${tracking_folder}/tractogram_${prob}_tractoinferno_1006_10.trk \
       --fa_map ${data_path}/dti/sub-1006__fa.nii.gz \
-      --n_seeds 10 --n_actor 25000 --compress 0.1 --valid $valid_noise
+      --npv 10 --n_actor 25000 --compress 0.1 --prob $prob
   done
 done

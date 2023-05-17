@@ -1,6 +1,12 @@
 import numpy as np
 
 from dwi_ml.data.dataset.streamline_containers import LazySFTData
+from dipy.reconst.shm import (
+    sh_to_sf,
+    sf_to_sh)
+from scilpy.reconst.utils import get_sh_order_and_fullness
+
+from dipy.data import get_sphere
 
 
 class MRIDataVolume(object):
@@ -146,3 +152,46 @@ def convert_length_mm2vox(
 
     length_vox = length_mm / vox2mm
     return length_vox
+
+
+def set_sh_order_basis(
+    sh, sh_basis, target_basis='descoteaux07', target_order=6
+):
+    """ Convert SH to the target basis and order. In practice, it is always
+    order 6 and descoteaux07 basis.
+    """
+
+    convert = False
+    sphere = get_sphere('repulsion724')
+
+    # If SH are not in the descoteaux07 basis, convert them
+    if sh_basis != target_basis:
+        convert = True
+        print('SH coefficients are in the {} basis, '
+              'converting them to {}.'.format(sh_basis, target_basis))
+
+    n_coefs = sh.shape[-1]
+    sh_order, full_basis = get_sh_order_and_fullness(n_coefs)
+    sh_order = int(sh_order)
+
+    # If SH in full basis, convert them
+    if full_basis is True:
+        convert = True
+        print('SH coefficients are in "full" basis, only even coefficients '
+              'will be used.')
+
+    # If SH are not of order 6, convert them
+    if sh_order != target_order:
+        convert = True
+        print('SH coefficients are of order {}, '
+              'converting them to order {}.'.format(sh_order, target_order))
+
+    if convert is True:
+        sf = sh_to_sf(
+            sh, sphere, sh_order=sh_order, basis_type=sh_basis,
+            full_basis=full_basis)
+        sh = sf_to_sh(
+            sf, sphere, sh_order=target_order, basis_type=target_basis,
+            full_basis=False)
+
+    return sh

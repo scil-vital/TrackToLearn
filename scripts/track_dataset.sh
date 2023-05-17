@@ -10,7 +10,7 @@ dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
 n_actor=50000
-n_seeds_per_voxel=1
+npv=1
 min_length=10
 max_length=200
 
@@ -19,7 +19,7 @@ ID=$2
 
 SEED=1111
 SUBJECT_ID=hcp_100206
-valid_noise=0.2
+prob=0.2
 
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
@@ -27,7 +27,7 @@ DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
 dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
-python TrackToLearn/runners/validation.py \
+python ttl_validation.py \
   "$DEST_FOLDER" \
   "$EXPERIMENT" \
   "$ID" \
@@ -37,8 +37,8 @@ python TrackToLearn/runners/validation.py \
   "${SCORING_DATA}" \
   $DEST_FOLDER/model \
   $DEST_FOLDER/model/hyperparameters.json \
-  --valid_noise="${valid_noise}" \
-  --n_seeds_per_voxel="${n_seeds_per_voxel}" \
+  --prob="${prob}" \
+  --npv="${npv}" \
   --n_actor="${n_actor}" \
   --min_length="$min_length" \
   --max_length="$max_length" \
@@ -46,7 +46,7 @@ python TrackToLearn/runners/validation.py \
   --fa_map="$DATASET_FOLDER"/datasets/${SUBJECT_ID}/dti/"${SUBJECT_ID}"_fa.nii.gz \
   --remove_invalid_streamlines
 
-validation_folder=$DEST_FOLDER/tracking_"${valid_noise}"_"${SUBJECT_ID}"
+validation_folder=$DEST_FOLDER/tracking_"${prob}"_"${SUBJECT_ID}"
 
 mkdir -p $validation_folder
 

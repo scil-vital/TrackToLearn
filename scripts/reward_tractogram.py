@@ -60,7 +60,7 @@ def get_reward_function(
         exclude=env.exclude_mask,
         target=env.target_mask,
         max_nb_steps=env.max_nb_steps,
-        max_angle=env.max_angle,
+        theta=env.theta,
         min_nb_steps=env.min_nb_steps,
         asymmetric=env.asymmetric,
         alignment_weighting=env.alignment_weighting,
@@ -92,9 +92,9 @@ def buildArgsParser():
                    help='Last n steps taken')
     p.add_argument('--add_neighborhood', default=0.75, type=float,
                    help='Add neighborhood to model input')
-    p.add_argument('--n_seeds_per_voxel', default=2, type=int,
+    p.add_argument('--npv', default=2, type=int,
                    help='Number of random seeds per seeding mask voxel')
-    p.add_argument('--max_angle', default=30, type=int,
+    p.add_argument('--theta', default=30, type=int,
                    help='Max angle for tracking')
     p.add_argument('--min_length', default=20, type=int,
                    help='Minimum length for tracts')

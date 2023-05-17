@@ -33,11 +33,11 @@ K_epochs=30
 entropy_loss_coeff=0.001
 
 # Model params
-valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-n_seeds_per_voxel=2 # Seed per voxel
-max_angle=30 # Maximum angle for streamline curvature
+npv=2 # Seed per voxel
+theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=PPO_ISMRM2015TrainExp1
 
@@ -70,8 +70,8 @@ do
     --lmbda=${lmbda} \
     --K_epochs=${K_epochs} \
     --rng_seed=${rng_seed} \
-    --n_seeds_per_voxel=${n_seeds_per_voxel} \
-    --max_angle=${max_angle} \
+    --npv=${npv} \
+    --theta=${theta} \
     --use_gpu \
     --use_comet \
     --run_tractometer

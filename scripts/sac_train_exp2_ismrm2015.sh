@@ -29,11 +29,11 @@ gamma=0.95 # Gamma for reward discounting
 alpha=0.2
 
 # Model params
-valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-n_seeds_per_voxel=20 # Seed per voxel
-max_angle=30 # Maximum angle for streamline curvature
+npv=20 # Seed per voxel
+theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=SAC_ISMRM2015TrainExp2
 
@@ -62,8 +62,8 @@ do
     --gamma=${gamma} \
     --alpha=${alpha} \
     --rng_seed=${rng_seed} \
-    --n_seeds_per_voxel=${n_seeds_per_voxel} \
-    --max_angle=${max_angle} \
+    --npv=${npv} \
+    --theta=${theta} \
     --interface_seeding \
     --use_gpu \
     --use_comet \

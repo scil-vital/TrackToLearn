@@ -12,7 +12,7 @@ dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
 n_actor=50000
-n_seeds_per_voxel=300
+npv=300
 min_length=20
 max_length=200
 
@@ -27,7 +27,7 @@ for SEED in "${seeds[@]}"
 do
   for SUBJECT_ID in "${subjectids[@]}"
   do
-    for valid_noise in "${validstds[@]}"
+    for prob in "${validstds[@]}"
     do
       EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
       SCORING_DATA=${DATASET_FOLDER}/datasets/${SUBJECT_ID}/scoring_data
@@ -37,7 +37,7 @@ do
       reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
       echo $DEST_FOLDER/model/hyperparameters.json
-      python TrackToLearn/runners/validation.py \
+      python ttl_validation.py \
         "$DEST_FOLDER" \
         "$EXPERIMENT" \
         "$ID" \
@@ -46,8 +46,8 @@ do
         "${reference_file}" \
         $DEST_FOLDER/model \
         $DEST_FOLDER/model/hyperparameters.json \
-        --valid_noise="${valid_noise}" \
-        --n_seeds_per_voxel="${n_seeds_per_voxel}" \
+        --prob="${prob}" \
+        --npv="${npv}" \
         --n_actor="${n_actor}" \
         --min_length="$min_length" \
         --max_length="$max_length" \
@@ -57,7 +57,7 @@ do
         --asym \
         --remove_invalid_streamlines
 
-      validation_folder=$DEST_FOLDER/scoring_"${valid_noise}"_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+      validation_folder=$DEST_FOLDER/scoring_"${prob}"_"${SUBJECT_ID}"_${npv}
 
       mkdir -p $validation_folder
 

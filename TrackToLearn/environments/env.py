@@ -12,6 +12,7 @@ from TrackToLearn.datasets.utils import (
     convert_length_mm2vox,
     MRIDataVolume,
     SubjectData,
+    set_sh_order_basis
 )
 
 from TrackToLearn.environments.reward import Reward
@@ -85,8 +86,8 @@ class BaseEnv(object):
         # Tracking parameters
         self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
-        self.max_angle = max_angle = env_dto['max_angle']
-        self.n_seeds_per_voxel = env_dto['n_seeds_per_voxel']
+        self.theta = theta = env_dto['theta']
+        self.npv = env_dto['npv']
         self.cmc = env_dto['cmc']
         self.asymmetric = env_dto['asymmetric']
 
@@ -130,7 +131,7 @@ class BaseEnv(object):
                 exclude=self.exclude_mask,
                 target=self.target_mask,
                 max_nb_steps=self.max_nb_steps,
-                max_angle=self.max_angle,
+                theta=self.theta,
                 min_nb_steps=self.min_nb_steps,
                 asymmetric=self.asymmetric,
                 alignment_weighting=self.alignment_weighting,
@@ -148,7 +149,7 @@ class BaseEnv(object):
 
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
-            functools.partial(is_too_curvy, max_theta=max_angle)
+            functools.partial(is_too_curvy, max_theta=theta)
 
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
@@ -184,10 +185,11 @@ class BaseEnv(object):
         # Tracking seeds
         self.seeds = self._get_tracking_seeds_from_mask(
             self.seeding_data,
-            self.n_seeds_per_voxel,
+            self.npv,
             self.rng)
         print(
-            'Environment has {} seeds to choose from.'.format(len(self.seeds)))
+            '{} has {} seeds.'.format(self.__class__.__name__,
+                                      len(self.seeds)))
 
     @classmethod
     def from_dataset(
@@ -221,16 +223,18 @@ class BaseEnv(object):
         cls,
         env_dto: dict,
     ):
-        fodf_file = env_dto['fodf_file']
+        in_odf = env_dto['in_odf']
         wm_file = env_dto['wm_file']
-        seeding_file = env_dto['seeding_file']
-        tracking_file = env_dto['tracking_file']
+        in_seed = env_dto['in_seed']
+        in_mask = env_dto['in_mask']
+        sh_basis = env_dto['sh_basis']
 
         input_volume, tracking_mask, seeding_mask = BaseEnv._load_files(
-            fodf_file,
+            in_odf,
             wm_file,
-            seeding_file,
-            tracking_file)
+            in_seed,
+            in_mask,
+            sh_basis)
 
         return cls(
             input_volume,
@@ -290,29 +294,42 @@ class BaseEnv(object):
         cls,
         signal_file,
         wm_file,
-        seeding_file,
-        tracking_file,
+        in_seed,
+        in_mask,
+        sh_basis
     ):
-
         signal = nib.load(signal_file)
-        seeding = nib.load(seeding_file)
-        tracking = nib.load(tracking_file)
 
+        # Assert that the subject has iso voxels, else stuff will get
+        # complicated
+        if not np.allclose(np.mean(signal.header.get_zooms()[:3]),
+                           signal.header.get_zooms()[0], atol=1e-03):
+            print('WARNING: ODF SH file is not isotropic. Tracking cannot be '
+                  'ran robustly. You are entering undefined behavior '
+                  'territory.')
+
+        data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
+                                  sh_basis,
+                                  target_order=6,
+                                  target_basis='descoteaux07')
+
+        seeding = nib.load(in_seed)
+        tracking = nib.load(in_mask)
         wm = nib.load(wm_file)
         wm_data = wm.get_fdata()
         if len(wm_data.shape) == 3:
             wm_data = wm_data[..., None]
 
         signal_data = np.concatenate(
-            [signal.get_fdata(), wm_data], axis=-1)
+            [data, wm_data], axis=-1)
 
         signal_volume = MRIDataVolume(
             signal_data, signal.affine, filename=signal_file)
 
         seeding_volume = MRIDataVolume(
-            seeding.get_fdata(), seeding.affine, filename=seeding_file)
+            seeding.get_fdata(), seeding.affine, filename=in_seed)
         tracking_volume = MRIDataVolume(
-            tracking.get_fdata(), tracking.affine, filename=tracking_file)
+            tracking.get_fdata(), tracking.affine, filename=in_mask)
 
         return (signal_volume, tracking_volume, seeding_volume)
 
@@ -370,7 +387,7 @@ class BaseEnv(object):
                 exclude=self.exclude_mask,
                 target=self.target_mask,
                 max_nb_steps=self.max_nb_steps,
-                max_angle=self.max_angle,
+                theta=self.theta,
                 min_nb_steps=self.min_nb_steps,
                 asymmetric=self.asymmetric,
                 alignment_weighting=self.alignment_weighting,
@@ -406,7 +423,7 @@ class BaseEnv(object):
     def _get_tracking_seeds_from_mask(
         self,
         mask: np.ndarray,
-        n_seeds_per_voxel: int,
+        npv: int,
         rng: np.random.RandomState
     ) -> np.ndarray:
         """ Given a binary seeding mask, get seeds in DWI voxel
@@ -417,7 +434,7 @@ class BaseEnv(object):
         ----------
         mask : 3D `numpy.ndarray`
             Binary seeding mask
-        n_seeds_per_voxel : int
+        npv : int
         rng : `numpy.random.RandomState`
 
         Returns
@@ -430,7 +447,7 @@ class BaseEnv(object):
             seeds_in_seeding_voxel = idx + rng.uniform(
                 -0.5,
                 0.5,
-                size=(n_seeds_per_voxel, 3))
+                size=(npv, 3))
             seeds.extend(seeds_in_seeding_voxel)
         seeds = np.array(seeds, dtype=np.float16)
         return seeds

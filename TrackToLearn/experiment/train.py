@@ -5,9 +5,7 @@ import os
 import torch
 
 from dipy.tracking.metrics import length as slength
-from nibabel.streamlines import Tractogram
 from os.path import join as pjoin
-from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.environments.env import BaseEnv
@@ -43,7 +41,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # RL parameters
         self.max_ep = train_dto['max_ep']
         self.log_interval = train_dto['log_interval']
-        self.valid_noise = train_dto['valid_noise']
+        self.prob = train_dto['prob']
         self.lr = train_dto['lr']
         self.gamma = train_dto['gamma']
 
@@ -57,8 +55,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.reference_file = train_dto['reference_file']
         self.scoring_data = train_dto['scoring_data']
         self.rng_seed = train_dto['rng_seed']
-        self.n_seeds_per_voxel = train_dto['n_seeds_per_voxel']
-        self.max_angle = train_dto['max_angle']
+        self.npv = train_dto['npv']
+        self.theta = train_dto['theta']
         self.min_length = train_dto['min_length']
         self.max_length = train_dto['max_length']
         self.interface_seeding = train_dto['interface_seeding']
@@ -115,8 +113,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'random_seed': self.rng_seed,
             'dataset_file': self.dataset_file,
             'subject_id': self.subject_id,
-            'n_seeds_per_voxel': self.n_seeds_per_voxel,
-            'max_angle': self.max_angle,
+            'n_seeds_per_voxel': self.npv,
+            'max_angle': self.theta,
             'min_length': self.min_length,
             'max_length': self.max_length,
             'cmc': self.cmc,
@@ -194,13 +192,15 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Transition counter
         t = 0
 
-        # Initialize TrainingTracker, which will handle streamline generation and trainnig
+        # Initialize Trackers, which will handle streamline generation and
+        # trainnig
         train_tracker = Tracker(
-            alg, env, back_env, self.n_actor, self.interface_seeding, self.no_retrack, compress=0.0)
+            alg, env, back_env, self.n_actor, self.interface_seeding,
+            self.no_retrack, compress=0.0)
 
-        # Initialize Tracker, which will handle streamline generation
         valid_tracker = Tracker(
-            alg, valid_env, back_valid_env, self.n_actor, self.interface_seeding, self.no_retrack,
+            alg, valid_env, back_valid_env, self.n_actor,
+            self.interface_seeding, self.no_retrack,
             compress=0.0)
 
         # Run tracking before training to see what an untrained network does
@@ -253,9 +253,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             if i_episode % self.log_interval == 0:
 
                 # Validation run
-                valid_tractogram, valid_reward = valid_tracker.track_and_validate()
+                valid_tractogram, valid_reward = \
+                    valid_tracker.track_and_validate()
                 scores = self.score_tractogram(valid_tractogram)
-
 
                 # Display what the network is capable-of "now"
                 self.log(
