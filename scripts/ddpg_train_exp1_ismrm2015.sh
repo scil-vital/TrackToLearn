@@ -29,11 +29,11 @@ gamma=0.5 # Gamma for reward discounting
 action_std=0.35
 
 # Model params
-valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-n_seeds_per_voxel=2 # Seed per voxel
-max_angle=60 # Maximum angle for streamline curvature
+npv=2 # Seed per voxel
+theta=60 # Maximum angle for streamline curvature
 
 EXPERIMENT=DDPG_ISMRM2015TrainExp1
 
@@ -62,8 +62,8 @@ do
     --gamma=${gamma} \
     --action_std=${action_std} \
     --rng_seed=${rng_seed} \
-    --n_seeds_per_voxel=${n_seeds_per_voxel} \
-    --max_angle=${max_angle} \
+    --npv=${npv} \
+    --theta=${theta} \
     --use_gpu \
     --use_comet \
     --run_tractometer

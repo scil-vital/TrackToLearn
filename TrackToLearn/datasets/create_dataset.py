@@ -10,6 +10,7 @@ from argparse import RawTextHelpFormatter
 from os.path import join
 
 from nibabel.nifti1 import Nifti1Image
+from scilpy.io.utils import add_sh_basis_args
 
 from TrackToLearn.datasets.processing import min_max_normalize_data_volume
 from TrackToLearn.utils.utils import (
@@ -38,8 +39,13 @@ def parse_args():
                         help="Output filename including path")
     parser.add_argument('--normalize', action='store_true',
                         help='If set, normalize first input signal.')
-    arguments = parser.parse_args()
 
+    basis_group = parser.add_argument_group('Basis options')
+    add_sh_basis_args(basis_group)
+
+    arguments = parser.parse_args()
+    if arguments.sh_basis == 'tournier07':
+        parser.error('Only descoteaux07 basis is supported')
     return arguments
 
 

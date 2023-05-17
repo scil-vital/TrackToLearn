@@ -168,21 +168,26 @@ def add_model_args(parser):
                         help='Path to pretrained model')
 
 
-def add_tracking_args(parser, with_step_size=True):
-    parser.add_argument('--n_seeds_per_voxel', default=2, type=int,
-                        help='Number of random seeds per seeding mask voxel')
-    parser.add_argument('--max_angle', default=30, type=int,
-                        help='Max angle for tracking')
-    parser.add_argument('--min_length', default=20, type=int,
-                        help='Minimum length for tracts')
-    parser.add_argument('--max_length', default=200, type=int,
-                        help='Maximum length for tracts')
-    if with_step_size:
-        parser.add_argument('--step_size', default=0.75, type=float,
-                            help='Step size for tracking')
-    parser.add_argument('--valid_noise', default=0.0, type=float,
-                        help='Noise to make a probablistic output during '
-                        'valid/valid')
+def add_tracking_args(parser):
+    parser.add_argument('--npv', default=2, type=int,
+                        help='Number of random seeds per seeding mask voxel.')
+    parser.add_argument('--theta', default=30, type=int,
+                        help='Max angle between segments for tracking.')
+    parser.add_argument('--min_length', type=float, default=10.,
+                        metavar='m',
+                        help='Minimum length of a streamline in mm. '
+                        '[%(default)s]')
+    parser.add_argument('--max_length', type=float, default=300.,
+                        metavar='M',
+                        help='Maximum length of a streamline in mm. '
+                        '[%(default)s]')
+    parser.add_argument('--step_size', default=0.75, type=float,
+                        help='Step size for tracking')
+    parser.add_argument('--prob', default=0.0, type=float, metavar='sigma',
+                        help='Add noise ~ N (0, `prob`) to the agent\'s\n'
+                        'output to make tracking more probabilistic.\n'
+                        'Should be between 0.0 and 0.1.'
+                        '[%(default)s]')
     parser.add_argument('--interface_seeding', action='store_true',
                         help='If set, don\'t track "backwards"')
     parser.add_argument('--no_retrack', action='store_true',

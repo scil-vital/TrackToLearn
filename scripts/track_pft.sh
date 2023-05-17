@@ -7,7 +7,7 @@ EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 
 step_size=0.75 # Step size (in mm)
 
-n_seeds_per_voxel=33
+npv=33
 min_length=20
 max_length=200
 
@@ -18,7 +18,7 @@ seeds=(1111 2222 3333 4444 5555)
 
 # SUBJECT_ID=fibercup
 # EXPERIMENT=PFT_FiberCupExp1
-# n_seeds_per_voxel=33
+# npv=33
 # 
 # ID=$(date +"%F-%H_%M_%S")
 # 
@@ -38,11 +38,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/map_include.nii.gz \
 #     $BASE/maps/map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -62,7 +62,7 @@ seeds=(1111 2222 3333 4444 5555)
 # done
 # 
 # EXPERIMENT=PFT_FiberCupExp2
-# n_seeds_per_voxel=300
+# npv=300
 # 
 # ID=$(date +"%F-%H_%M_%S")
 # 
@@ -82,11 +82,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/map_include.nii.gz \
 #     $BASE/maps/map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -108,7 +108,7 @@ seeds=(1111 2222 3333 4444 5555)
 # SUBJECT_ID=fibercup_flipped
 # EXPERIMENT=PFT_FiberCupExp1
 # BASE=${TRACK_TO_LEARN_DATA}/datasets/$SUBJECT_ID
-# n_seeds_per_voxel=33
+# npv=33
 # 
 # ID=$(date +"%F-%H_%M_%S")
 # 
@@ -128,11 +128,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/map_include.nii.gz \
 #     $BASE/maps/map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -153,7 +153,7 @@ seeds=(1111 2222 3333 4444 5555)
 # 
 # SUBJECT_ID=fibercup_flipped
 # EXPERIMENT=PFT_FiberCupExp2
-# n_seeds_per_voxel=300
+# npv=300
 # 
 # ID=$(date +"%F-%H_%M_%S")
 # 
@@ -173,11 +173,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/map_include.nii.gz \
 #     $BASE/maps/map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -199,7 +199,7 @@ seeds=(1111 2222 3333 4444 5555)
 # SUBJECT_ID=ismrm2015
 # EXPERIMENT=PFT_ISMRM2015Exp1
 # BASE=${TRACK_TO_LEARN_DATA}/datasets/$SUBJECT_ID
-# n_seeds_per_voxel=7
+# npv=7
 # 
 # ID=$(date +"%F-%H_%M_%S")
 # 
@@ -219,11 +219,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/map_include.nii.gz \
 #     $BASE/maps/map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -244,7 +244,7 @@ seeds=(1111 2222 3333 4444 5555)
 # 
 # SUBJECT_ID=ismrm2015
 # EXPERIMENT=PFT_ISMRM2015Exp2
-# n_seeds_per_voxel=60
+# npv=60
 # 
 # ID=$(date +"%F-%H_%M_%S")
 # 
@@ -264,11 +264,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/map_include.nii.gz \
 #     $BASE/maps/map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -291,7 +291,7 @@ seeds=(1111 2222 3333 4444 5555)
 # SUBJECT_ID=hcp_100206
 # EXPERIMENT=PFT_ISMRM2015Exp1
 # BASE=${TRACK_TO_LEARN_DATA}/datasets/$SUBJECT_ID
-# n_seeds_per_voxel=2
+# npv=2
 # 
 # ID=2023-02-24-17_45_03
 # 
@@ -311,11 +311,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/${SUBJECT_ID}_map_include.nii.gz \
 #     $BASE/maps/${SUBJECT_ID}_map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -335,7 +335,7 @@ seeds=(1111 2222 3333 4444 5555)
 # 
 # SUBJECT_ID=hcp_100206
 # EXPERIMENT=PFT_ISMRM2015Exp2
-# n_seeds_per_voxel=10
+# npv=10
 # 
 # ID=2023-02-24-21_08_25
 # 
@@ -355,11 +355,11 @@ seeds=(1111 2222 3333 4444 5555)
 #     $BASE/maps/${SUBJECT_ID}_map_include.nii.gz \
 #     $BASE/maps/${SUBJECT_ID}_map_exclude.nii.gz  \
 #     $DEST_FOLDER/$OUT \
-#     --npv $n_seeds_per_voxel --min_length $MIN \
+#     --npv $npv --min_length $MIN \
 #     --max_length $MAX --step $STEP \
 #     --seed $seed -f -v
 # 
-#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+#   validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 # 
 #   mkdir -p $validation_folder
 # 
@@ -381,7 +381,7 @@ STEP=0.375
 SUBJECT_ID=sub-1006
 EXPERIMENT=PFT_ISMRM2015Exp1
 BASE=${TRACK_TO_LEARN_DATA}/datasets/tractoinferno/$SUBJECT_ID
-n_seeds_per_voxel=10
+npv=10
 
 ID=2023-02-24-17_45_03
 
@@ -401,11 +401,11 @@ do
     $BASE/maps/${SUBJECT_ID}__map_include.nii.gz \
     $BASE/maps/${SUBJECT_ID}__map_exclude.nii.gz  \
     $DEST_FOLDER/$OUT \
-    --npv $n_seeds_per_voxel --min_length $MIN \
+    --npv $npv --min_length $MIN \
     --max_length $MAX --step $STEP \
     --seed $seed -f -v
 
-  validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+  validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 
   mkdir -p $validation_folder
 
@@ -425,7 +425,7 @@ done
 
 SUBJECT_ID=sub-1006
 EXPERIMENT=PFT_ISMRM2015Exp2
-n_seeds_per_voxel=20
+npv=20
 
 ID=2023-02-24-21_08_25
 
@@ -445,11 +445,11 @@ do
     $BASE/maps/${SUBJECT_ID}__map_include.nii.gz \
     $BASE/maps/${SUBJECT_ID}__map_exclude.nii.gz  \
     $DEST_FOLDER/$OUT \
-    --npv $n_seeds_per_voxel --min_length $MIN \
+    --npv $npv --min_length $MIN \
     --max_length $MAX --step $STEP \
     --seed $seed -f -v
 
-  validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${n_seeds_per_voxel}
+  validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 
   mkdir -p $validation_folder
 

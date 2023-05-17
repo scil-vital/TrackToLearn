@@ -51,11 +51,11 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n steps
 
 # Model params
-valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-n_seeds_per_voxel=2 # Seed per voxel
-max_angle=30 # Maximum angle for streamline curvature
+npv=2 # Seed per voxel
+theta=30 # Maximum angle for streamline curvature
 # n_dirs=0
 
 EXPERIMENT=SAC_Auto_ISMRM2015LengthSearchExp5
@@ -79,9 +79,9 @@ python TrackToLearn/searchers/sac_auto_searcher_len.py \
   --max_ep=${max_ep} \
   --log_interval=${log_interval} \
   --rng_seed=${rng_seed} \
-  --n_seeds_per_voxel=${n_seeds_per_voxel} \
-  --max_angle=${max_angle} \
-  --valid_noise=$valid_noise \
+  --npv=${npv} \
+  --theta=${theta} \
+  --prob=$prob \
   --use_gpu \
   --use_comet \
   --run_tractometer

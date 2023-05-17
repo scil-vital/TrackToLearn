@@ -3,7 +3,8 @@ import numpy as np
 
 from typing import Tuple
 
-from TrackToLearn.environments.backward_tracking_env import BackwardTrackingEnvironment
+from TrackToLearn.environments.backward_tracking_env import (
+    BackwardTrackingEnvironment)
 from TrackToLearn.environments.retracking_env import RetrackingEnvironment
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
@@ -40,7 +41,7 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
             include_mask,
             exclude_mask)
 
-        self.valid_noise = env_dto['valid_noise']
+        self.prob = env_dto['prob']
         self.fa_map = None
         if env_dto['fa_map']:
             self.fa_map = env_dto['fa_map'].data
@@ -71,15 +72,16 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
         info: dict
         """
 
-        if self.fa_map is not None and self.valid_noise > 0.:
-            idx = self.streamlines[self.continue_idx, self.length-1].astype(np.int32)
+        if self.fa_map is not None and self.prob > 0.:
+            idx = self.streamlines[self.continue_idx,
+                                   self.length-1].astype(np.int32)
 
             # Get peaks at streamline end
             fa = interpolate_volume_at_coordinates(
                 self.fa_map, idx, mode='constant', order=0)
-            noise = ((1. - fa) * self.valid_noise)
+            noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.valid_noise] * len(directions))
+            noise = np.asarray([self.prob] * len(directions))
 
         directions = (
             directions + self.rng.normal(np.zeros((3, 1)), noise).T)
@@ -90,34 +92,21 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
 
     def __init__(
         self,
-        input_volume,
-        tracking_mask,
-        target_mask,
-        seeding_mask,
-        peaks,
+        env,
         env_dto,
-        include_mask=None,
-        exclude_mask=None,
-
     ):
         """
         Parameters
         ----------
+        env: BaseEnv
+            Forward env
         env_dto: dict
             Dict containing all arguments
         """
 
-        super().__init__(
-            input_volume,
-            tracking_mask,
-            target_mask,
-            seeding_mask,
-            peaks,
-            env_dto,
-            include_mask,
-            exclude_mask)
+        super().__init__(env, env_dto)
 
-        self.valid_noise = env_dto['valid_noise']
+        self.prob = env_dto['prob']
         self.fa_map = None
         if env_dto['fa_map']:
             self.fa_map = env_dto['fa_map'].data
@@ -148,15 +137,16 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
         info: dict
         """
 
-        if self.fa_map is not None and self.valid_noise > 0.:
-            idx = self.streamlines[self.continue_idx, self.length-1].astype(np.int32)
+        if self.fa_map is not None and self.prob > 0.:
+            idx = self.streamlines[self.continue_idx,
+                                   self.length-1].astype(np.int32)
 
             # Get peaks at streamline end
             fa = interpolate_volume_at_coordinates(
                 self.fa_map, idx, mode='constant', order=0)
-            noise = ((1. - fa) * self.valid_noise)
+            noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.valid_noise] * len(directions))
+            noise = np.asarray([self.prob] * len(directions))
 
         directions = (
             directions + self.rng.normal(np.zeros((3, 1)), noise).T)
@@ -167,34 +157,21 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
 
     def __init__(
         self,
-        input_volume,
-        tracking_mask,
-        target_mask,
-        seeding_mask,
-        peaks,
+        env,
         env_dto,
-        include_mask=None,
-        exclude_mask=None,
-
     ):
         """
         Parameters
         ----------
+        env: BaseEnv
+            Forward env
         env_dto: dict
             Dict containing all arguments
         """
 
-        super().__init__(
-            input_volume,
-            tracking_mask,
-            target_mask,
-            seeding_mask,
-            peaks,
-            env_dto,
-            include_mask,
-            exclude_mask)
+        super().__init__(env, env_dto)
 
-        self.valid_noise = env_dto['valid_noise']
+        self.prob = env_dto['prob']
         self.fa_map = None
         if env_dto['fa_map']:
             self.fa_map = env_dto['fa_map'].data
@@ -226,7 +203,7 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
         info: dict
         """
 
-        if self.fa_map is not None and self.valid_noise > 0.:
+        if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[:, self.length-1].astype(np.int32)
 
             # Use affine to map coordinates in mask space
@@ -236,9 +213,9 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
             # Get peaks at streamline end
             fa = interpolate_volume_at_coordinates(
                 self.fa_map, indices_mask, mode='constant', order=0)
-            noise = ((1. - fa) * self.valid_noise)
+            noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.valid_noise] * len(directions))
+            noise = np.asarray([self.prob] * len(directions))
 
         directions = (
             directions + self.rng.normal(np.zeros((3, 1)), noise).T)

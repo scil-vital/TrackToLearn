@@ -26,7 +26,8 @@ class Tracker(object):
         n_actor: int,
         interface_seeding: bool,
         no_retrack: bool,
-        compress: float = 0.0
+        compress: float = 0.0,
+        save_seeds: bool = False
     ):
         """
 
@@ -50,6 +51,7 @@ class Tracker(object):
         self.interface_seeding = interface_seeding
         self.no_retrack = no_retrack
         self.compress = compress
+        self.save_seeds = save_seeds
 
     def track(
         self,
@@ -107,7 +109,11 @@ class Tracker(object):
                     streamline = item.streamline
                     streamline += 0.5
                     streamline *= vox_size
-                    seed = item.data_for_streamline['seeds']
+
+                    seed_dict = {}
+                    if self.save_seeds:
+                        seed = item.data_for_streamline['seeds']
+                        seed_dict = {'seeds': seed-0.5}
 
                     if self.compress:
                         streamline = compress_streamlines(
@@ -116,7 +122,7 @@ class Tracker(object):
                     if (self.env.min_nb_steps < streamline_length <
                             self.env.max_nb_steps):
                         yield TractogramItem(
-                            streamline, {'seeds': seed-0.5}, {})
+                            streamline, seed_dict, {})
 
         tractogram = LazyTractogram.from_data_func(tracking_generator)
 

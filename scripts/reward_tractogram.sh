@@ -3,9 +3,9 @@ DATASET_FOLDER=${TRACK_TO_LEARN_DATA}
 dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 
 # Env parameters
-n_seeds_per_voxel=2 # Seed per voxel
+npv=2 # Seed per voxel
 add_neighborhood=0.75 # Neighborhood to add to state input
-max_angle=30 # Maximum angle for streamline curvature
+theta=30 # Maximum angle for streamline curvature
 min_length=20 # Minimum streamline length
 max_length=200 # Maximum streamline length
 step_size=0.75 # Step size (in mm)
@@ -26,8 +26,8 @@ python ./scripts/reward_tractogram.py ${@:1:$#-1} \
   "${dataset_file}" \
   "${SUBJECT_ID}" \
   --rng_seed=${rng_seed} \
-  --n_seeds_per_voxel=${n_seeds_per_voxel} \
-  --max_angle=${max_angle} \
+  --npv=${npv} \
+  --theta=${theta} \
   --min_length=${min_length} \
   --max_length=${max_length} \
   --step_size=${step_size} \

@@ -29,11 +29,11 @@ gamma=0.85 # Gamma for reward discounting
 alpha=0.075
 
 # Model params
-valid_noise=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-n_seeds_per_voxel=10 # Seed per voxel
-max_angle=30 # Maximum angle for streamline curvature
+npv=10 # Seed per voxel
+theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=SAC_FiberCupTrainExp3
 
@@ -62,8 +62,8 @@ do
     --gamma=${gamma} \
     --alpha=${alpha} \
     --rng_seed=${rng_seed} \
-    --n_seeds_per_voxel=${n_seeds_per_voxel} \
-    --max_angle=${max_angle} \
+    --npv=${npv} \
+    --theta=${theta} \
     --no_retrack \
     --use_gpu \
     --use_comet \

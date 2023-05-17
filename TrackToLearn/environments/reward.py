@@ -27,7 +27,7 @@ class Reward(object):
         exclude: MRIDataVolume = None,
         target: MRIDataVolume = None,
         max_nb_steps: float = 200,
-        max_angle: float = 60,
+        theta: float = 60,
         min_nb_steps: float = 10,
         asymmetric: bool = False,
         alignment_weighting: float = 1.0,
@@ -48,7 +48,7 @@ class Reward(object):
             Mask representing the tracking no-go zones
         max_len: `float`
             Maximum lengths for the streamlines (in terms of points)
-        max_angle: `float`
+        theta: `float`
             Maximum degrees between two streamline segments
         alignment_weighting: `float`
             Coefficient for how much reward to give to the alignment
@@ -79,7 +79,7 @@ class Reward(object):
         self.exclude = exclude
         self.target = target
         self.max_nb_steps = max_nb_steps
-        self.max_angle = max_angle
+        self.theta = theta
         self.min_nb_steps = min_nb_steps
         self.asymmetric = asymmetric
         self.alignment_weighting = alignment_weighting
@@ -160,7 +160,7 @@ class Reward(object):
         # Penalize sharp turns
         if self.angle_penalty_factor > 0.:
             rewards += penalize_sharp_turns(
-                streamlines, self.max_angle, self.angle_penalty_factor)
+                streamlines, self.theta, self.angle_penalty_factor)
 
         # Penalize streamlines ending in exclusion mask
         if self.exclude_penalty_factor > 0.:
@@ -327,14 +327,14 @@ def penalize_exclude(streamlines, exclude, penalty_factor):
             streamlines, exclude, 0.5) * -penalty_factor
 
 
-def penalize_sharp_turns(streamlines, max_angle, penalty_factor):
+def penalize_sharp_turns(streamlines, theta, penalty_factor):
     """ Penalize streamlines if they curve too much
 
     Parameters
     ----------
     streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
         Streamline coordinates in voxel space
-    max_angle: `float`
+    theta: `float`
         Maximum angle between streamline steps
     penalty_factor: `float`
         Penalty for looping or too-curvy streamlines
@@ -344,7 +344,7 @@ def penalize_sharp_turns(streamlines, max_angle, penalty_factor):
     rewards: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
         Array containing the reward
     """
-    return is_too_curvy(streamlines, max_angle) * -penalty_factor
+    return is_too_curvy(streamlines, theta) * -penalty_factor
 
 
 def reward_length(streamlines, max_length):

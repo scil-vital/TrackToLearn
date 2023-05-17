@@ -110,13 +110,13 @@ class TrackToLearnExperiment(Experiment):
             'n_signal': self.n_signal,
             'n_dirs': self.n_dirs,
             'step_size': self.step_size,
-            'max_angle': self.max_angle,
+            'theta': self.theta,
             'min_length': self.min_length,
             'max_length': self.max_length,
             'cmc': self.cmc,
             'asymmetric': self.asymmetric,
-            'valid_noise': self.valid_noise,
-            'n_seeds_per_voxel': self.n_seeds_per_voxel,
+            'prob': self.prob,
+            'npv': self.npv,
             'rng': self.rng,
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
@@ -169,12 +169,12 @@ class TrackToLearnExperiment(Experiment):
         else:
             if self.no_retrack:
                 env = class_dict['tracker'].from_dataset(env_dto, 'training')
-                back_env = class_dict['back_tracker'].from_dataset(
-                    env_dto, 'training')
+                back_env = class_dict['back_tracker'].from_env(
+                    env_dto, env)
             else:
                 env = class_dict['tracker'].from_dataset(env_dto, 'training')
-                back_env = class_dict['retracker'].from_dataset(
-                    env_dto, 'training')
+                back_env = class_dict['retracker'].from_env(
+                    env_dto, env)
 
         return back_env, env
 
@@ -202,12 +202,12 @@ class TrackToLearnExperiment(Experiment):
         else:
             if self.no_retrack:
                 env = class_dict['tracker'].from_dataset(env_dto, 'validation')
-                back_env = class_dict['back_tracker'].from_dataset(
-                    env_dto, 'validation')
+                back_env = class_dict['back_tracker'].from_env(
+                    env_dto, env)
             else:
                 env = class_dict['tracker'].from_dataset(env_dto, 'validation')
-                back_env = class_dict['retracker'].from_dataset(
-                    env_dto, 'validation')
+                back_env = class_dict['retracker'].from_env(
+                    env_dto, env)
 
         return back_env, env
 
@@ -228,10 +228,11 @@ class TrackToLearnExperiment(Experiment):
 
         # Update DTO to include indiv. files instead of hdf5
         env_dto.update({
-            'fodf_file': self.fodf_file,
+            'in_odf': self.in_odf,
             'wm_file': self.wm_file,
-            'seeding_file': self.seeding_file,
-            'tracking_file': self.tracking_file,
+            'in_seed': self.in_seed,
+            'in_mask': self.in_mask,
+            'sh_basis': self.sh_basis
         })
 
         # Someone with better knowledge of design patterns could probably
@@ -242,10 +243,10 @@ class TrackToLearnExperiment(Experiment):
         else:
             if self.no_retrack:
                 env = class_dict['tracker'].from_files(env_dto)
-                back_env = class_dict['back_tracker'].from_files(env_dto)
+                back_env = class_dict['back_tracker'].from_env(env_dto, env)
             else:
                 env = class_dict['tracker'].from_files(env_dto)
-                back_env = class_dict['retracker'].from_files(env_dto)
+                back_env = class_dict['retracker'].from_env(env_dto, env)
 
         return back_env, env
 
