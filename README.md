@@ -4,51 +4,39 @@
 
 ### Installation and setup
 
+**Right now, only python 3.8 is supported.**
+
 It is recommended to use `virtualenv` to run the code
 
 ``` bash
-virtualenv .env
+virtualenv .env --python=python3.8
+source .env/bin/activate
 ```
 
 Then, install the dependencies and setup the repo with
 
 ``` bash
-# Install common requirements
 pip install -r requirements.txt
-# Install some specific requirments from git
-pip install git+https://github.com/scilus/scilpy@1.3.0#egg=scilpy
-pip install git+https://github.com/scil-vital/dwi_ml#egg=dwi_ml
-pip install git+https://github.com/scilus/ismrm_2015_tractography_challenge_scoring.git
-# Load the project into the environment
 pip install -e .
 ```
 
 TrackToLearn was developed using `torch==1.9.1` with CUDA 11. You may have to change the torch version in `requirements.txt` to suit your local installation.
 
-Right now, only python 3.8 is supported.
-
 ### Tracking
 
-You will need a trained agent for tracking. One is provided in the `example_model` folder. You can then track by running `TrackToLearn/runners/track.py`.
+You will need a trained agent for tracking. One is provided in the `example_model` folder. You can then track by running `ttl_track.py`.
 
 ```
-usage: track.py [-h] [--n_actor N_ACTOR] [--remove_invalid_streamlines]
-                [--fa_map FA_MAP] [--use_gpu] [--rng_seed RNG_SEED]
-                [--n_signal N_SIGNAL] [--n_dirs N_DIRS]
-                [--add_neighborhood ADD_NEIGHBORHOOD]
-                [--n_seeds_per_voxel N_SEEDS_PER_VOXEL]
-                [--max_angle MAX_ANGLE] [--min_length MIN_LENGTH]
-                [--max_length MAX_LENGTH] [--cmc]
-                [--asymmetric] [--valid_noise VALID_NOISE]
-                [--interface_seeding] [--no_retrack]
-
-                fodf_file wm_file seeding_file tracking_file reference_file
-                policy hyperparameters out_tractogram
+usage: track.py [-h] [--sh_basis {descoteaux07,tournier07}]
+                [--compress thresh] [-f] [--save_seeds] [--npv NPV]
+                [--min_length m] [--max_length M] [--prob sigma]
+                [--fa_map FA_MAP] [--n_actor N] [--rng_seed RNG_SEED]
+                in_odf in_seed in_mask out_tractogram policy hyperparameters
 ```
 
-You will need to provide fODFs, a WM mask, a seeding mask, a tracking mask and a reference anatomy. The `policy` parameter needs to point to the folder containing .pth (pytorch weights) files (for example, `example_model/SAC_Auto_ISMRM2015_WM/`). The `hyperparameters` parameter needs to point to the `.json` containing the agent's hyperparameters (for example `example_model/SAC_Auto_ISMRM2015_WM/hyperparameters.json`).
+You will need to provide fODFs, a seeding mask and a WM mask. The `policy` parameter needs to point to the folder containing .pth (pytorch weights) files (for example, `example_model/SAC_Auto_ISMRM2015_WM/`). The `hyperparameters` parameter needs to point to the `.json` containing the agent's hyperparameters (for example `example_model/SAC_Auto_ISMRM2015_WM/hyperparameters.json`).
 
-Agents used for tracking are constrained by their training regime. For example, the agent provided in `example_model` was trained on a volume with a resolution of 2mm iso voxels and a step size of 0.75mm using fODFs of order 6, `descoteaux07` basis. When tracking on arbitrary data, the step-size will be adjusted accordingly automatically (for example, the step size will be 0.375mm at 1mm iso resolution) but you will have to provide fODFs of the same order and basis.
+Agents used for tracking are constrained by their training regime. For example, the agents provided in `example_model` were trained on a volume with a resolution of 2mm iso voxels and a step size of 0.75mm using fODFs of order 6, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically. **However**, if using fODFs in the `tournier07` (coming from MRtrix, for example), you will need to set the `--sh_basis` argument accordingly.
 
 Other trained agents are available here: https://zenodo.org/record/7853590
 
@@ -86,10 +74,10 @@ usage: ppo_train.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
                     [--target_bonus_factor TARGET_BONUS_FACTOR]
                     [--exclude_penalty_factor EXCLUDE_PENALTY_FACTOR]
                     [--angle_penalty_factor ANGLE_PENALTY_FACTOR]
-                    [--n_seeds_per_voxel N_SEEDS_PER_VOXEL]
-                    [--max_angle MAX_ANGLE] [--min_length MIN_LENGTH]
+                    [--npv N_SEEDS_PER_VOXEL]
+                    [--theta MAX_ANGLE] [--min_length MIN_LENGTH]
                     [--max_length MAX_LENGTH] [--step_size STEP_SIZE]
-                    [--valid_noise VALID_NOISE] [--interface_seeding]
+                    [--prob VALID_NOISE] [--interface_seeding]
                     [--no_retrack] [--entropy_loss_coeff ENTROPY_LOSS_COEFF]
                     [--action_std ACTION_STD] [--lmbda LMBDA]
                     [--K_epochs K_EPOCHS] [--eps_clip EPS_CLIP]
