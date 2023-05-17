@@ -102,7 +102,9 @@ See `ARCHITECURE.md` for an overview of the code.
 
 ## What matters in Reinforcement Learning for Tractography (2023)
 
-See preprint: TODO
+The reference commit to the `main` branch for this work is `9f97eefbbdb05a2c90ea74e8384ac2891b194a3e`.
+
+See preprint: https://arxiv.org/abs/2305.09041
 
 This version of Track-to-Learn should serve as a reference going forward to use and improve upon Track-to-Learn. Refer to the readme above for usage.
 
