@@ -33,9 +33,12 @@ TrackToLearn was developed using `torch==1.9.1` with CUDA 11. You may have to ch
 You will need a trained agent for tracking. One is provided in the `example_model` folder. You can then track by running `ttl_track.py`.
 
 ```
-usage: usage: ttl_track.py [-h] [--sh_basis {descoteaux07,tournier07}] [--compress thresh] [-f] [--save_seeds] [--policy POLICY] [--hyperparameters HYPERPARAMETERS] [--npv NPV] [--interface] [--min_length m] [--max_length M]
-                    [--prob sigma] [--fa_map FA_MAP] [--n_actor N] [--rng_seed RNG_SEED]
-                    in_odf in_seed in_mask out_tractogram```
+usage: ttl_track.py [-h] [--sh_basis {descoteaux07,tournier07}] [--compress thresh] [-f] [--save_seeds]
+                    [--policy POLICY] [--hyperparameters HYPERPARAMETERS] [--npv NPV] [--interface]
+                    [--min_length m] [--max_length M] [--prob sigma] [--fa_map FA_MAP] [--n_actor N]
+                    [--rng_seed RNG_SEED]
+                    in_odf in_seed in_mask out_tractogram
+```
 
 You will need to provide fODFs, a seeding mask and a WM mask.
 
