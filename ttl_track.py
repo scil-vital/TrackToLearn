@@ -7,6 +7,7 @@ import random
 import torch
 
 from argparse import RawTextHelpFormatter
+from os.path import join
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
 from scilpy.io.utils import (add_sh_basis_args,
@@ -31,6 +32,9 @@ from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 assert (torch.cuda.is_available())
+
+DEFAULT_WM_MODEL = 'example_models/SAC_Auto_ISMRM2015_WM/'
+DEFAULT_INTERFACE_MODEL = 'example_models/SAC_Auto_ISMRM2015_interface/'
 
 
 class TrackToLearnTrack(TrackToLearnExperiment):
@@ -64,7 +68,6 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.out_tractogram = track_dto['out_tractogram']
 
         self.prob = track_dto['prob']
-        self.policy = track_dto['policy']
         self.n_actor = track_dto['n_actor']
         self.npv = track_dto['npv']
         self.min_length = track_dto['min_length']
@@ -86,7 +89,10 @@ class TrackToLearnTrack(TrackToLearnExperiment):
                 data=fa_image.get_fdata(),
                 affine_vox2rasmm=fa_image.affine)
 
-        with open(track_dto['hyperparameters'], 'r') as json_file:
+        self.policy = track_dto['policy']
+        self.hyperparameters = track_dto['hyperparameters']
+
+        with open(self.hyperparameters, 'r') as json_file:
             hyperparams = json.load(json_file)
             self.algorithm = hyperparams['algorithm']
             self.step_size = float(hyperparams['step_size'])
@@ -102,7 +108,8 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
-            self.interface_seeding = hyperparams['interface_seeding']
+            self.interface_seeding = track_dto['interface'] or \
+                hyperparams['interface_seeding']
             self.no_retrack = hyperparams.get('no_retrack', False)
 
             self.cmc = hyperparams['cmc']
@@ -189,20 +196,31 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 def add_track_args(parser):
 
     add_mandatory_options_tracking(parser)
-    parser.add_argument('policy', type=str,
-                        help='Path to the folder containing .pth files.')
-    parser.add_argument('hyperparameters', type=str,
-                        help='Path to the .json file containing the '
-                             'hyperparameters of your tracking agent.')
 
     basis_group = parser.add_argument_group('Basis options')
     add_sh_basis_args(basis_group)
     add_out_options(parser)
 
+    parser.add_argument('--policy', type=str,
+                        help='Path to the folder containing .pth files.\n'
+                        'If not set, will default to the example '
+                        'models.\n'
+                        'Example: example_models/SAC_Auto_ISMRM2015_WM/')
+    parser.add_argument(
+        '--hyperparameters', type=str,
+        help='Path to the .json file containing the '
+        'hyperparameters of your tracking agent. \n'
+        'If not set, will default to the example models.\n'
+        'Example: example_models/SAC_Auto_ISMRM2015_WM/hyperparameters.json')
+
     seed_group = parser.add_argument_group('Seeding options')
     seed_group.add_argument('--npv', type=int, default=1,
                             help='Number of seeds per voxel.')
-
+    seed_group.add_argument('--interface', action='store_true',
+                            help='If set, tracking will be presumed to be '
+                            'initialized at the WM/GM interface.\n**Be '
+                            'careful to provide the proper seeding '
+                                 'mask.**')
     track_g = parser.add_argument_group('Tracking options')
     track_g.add_argument('--min_length', type=float, default=10.,
                          metavar='m',
@@ -230,6 +248,23 @@ def add_track_args(parser):
                       help='Random number generator seed.')
 
 
+def verify_policy_option(parser, args):
+
+    if (args.policy is not None and args.hyperparameters is None) or \
+       (args.policy is None and args.hyperparameters is not None):
+        parser.error('You must specify both --policy and --hyperparameters '
+                     'arguments.')
+
+    if args.interface and args.policy is None:
+        args.policy = DEFAULT_INTERFACE_MODEL
+        args.hyperparameters = join(
+            DEFAULT_INTERFACE_MODEL, 'hyperparameters.json')
+    elif args.policy is None:
+        args.policy = DEFAULT_WM_MODEL
+        args.hyperparameters = join(
+            DEFAULT_WM_MODEL, 'hyperparameters.json')
+
+
 def parse_args():
     """ Generate a tractogram from a trained model. """
     parser = argparse.ArgumentParser(
@@ -248,6 +283,7 @@ def parse_args():
 
     verify_streamline_length_options(parser, args)
     verify_compression_th(args.compress)
+    verify_policy_option(parser, args)
 
     return args
 
