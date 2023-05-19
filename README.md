@@ -16,7 +16,13 @@ source .env/bin/activate
 Then, install the dependencies and setup the repo with
 
 ``` bash
+# Install common requirements
 pip install -r requirements.txt
+# Install some specific requirements directly from git
+pip install git+https://github.com/scilus/scilpy@1.3.0#egg=scilpy
+pip install git+https://github.com/scil-vital/dwi_ml#egg=dwi_ml
+pip install git+https://github.com/scilus/ismrm_2015_tractography_challenge_scoring.git
+# Load the project into the environment
 pip install -e .
 ```
 
@@ -27,16 +33,16 @@ TrackToLearn was developed using `torch==1.9.1` with CUDA 11. You may have to ch
 You will need a trained agent for tracking. One is provided in the `example_model` folder. You can then track by running `ttl_track.py`.
 
 ```
-usage: track.py [-h] [--sh_basis {descoteaux07,tournier07}]
-                [--compress thresh] [-f] [--save_seeds] [--npv NPV]
-                [--min_length m] [--max_length M] [--prob sigma]
-                [--fa_map FA_MAP] [--n_actor N] [--rng_seed RNG_SEED]
-                in_odf in_seed in_mask out_tractogram policy hyperparameters
+usage: ttl_track.py [-h] [--sh_basis {descoteaux07,tournier07}] [--compress thresh] [-f] [--save_seeds]
+                    [--policy POLICY] [--hyperparameters HYPERPARAMETERS] [--npv NPV] [--interface]
+                    [--min_length m] [--max_length M] [--prob sigma] [--fa_map FA_MAP] [--n_actor N]
+                    [--rng_seed RNG_SEED]
+                    in_odf in_seed in_mask out_tractogram
 ```
 
-You will need to provide fODFs, a seeding mask and a WM mask. The `policy` parameter needs to point to the folder containing .pth (pytorch weights) files (for example, `example_model/SAC_Auto_ISMRM2015_WM/`). The `hyperparameters` parameter needs to point to the `.json` containing the agent's hyperparameters (for example `example_model/SAC_Auto_ISMRM2015_WM/hyperparameters.json`).
+You will need to provide fODFs, a seeding mask and a WM mask.
 
-Agents used for tracking are constrained by their training regime. For example, the agents provided in `example_model` were trained on a volume with a resolution of 2mm iso voxels and a step size of 0.75mm using fODFs of order 6, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically. **However**, if using fODFs in the `tournier07` (coming from MRtrix, for example), you will need to set the `--sh_basis` argument accordingly.
+Agents used for tracking are constrained by their training regime. For example, the agents provided in `example_models` were trained on a volume with a resolution of 2mm iso voxels and a step size of 0.75mm using fODFs of order 6, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically. **However**, if using fODFs in the `tournier07` (coming from MRtrix, for example), you will need to set the `--sh_basis` argument accordingly.
 
 Other trained agents are available here: https://zenodo.org/record/7853590
 
