@@ -53,20 +53,23 @@ class BaseEnv(object):
             Volumetric data containing the SH coefficients
         tracking_mask: MRIDataVolume
             Volumetric mask where tracking is allowed
-        seeding_mask: MRIDataVolume
-            Mask where seeding should be done
         target_mask: MRIDataVolume
             Mask representing the tracking endpoints
-        exclude_mask: MRIDataVolume
-            Mask representing the tracking no-go zones
+        seeding_mask: MRIDataVolume
+            Mask where seeding should be done
         peaks: MRIDataVolume
             Volume containing the fODFs peaks
         env_dto: dict
             DTO containing env. parameters
+        include_mask: MRIDataVolume
+            Mask representing the tracking go zones. Only useful if
+            using CMC.
+        exclude_mask: MRIDataVolume
+            Mask representing the tracking no-go zones. Only useful if
+            using CMC.
         """
 
         # Volumes and masks
-        self.reference = input_volume
         self.affine_vox2rasmm = input_volume.affine_vox2rasmm
         self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
 
@@ -82,6 +85,8 @@ class BaseEnv(object):
         self.obs_rms = None
 
         self._state_size = None  # to be calculated later
+
+        self.reference = env_dto['reference']
 
         # Tracking parameters
         self.n_signal = env_dto['n_signal']
@@ -104,6 +109,7 @@ class BaseEnv(object):
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.compute_reward = env_dto['compute_reward']
+        self.scoring_data = env_dto['scoring_data']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -140,8 +146,8 @@ class BaseEnv(object):
                 target_bonus_factor=self.target_bonus_factor,
                 exclude_penalty_factor=self.exclude_penalty_factor,
                 angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=None,  # TODO: Add scoring back
-                reference=input_volume)
+                scoring_data=self.scoring_data,
+                reference=self.reference)
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
@@ -396,7 +402,7 @@ class BaseEnv(object):
                 target_bonus_factor=self.target_bonus_factor,
                 exclude_penalty_factor=self.exclude_penalty_factor,
                 angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=None,  # TODO: Add scoring back
+                scoring_data=self.scoring_data,
                 reference=self.reference)
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \

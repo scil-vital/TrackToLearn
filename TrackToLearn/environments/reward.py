@@ -91,36 +91,40 @@ class Reward(object):
         self.scoring_data = scoring_data
         self.reference = reference
 
-        if self.scoring_data:
+        # if self.scoring_data:
+        #     print('WARNING: Rewarding from the Tractometer is not currently '
+        #           'officially supported and may not work. If you do want to '
+        #           'improve Track-to-Learn and make it work, I can happily '
+        #           'help !')
 
-            gt_bundles_attribs_path = os.path.join(
-                self.scoring_data,
-                'gt_bundles_attributes.json')
+        #     gt_bundles_attribs_path = os.path.join(
+        #         self.scoring_data,
+        #         'gt_bundles_attributes.json')
 
-            basic_bundles_attribs = load_attribs(gt_bundles_attribs_path)
+        #     basic_bundles_attribs = load_attribs(gt_bundles_attribs_path)
 
-            # Prepare needed scoring data
-            masks_dir = os.path.join(self.scoring_data, "masks")
-            rois_dir = os.path.join(masks_dir, "rois")
-            bundles_dir = os.path.join(self.scoring_data, "bundles")
-            bundles_masks_dir = os.path.join(masks_dir, "bundles")
-            ref_anat_fname = os.path.join(masks_dir, "wm.nii.gz")
+        #     # Prepare needed scoring data
+        #     masks_dir = os.path.join(self.scoring_data, "masks")
+        #     rois_dir = os.path.join(masks_dir, "rois")
+        #     bundles_dir = os.path.join(self.scoring_data, "bundles")
+        #     bundles_masks_dir = os.path.join(masks_dir, "bundles")
+        #     ref_anat_fname = os.path.join(masks_dir, "wm.nii.gz")
 
-            ROIs = [nib.load(os.path.join(rois_dir, f))
-                    for f in sorted(os.listdir(rois_dir))]
+        #     ROIs = [nib.load(os.path.join(rois_dir, f))
+        #             for f in sorted(os.listdir(rois_dir))]
 
-            # Get the dict with 'name', 'threshold', 'streamlines',
-            # 'cluster_map' and 'mask' for each bundle.
-            ref_bundles = _prepare_gt_bundles_info(bundles_dir,
-                                                   bundles_masks_dir,
-                                                   basic_bundles_attribs,
-                                                   ref_anat_fname)
+        #     # Get the dict with 'name', 'threshold', 'streamlines',
+        #     # 'cluster_map' and 'mask' for each bundle.
+        #     ref_bundles = _prepare_gt_bundles_info(bundles_dir,
+        #                                            bundles_masks_dir,
+        #                                            basic_bundles_attribs,
+        #                                            ref_anat_fname)
 
-            self.scoring_function = functools.partial(
-                score,
-                ref_bundles=ref_bundles,
-                ROIs=ROIs,
-                compute_ic_ib=False)
+        #     self.scoring_function = functools.partial(
+        #         score,
+        #         ref_bundles=ref_bundles,
+        #         ROIs=ROIs,
+        #         compute_ic_ib=False)
 
     def __call__(self, streamlines, dones):
         """
@@ -213,7 +217,12 @@ class Reward(object):
         streamlines: np.ndarray,
         dones: np.ndarray,
     ):
-        """ Reward streamlines if they end up in the GM
+        """ Reward streamlines if the Tractometer marks them as valid.
+
+        **WARNING**: This function is not supported and may not work. I
+        wrote it as part of some experimentation and I forgot to remove it
+        when releasing the code. Let me know if you want help making this
+        work.
 
         Parameters
         ----------
@@ -230,18 +239,26 @@ class Reward(object):
         rewards: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
             Array containing the reward
         """
+
         # Get boolean array of streamlines ending in mask * penalty
         if streamlines.shape[1] >= self.min_nb_steps and np.any(dones):
+            # Should the SFT be moved to RASMM space for scoring ? To corner
+            # or to center ?
             sft = StatefulTractogram(streamlines, self.reference, Space.VOX)
             to_score = np.arange(len(sft))[dones]
             sub_sft = sft[to_score]
             VC, IC, NC = self.scoring_function(sub_sft)
 
+            # The factors for positively and negatively rewarding streamlines
+            # as well as which to apply positive, negative or no reward is 
+            # open for improvements. I have not thoroughly tested anything.
+
             reward = np.zeros((streamlines.shape[0]))
             if len(VC) > 0:
                 reward[to_score[VC]] += self.target_bonus_factor
-                self.render(self.peaks, streamlines[to_score[VC]],
-                            reward[to_score[VC]])
+                # Display which streamlines are positively rewarded
+                # self.render(self.peaks, streamlines[to_score[VC]],
+                #             reward[to_score[VC]])
             if len(IC) > 0:
                 reward[to_score[IC]] -= self.target_bonus_factor
             if len(NC) > 0:
