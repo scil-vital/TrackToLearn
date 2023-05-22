@@ -30,8 +30,6 @@ from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert (torch.cuda.is_available())
 
 DEFAULT_WM_MODEL = 'example_models/SAC_Auto_ISMRM2015_WM/'
 DEFAULT_INTERFACE_MODEL = 'example_models/SAC_Auto_ISMRM2015_interface/'
@@ -81,6 +79,10 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.compute_reward = False
         self.scoring_data = None
         self.render = False
+
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() and not track_dto['cpu']
+            else "cpu")
 
         self.fa_map = None
         if 'fa_map_file' in track_dto:
@@ -168,7 +170,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             self.hidden_dims,
             n_actors=self.n_actor,
             rng=self.rng,
-            device=device)
+            device=self.device)
 
         # Load pretrained policies
         alg.policy.load(self.policy, 'last_model_state')
@@ -247,6 +249,8 @@ def add_track_args(parser):
                       ' size of your GPU and RAM.\n[%(default)s]')
     ml_g.add_argument('--rng_seed', default=1337, type=int,
                       help='Random number generator seed.')
+    parser.add_argument('--cpu', action='store_true',
+                        help='Use CPU for tracking.')
 
 
 def verify_policy_option(parser, args):

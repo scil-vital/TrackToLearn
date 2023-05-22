@@ -10,9 +10,6 @@ from TrackToLearn.algorithms.shared.offpolicy import TD3ActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 class TD3(DDPG):
     """
     The sample-gathering and training algorithm.
@@ -73,7 +70,7 @@ class TD3(DDPG):
 
         # Initialize main policy
         self.policy = TD3ActorCritic(
-            input_size, action_size, hidden_dims,
+            input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline

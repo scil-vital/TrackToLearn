@@ -12,9 +12,6 @@ from TrackToLearn.algorithms.shared.utils import (
     add_item_to_means, mean_losses)
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 # TODO : ADD TYPES AND DESCRIPTION
 class ACKTR(A2C):
     """
@@ -93,7 +90,7 @@ class ACKTR(A2C):
 
         # Declare policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_dims, action_std
+            input_size, action_size, hidden_dims, device, action_std
         ).to(device)
 
         # Optimizer for actor
@@ -191,7 +188,7 @@ class ACKTR(A2C):
                 self.policy.zero_grad()
                 pg_fisher_loss = -log_prob.mean()
 
-                noisy_v = v + torch.randn(v.size(), device=device)
+                noisy_v = v + torch.randn(v.size(), device=self.device)
                 vf_fisher_loss = -(v - noisy_v.detach()).pow(2).mean()
 
                 fisher_loss = pg_fisher_loss + vf_fisher_loss

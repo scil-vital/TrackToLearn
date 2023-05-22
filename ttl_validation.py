@@ -31,9 +31,6 @@ from TrackToLearn.experiment.experiment import (
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert (torch.cuda.is_available())
-
 
 class TrackToLearnValidation(TrackToLearnExperiment):
     """ TrackToLearn validing script. Should work on any model trained with a
@@ -97,6 +94,10 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.comet_experiment = None
         self.remove_invalid_streamlines = valid_dto[
             'remove_invalid_streamlines']
+
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() and not valid_dto['cpu']
+            else "cpu")
 
         self.random_seed = valid_dto['rng_seed']
         torch.manual_seed(self.random_seed)
@@ -217,7 +218,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.hidden_dims,
             n_actors=self.n_actor,
             rng=self.rng,
-            device=device)
+            device=self.device)
 
         # Load pretrained policies
         alg.policy.load(self.policy, 'last_model_state')
@@ -264,6 +265,8 @@ def add_valid_args(parser):
                         'tracking')
     parser.add_argument('--valid_theta', type=float, default=None,
                         help='Max valid angle to override the model\'s own.')
+    parser.add_argument('--cpu', action='store_true',
+                        help='Use CPU for tracking.')
 
 
 def parse_args():

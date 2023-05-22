@@ -12,9 +12,6 @@ from TrackToLearn.algorithms.shared.utils import (
     add_item_to_means, mean_losses)
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 # TODO : ADD TYPES AND DESCRIPTION
 class PPO(A2C):
     """
@@ -100,7 +97,7 @@ class PPO(A2C):
 
         # Declare policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_dims, action_std,
+            input_size, action_size, hidden_dims, device, action_std,
         ).to(device)
 
         # Note the optimizer is ran on the target network's params

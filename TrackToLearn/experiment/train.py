@@ -13,8 +13,7 @@ from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 from TrackToLearn.experiment.experiment import add_reward_args
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert torch.cuda.is_available()
+assert torch.cuda.is_available(), "Training is only possible on CUDA devices."
 
 
 class TrackToLearnTraining(TrackToLearnExperiment):
@@ -72,7 +71,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.angle_penalty_factor = train_dto['angle_penalty_factor']
 
         # Model parameters
-        self.use_gpu = train_dto['use_gpu']
         self.hidden_dims = train_dto['hidden_dims']
         self.load_policy = train_dto['load_policy']
         self.comet_experiment = comet_experiment
@@ -86,6 +84,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
         self.no_retrack = train_dto['no_retrack']
+
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
 
         self.use_comet = train_dto['use_comet']
 
@@ -121,7 +122,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'asymmetric': self.asymmetric,
             # Model parameters
             'experiment_path': self.experiment_path,
-            'use_gpu': self.use_gpu,
             'hidden_dims': self.hidden_dims,
             'last_episode': self.last_episode,
             'n_actor': self.n_actor,
