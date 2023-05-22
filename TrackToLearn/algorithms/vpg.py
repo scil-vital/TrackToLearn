@@ -13,9 +13,6 @@ from TrackToLearn.algorithms.shared.utils import (
 from TrackToLearn.environments.env import BaseEnv
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 class VPG(RLAlgorithm):
     """
     The sample-gathering and training algorithm.
@@ -80,7 +77,7 @@ class VPG(RLAlgorithm):
 
         # Declare policy
         self.policy = PolicyGradient(
-            input_size, action_size, hidden_dims, action_std
+            input_size, action_size, hidden_dims, device, action_std
         ).to(device)
 
         # Optimizer for actor

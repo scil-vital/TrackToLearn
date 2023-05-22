@@ -10,8 +10,6 @@ from torch.distributions.normal import Normal
 from TrackToLearn.algorithms.shared.utils import (
     format_widths, make_fc_network)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
@@ -237,6 +235,7 @@ class ActorCritic(object):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        device: torch.device,
     ):
         """
         Parameters:
@@ -249,6 +248,7 @@ class ActorCritic(object):
                 String representing layer widths
 
         """
+        self.device = device
         self.actor = Actor(
             state_dim, action_dim, hidden_dims,
         ).to(device)
@@ -289,7 +289,7 @@ class ActorCritic(object):
         # if state is not batched, expand it to "batch of 1"
         if len(state.shape) < 2:
             state = state[None, :]
-        state = torch.as_tensor(state, dtype=torch.float32, device=device)
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
         action = self.act(state).cpu().data.numpy()
 
         return action
@@ -335,11 +335,16 @@ class ActorCritic(object):
             filename: string
                 Name of saved models. Suffixes for actors and critics
                 will be appended
+            device: torch.device
+                Device to load agent. If None, defaults to GPU.
         """
+        print(self.device)
         self.critic.load_state_dict(
-            torch.load(pjoin(path, filename + '_critic.pth')))
+            torch.load(pjoin(path, filename + '_critic.pth'),
+                       map_location=self.device))
         self.actor.load_state_dict(
-            torch.load(pjoin(path, filename + '_actor.pth')))
+            torch.load(pjoin(path, filename + '_actor.pth'),
+                       map_location=self.device))
 
     def eval(self):
         """ Switch actors and critics to eval mode
@@ -363,6 +368,7 @@ class TD3ActorCritic(ActorCritic):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        device: torch.device,
     ):
         """
         Parameters:
@@ -375,6 +381,7 @@ class TD3ActorCritic(ActorCritic):
                 String representing layer widths
 
         """
+        self.device = device
         self.actor = Actor(
             state_dim, action_dim, hidden_dims,
         ).to(device)
@@ -393,6 +400,7 @@ class SACActorCritic(ActorCritic):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        device: torch.device,
     ):
         """
         Parameters:
@@ -406,6 +414,7 @@ class SACActorCritic(ActorCritic):
                 layers are of same size for simplicity
 
         """
+        self.device = device
         self.actor = MaxEntropyActor(
             state_dim, action_dim, hidden_dims,
         ).to(device)
@@ -448,7 +457,7 @@ class SACActorCritic(ActorCritic):
         if len(state.shape) < 2:
             state = state[None, :]
 
-        state = torch.as_tensor(state, dtype=torch.float32, device=device)
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
         action, _ = self.act(state, stochastic)
 
         return action.cpu().data.numpy()

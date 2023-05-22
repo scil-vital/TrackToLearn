@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import torch
 
 from os.path import join as pjoin
 from typing import Tuple
@@ -27,9 +26,6 @@ from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.experiment.experiment import Experiment
 from TrackToLearn.utils.utils import LossHistory
 from TrackToLearn.utils.comet_monitor import CometMonitor
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert (torch.cuda.is_available())
 
 
 class TrackToLearnExperiment(Experiment):
@@ -128,7 +124,7 @@ class TrackToLearnExperiment(Experiment):
             'angle_penalty_factor': self.angle_penalty_factor,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
-            'device': device
+            'device': self.device
         }
 
         if noisy:
@@ -235,7 +231,7 @@ class TrackToLearnExperiment(Experiment):
             'in_seed': self.in_seed,
             'in_mask': self.in_mask,
             'sh_basis': self.sh_basis,
-            'reference': self.in_odf, # reference is inferred from the fODF
+            'reference': self.in_odf,  # reference is inferred from the fODF
             # file instead of being passed directly.
         })
 

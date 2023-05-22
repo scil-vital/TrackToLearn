@@ -13,9 +13,6 @@ from TrackToLearn.algorithms.shared.utils import add_item_to_means
 from TrackToLearn.environments.env import BaseEnv
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 class DDPG(RLAlgorithm):
     """
     Training algorithm.
@@ -79,7 +76,7 @@ class DDPG(RLAlgorithm):
 
         # Initialize main policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_dims,
+            input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline

@@ -3,8 +3,6 @@ import torch
 
 from TrackToLearn.environments.env import BaseEnv
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class RLAlgorithm(object):
     """

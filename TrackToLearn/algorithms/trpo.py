@@ -1,4 +1,3 @@
-import copy
 import numpy as np
 import torch
 
@@ -11,9 +10,6 @@ from TrackToLearn.algorithms.shared.onpolicy import ActorCritic
 from TrackToLearn.algorithms.shared.replay import ReplayBuffer
 from TrackToLearn.algorithms.shared.utils import (
     add_item_to_means, mean_losses)
-
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # From ikostrikov's impl
@@ -135,7 +131,7 @@ class TRPO(A2C):
 
         # Declare policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_dims,
+            input_size, action_size, hidden_dims, device,
         ).to(device)
 
         # Note the optimizer is ran on the target network's params
@@ -279,7 +275,7 @@ class TRPO(A2C):
                 """ Compute conjugate gradient of the actor loss gradient
                 https://en.wikipedia.org/wiki/Conjugate_gradient_method#The_resulting_algorithm # noqaE501
                 """
-                x = torch.zeros(b.size(), device=device)
+                x = torch.zeros(b.size(), device=self.device)
                 p = b.clone()
                 r = b.clone()  # - Ax, but Ax = 0 with x = 0
                 rr = torch.dot(r, r)
@@ -387,7 +383,6 @@ class TRPO(A2C):
             # TODO: Better loss and metric logging
             losses = {'actor_loss': actor_loss.item(),
                       'critic_loss': critic_loss.item(),
-                      'v': v.mean().item(),
                       'advantage': advantage.mean().item(),
                       'step_size': step_size,
                       'max_trpo_step': max_trpo_step.mean().item(),

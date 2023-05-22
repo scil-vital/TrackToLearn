@@ -9,8 +9,6 @@ from typing import Tuple
 from TrackToLearn.algorithms.shared.utils import (
     format_widths, make_fc_network)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class Actor(nn.Module):
     """ Actor module that takes in a state and outputs an action.
@@ -22,6 +20,7 @@ class Actor(nn.Module):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        device: torch.device,
         action_std: float = 0.0,
     ):
         """
@@ -36,6 +35,7 @@ class Actor(nn.Module):
 
         """
         super(Actor, self).__init__()
+        self.device = device
 
         self.hidden_layers = format_widths(hidden_dims)
 
@@ -79,9 +79,11 @@ class PolicyGradient(nn.Module):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        device: torch.device,
         action_std: float = 0.0,
     ):
         super(PolicyGradient, self).__init__()
+        self.device = device
         self.action_dim = action_dim
 
         self.actor = Actor(
@@ -136,7 +138,7 @@ class PolicyGradient(nn.Module):
         if len(state.shape) < 2:
             state = state[None, :]
 
-        state = torch.as_tensor(state, dtype=torch.float32, device=device)
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
         action = self.act(state, stochastic).cpu().data.numpy()
 
         return action
@@ -171,8 +173,9 @@ class PolicyGradient(nn.Module):
         if len(action.shape) < 2:
             action = action[None, :]
 
-        state = torch.as_tensor(state, dtype=torch.float32, device=device)
-        action = torch.as_tensor(action, dtype=torch.float32, device=device)
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+        action = torch.as_tensor(
+            action, dtype=torch.float32, device=self.device)
 
         prob, entropy, mu, std = self.evaluate(state, action)
 
@@ -221,7 +224,8 @@ class PolicyGradient(nn.Module):
                 will be appended
         """
         self.actor.load_state_dict(
-            torch.load(pjoin(path, filename + '_actor.pth')))
+            torch.load(pjoin(path, filename + '_actor.pth'),
+                       map_location=self.device))
 
     def eval(self):
         """ Switch actors and critics to eval mode
@@ -245,6 +249,7 @@ class Critic(nn.Module):
         state_dim: int,
         action_dim: int,
         hidden_dims: int,
+        device: torch.device,
     ):
         """
         Parameters:
@@ -259,6 +264,7 @@ class Critic(nn.Module):
 
         """
         super(Critic, self).__init__()
+        self.device = device
 
         self.hidden_layers = format_widths(hidden_dims)
 
@@ -284,18 +290,20 @@ class ActorCritic(PolicyGradient):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        device: torch.device,
         action_std: float = 0.0,
     ):
         super(ActorCritic, self).__init__(
             state_dim,
             action_dim,
             hidden_dims,
+            device,
             action_std
         )
 
         self.critic = Critic(
             state_dim, action_dim, hidden_dims,
-        ).to(device)
+        ).to(self.device)
 
         print(self)
 
@@ -344,8 +352,8 @@ class ActorCritic(PolicyGradient):
         if len(action.shape) < 2:
             action = action[None, :]
 
-        state = torch.FloatTensor(state).to(device)
-        action = torch.FloatTensor(action).to(device)
+        state = torch.FloatTensor(state).to(self.device)
+        action = torch.FloatTensor(action).to(self.device)
 
         v, prob, entropy, mu, std = self.evaluate(state, action)
 
@@ -394,9 +402,11 @@ class ActorCritic(PolicyGradient):
                 will be appended
         """
         self.critic.load_state_dict(
-            torch.load(pjoin(path, filename + '_critic.pth')))
+            torch.load(pjoin(path, filename + '_critic.pth'),
+                       map_location=self.device))
         self.actor.load_state_dict(
-            torch.load(pjoin(path, filename + '_actor.pth')))
+            torch.load(pjoin(path, filename + '_actor.pth'),
+                       map_location=self.device))
 
     def eval(self):
         """ Switch actors and critics to eval mode

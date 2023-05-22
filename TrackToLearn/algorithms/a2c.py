@@ -12,9 +12,6 @@ from TrackToLearn.algorithms.shared.utils import (
     add_item_to_means, mean_losses)
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 class A2C(VPG):
     """
     The sample-gathering and training algorithm.
@@ -89,7 +86,7 @@ class A2C(VPG):
 
         # Declare policy
         self.policy = ActorCritic(
-            input_size, action_size, hidden_dims, action_std
+            input_size, action_size, hidden_dims, device, action_std
         ).to(device)
 
         self.optimizer = torch.optim.Adam(

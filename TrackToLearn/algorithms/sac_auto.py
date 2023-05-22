@@ -11,9 +11,6 @@ from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
 
@@ -87,7 +84,7 @@ class SACAuto(SAC):
 
         # Initialize main policy
         self.policy = SACActorCritic(
-            input_size, action_size, hidden_dims,
+            input_size, action_size, hidden_dims, device,
         )
 
         # Auto-temperature adjustment

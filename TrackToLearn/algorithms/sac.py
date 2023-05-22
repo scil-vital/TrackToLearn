@@ -9,9 +9,6 @@ from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 class SAC(DDPG):
     """
     The sample-gathering and training algorithm.
@@ -81,7 +78,7 @@ class SAC(DDPG):
 
         # Initialize main policy
         self.policy = SACActorCritic(
-            input_size, action_size, hidden_dims,
+            input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline
