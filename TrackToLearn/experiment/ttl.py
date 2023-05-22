@@ -15,7 +15,7 @@ from nibabel.streamlines import Tractogram
 from TrackToLearn.environments.backward_tracking_env import \
     BackwardTrackingEnvironment
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.environments.interface_tracker import (
+from TrackToLearn.environments.interface_tracking_env import (
     InterfaceNoisyTrackingEnvironment,
     InterfaceTrackingEnvironment)
 from TrackToLearn.environments.noisy_tracker import (
@@ -99,7 +99,7 @@ class TrackToLearnExperiment(Experiment):
         self.comet_monitor.log_parameters(self.hyperparameters)
 
     def _get_env_dict_and_dto(
-        self, interface_tracker, no_retrack, noisy
+        self, interface_tracking_env, no_retrack, noisy
     ) -> Tuple[dict, dict]:
 
         env_dto = {
@@ -118,6 +118,8 @@ class TrackToLearnExperiment(Experiment):
             'prob': self.prob,
             'npv': self.npv,
             'rng': self.rng,
+            'scoring_data': self.scoring_data,
+            'reference': self.reference_file,
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
             'length_weighting': self.length_weighting,
@@ -134,14 +136,14 @@ class TrackToLearnExperiment(Experiment):
                 'tracker': NoisyTrackingEnvironment,
                 'back_tracker': BackwardNoisyTrackingEnvironment,
                 'retracker': NoisyRetrackingEnvironment,
-                'interface_tracker': InterfaceNoisyTrackingEnvironment
+                'interface_tracking_env': InterfaceNoisyTrackingEnvironment
             }
         else:
             class_dict = {
                 'tracker': TrackingEnvironment,
                 'back_tracker': BackwardTrackingEnvironment,
                 'retracker': RetrackingEnvironment,
-                'interface_tracker': InterfaceTrackingEnvironment
+                'interface_tracking_env': InterfaceTrackingEnvironment
             }
         return class_dict, env_dto
 
@@ -163,7 +165,7 @@ class TrackToLearnExperiment(Experiment):
         # Someone with better knowledge of design patterns could probably
         # clean this
         if self.interface_seeding:
-            env = class_dict['interface_tracker'].from_dataset(
+            env = class_dict['interface_tracking_env'].from_dataset(
                 env_dto, 'training')
             back_env = None
         else:
@@ -196,7 +198,7 @@ class TrackToLearnExperiment(Experiment):
         # Someone with better knowledge of design patterns could probably
         # clean this
         if self.interface_seeding:
-            env = class_dict['interface_tracker'].from_dataset(
+            env = class_dict['interface_tracking_env'].from_dataset(
                 env_dto, 'validation')
             back_env = None
         else:
@@ -232,13 +234,15 @@ class TrackToLearnExperiment(Experiment):
             'wm_file': self.wm_file,
             'in_seed': self.in_seed,
             'in_mask': self.in_mask,
-            'sh_basis': self.sh_basis
+            'sh_basis': self.sh_basis,
+            'reference': self.in_odf, # reference is inferred from the fODF
+            # file instead of being passed directly.
         })
 
         # Someone with better knowledge of design patterns could probably
         # clean this
         if self.interface_seeding:
-            env = class_dict['interface_tracker'].from_files(env_dto)
+            env = class_dict['interface_tracking_env'].from_files(env_dto)
             back_env = None
         else:
             if self.no_retrack:

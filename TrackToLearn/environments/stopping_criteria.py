@@ -34,7 +34,7 @@ def count_flags(flags, ref_flag):
 
 class BinaryStoppingCriterion(object):
     """
-    Defines if a streamline is outside a mask using trilinear interp.
+    Defines if a streamline is outside a mask using NN interp.
     """
 
     def __init__(
@@ -80,8 +80,18 @@ class BinaryStoppingCriterion(object):
 
 
 class CmcStoppingCriterion(object):
-    """
-    Defines if a streamline is outside a mask using trilinear interp.
+    """ Checks which streamlines should stop according to Continuous map
+    criteria.
+    Ref:
+        Girard, G., Whittingstall, K., Deriche, R., & Descoteaux, M. (2014)
+        Towards quantitative connectivity analysis: reducing tractography
+        biases.
+        Neuroimage, 98, 266-278.
+
+    This is only in the partial-spirit of CMC. A good improvement (#TODO)
+    would be to include or exclude streamlines from the resulting
+    tractogram as well. Let me know if you need help in adding this
+    functionnality.
     """
 
     def __init__(
@@ -115,13 +125,7 @@ class CmcStoppingCriterion(object):
         self,
         streamlines: np.ndarray,
     ):
-        """ Checks which streamlines should stop according to Continuous map
-        criteria.
-        Ref:
-            Girard, G., Whittingstall, K., Deriche, R., & Descoteaux, M. (2014)
-            Towards quantitative connectivity analysis: reducing tractography
-            biases.
-            Neuroimage, 98, 266-278.
+        """
         Parameters
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)

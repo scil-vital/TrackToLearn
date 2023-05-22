@@ -71,6 +71,7 @@ class RetrackingEnvironment(TrackingEnvironment):
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.compute_reward = env_dto['compute_reward']
+        self.scoring_data = env_dto['scoring_data']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -105,7 +106,7 @@ class RetrackingEnvironment(TrackingEnvironment):
                 target_bonus_factor=self.target_bonus_factor,
                 exclude_penalty_factor=self.exclude_penalty_factor,
                 angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=None,  # TODO: Add scoring back
+                scoring_data=self.scoring_data,
                 reference=env.reference)
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
@@ -300,7 +301,7 @@ class RetrackingEnvironment(TrackingEnvironment):
             # Reward streamline step
             reward = self.reward_function(
                 self.streamlines[self.continue_idx, :self.length, :],
-                self.dones)
+                self.dones[self.continue_idx])
 
         # If a streamline is still being retracked
         if np.any(is_still_initializing):

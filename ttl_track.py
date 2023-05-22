@@ -79,6 +79,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         self.run_tractometer = False
         self.compute_reward = False
+        self.scoring_data = None
         self.render = False
 
         self.fa_map = None

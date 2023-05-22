@@ -94,14 +94,14 @@ The `enviroments` submodule contains everything related to RL environments.
 - TrackToLearn
   - environments
     - env.py
-    - interface_tracker.py
+    - interface_tracking_env.py
     - noisy_tracker.py
     - reward.py
     - tracker.py
     - utils.py
 ```
 
-`env.py` contains the base abstract class for environments, `BaseEnv`, in Track-to-Learn. `tracker.py` contains several concrete classes that inherit from `BaseEnv`. `interface_tracker.py` and `noisy_tracker.py` contain classes that inherit from classes in `tracker`. `reward.py` contains the class handling the reward function.
+`env.py` contains the base abstract class for environments, `BaseEnv`, in Track-to-Learn. `tracker.py` contains several concrete classes that inherit from `BaseEnv`. `interface_tracking_env.py` and `noisy_tracker.py` contain classes that inherit from classes in `tracker`. `reward.py` contains the class handling the reward function.
 
 Finally, the `datasets` submodule contains everything related to the creation and processing of datasets.
 

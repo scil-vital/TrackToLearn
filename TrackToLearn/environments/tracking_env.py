@@ -199,7 +199,7 @@ class TrackingEnvironment(BaseEnv):
         if self.compute_reward:
             reward = self.reward_function(
                 self.streamlines[self.continue_idx, :self.length],
-                self.dones)
+                self.dones[self.continue_idx])
 
         return (
             self._format_state(

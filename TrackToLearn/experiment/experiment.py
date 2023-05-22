@@ -123,7 +123,7 @@ def add_data_args(parser):
     parser.add_argument('valid_subject_id',
                         help='Subject id to fetch from the dataset file')
     parser.add_argument('reference_file',
-                        help='Path to binary seeding mask (.nii|.nii.gz)')
+                        help='Path to reference anatomy (.nii.gz).')
     parser.add_argument('scoring_data',
                         help='Path to Tractometer files.')
 
