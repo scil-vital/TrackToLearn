@@ -335,10 +335,7 @@ class ActorCritic(object):
             filename: string
                 Name of saved models. Suffixes for actors and critics
                 will be appended
-            device: torch.device
-                Device to load agent. If None, defaults to GPU.
         """
-        print(self.device)
         self.critic.load_state_dict(
             torch.load(pjoin(path, filename + '_critic.pth'),
                        map_location=self.device))

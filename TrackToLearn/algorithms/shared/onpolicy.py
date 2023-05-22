@@ -35,7 +35,6 @@ class Actor(nn.Module):
 
         """
         super(Actor, self).__init__()
-        self.device = device
 
         self.hidden_layers = format_widths(hidden_dims)
 
@@ -249,7 +248,6 @@ class Critic(nn.Module):
         state_dim: int,
         action_dim: int,
         hidden_dims: int,
-        device: torch.device,
     ):
         """
         Parameters:
@@ -264,7 +262,6 @@ class Critic(nn.Module):
 
         """
         super(Critic, self).__init__()
-        self.device = device
 
         self.hidden_layers = format_widths(hidden_dims)
 
@@ -352,8 +349,10 @@ class ActorCritic(PolicyGradient):
         if len(action.shape) < 2:
             action = action[None, :]
 
-        state = torch.FloatTensor(state).to(self.device)
-        action = torch.FloatTensor(action).to(self.device)
+
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+        action = torch.as_tensor(
+            action, dtype=torch.float32, device=self.device)
 
         v, prob, entropy, mu, std = self.evaluate(state, action)
 

@@ -167,11 +167,11 @@ def add_tracking_args(parser):
                         help='Number of random seeds per seeding mask voxel.')
     parser.add_argument('--theta', default=30, type=int,
                         help='Max angle between segments for tracking.')
-    parser.add_argument('--min_length', type=float, default=10.,
+    parser.add_argument('--min_length', type=float, default=20.,
                         metavar='m',
                         help='Minimum length of a streamline in mm. '
                         '[%(default)s]')
-    parser.add_argument('--max_length', type=float, default=300.,
+    parser.add_argument('--max_length', type=float, default=200.,
                         metavar='M',
                         help='Maximum length of a streamline in mm. '
                         '[%(default)s]')
