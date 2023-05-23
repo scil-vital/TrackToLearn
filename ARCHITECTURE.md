@@ -8,25 +8,25 @@ The overall structure of the project is
   - datasets
   - environments
   - experiment
+  - runners
   - searchers
   - trainers
   - utils
 - example_model
 - scripts
 - cc_scripts
-- ttl_track.py
-- ttl_validation.py
 ```
 
 In `TrackToLearn`, you will find the codebase for the project. In `scripts`, you will find all the scripts used to train agents in `What matters in ...`[^1] and `Incorporating anatomical priors into...`[^2]. In `cc_scripts`, you will find slurm scripts that have been used to do the architecture search of [^1]. `example_model` contains the weights and hyperparameters of an agent trained on the ISMRM2015 dataset.
 
 
-The entry points for launching `TrackToLearn` are in the root folder, `trainers` or `searchers`. 
+The entry points for launching `TrackToLearn` are in `runners`, `trainers` or `searchers`. 
 
 ```
 - TrackToLearn
-  - ttl_track.py
-  - ttl_validation.py
+  - runners
+    - ttl_track.py
+    - ttl_validation.py
   - searchers
     - a2c_searcher.py
     - acktr_searcher.py
@@ -49,7 +49,7 @@ The entry points for launching `TrackToLearn` are in the root folder, `trainers`
     - vpg_train.py
 ```
 
-The root folder contains scripts for tracking either on a "dataset" (`ttl_validation.py`) or on arbitrary files (`ttl_track.py`, similarly to launching tracking in `scilpy`[^3]). The `searchers` module contains scripts for launching an hyperparameter search for the relevant algorithm. The `trainers` module contains scripts for launching training for the relevant algorithm.
+The `runenrs` folder contains scripts for tracking either on a "dataset" (`ttl_validation.py`) or on arbitrary files (`ttl_track.py`, similarly to launching tracking in `scilpy`[^3]). These are also added to your PATH during installation. The `searchers` module contains scripts for launching an hyperparameter search for the relevant algorithm. The `trainers` module contains scripts for launching training for the relevant algorithm.
 
 The `algorithms` module contains several implementations of RL algorithms.
 
