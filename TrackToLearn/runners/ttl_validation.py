@@ -287,7 +287,7 @@ def parse_args():
     return arguments
 
 
-def main(experiment):
+def main():
     """ Main tracking script """
     args = parse_args()
     print(args)
