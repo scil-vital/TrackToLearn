@@ -35,6 +35,8 @@ from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 class TrackToLearnValidation(TrackToLearnExperiment):
     """ TrackToLearn validing script. Should work on any model trained with a
     TrackToLearn experiment. This runs tracking on a dataset (hdf5).
+
+    TODO: Make this script as robust as the tracking.
     """
 
     def __init__(
@@ -287,10 +289,6 @@ def parse_args():
 
 def main(experiment):
     """ Main tracking script """
-    experiment.run()
-
-
-if __name__ == '__main__':
     args = parse_args()
     print(args)
     experiment = TrackToLearnValidation(
@@ -298,4 +296,8 @@ if __name__ == '__main__':
         vars(args),
     )
 
-    main(experiment)
+    experiment.run()
+
+
+if __name__ == '__main__':
+    main()
