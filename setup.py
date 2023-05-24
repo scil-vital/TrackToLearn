@@ -12,15 +12,6 @@ here = path.abspath(path.dirname(__file__))
 #     long_description = f.read()
 
 external_dependencies = []
-# with open('requirements.txt') as f:
-#     required_dependencies = f.read().splitlines()
-#     for dependency in required_dependencies:
-#         if dependency[0:2] == '-e':
-#             repo_name = dependency.split('=')[-1]
-#             repo_url = dependency[3:]
-#             external_dependencies.append('{} @ {}'.format(repo_name, repo_url))
-#         else:
-#             external_dependencies.append(dependency)
 
 
 setup(
@@ -64,7 +55,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(exclude=['contrib', 'doc', 'unit_tests']),
+    packages=find_packages(),
 
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
@@ -87,14 +78,27 @@ setup(
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
-    # need to place data files outside of your packages. See:
+    # need to place data files outside of your packages. See
     # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files
     # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
-    data_files=[],
+    data_files=[
+        'example_models/SAC_Auto_ISMRM2015_WM/',
+        'example_models/SAC_Auto_ISMRM2015_interface/',
+        'example_models/SAC_Auto_ISMRM2015_WM/hyperparameters.json',
+        'example_models/SAC_Auto_ISMRM2015_interface/hyperparameters.json',
+        'example_models/SAC_Auto_ISMRM2015_WM/last_model_state_actor.pth',
+        'example_models/SAC_Auto_ISMRM2015_WM/last_model_state_critic.pth',
+        'example_models/SAC_Auto_ISMRM2015_interface/last_model_state_actor.pth',
+        'example_models/SAC_Auto_ISMRM2015_interface/last_model_state_critic.pth',
+    ],
 
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
+        'console_scripts': [
+            "ttl_track.py=TrackToLearn.runners.ttl_track:main",
+            "ttl_validation.py=TrackToLearn.runners.ttl_validation:main"]
     },
+    include_package_data=True,
 )

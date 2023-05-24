@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+#! /usr/bin/env python3
 import argparse
 import json
 import nibabel as nib
 import numpy as np
+import os
 import random
 import torch
 
@@ -10,12 +11,11 @@ from argparse import RawTextHelpFormatter
 from os.path import join
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
-from scilpy.io.utils import (add_sh_basis_args,
+from scilpy.io.utils import (add_overwrite_arg,
+                             add_sh_basis_args,
                              assert_inputs_exist, assert_outputs_exist,
                              verify_compression_th)
-from scilpy.tracking.utils import (add_mandatory_options_tracking,
-                                   add_out_options,
-                                   verify_streamline_length_options)
+from scilpy.tracking.utils import verify_streamline_length_options
 
 from TrackToLearn.algorithms.a2c import A2C
 from TrackToLearn.algorithms.acktr import ACKTR
@@ -30,9 +30,15 @@ from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
-
-DEFAULT_WM_MODEL = 'example_models/SAC_Auto_ISMRM2015_WM/'
-DEFAULT_INTERFACE_MODEL = 'example_models/SAC_Auto_ISMRM2015_interface/'
+# Define the example model paths from the install folder.
+# Hackish ? I'm not aware of a better solution but I'm
+# open to suggestions.
+_ROOT = os.sep.join(os.path.normpath(
+    os.path.dirname(__file__)).split(os.sep)[:-2])
+DEFAULT_WM_MODEL = os.path.join(
+    _ROOT, 'example_models', 'SAC_Auto_ISMRM2015_WM')
+DEFAULT_INTERFACE_MODEL = os.path.join(
+    _ROOT, 'example_models', 'SAC_Auto_ISMRM2015_interface')
 
 
 class TrackToLearnTrack(TrackToLearnExperiment):
@@ -46,12 +52,6 @@ class TrackToLearnTrack(TrackToLearnExperiment):
     ):
         """
         """
-
-        self.random_seed = track_dto['rng_seed']
-        torch.manual_seed(self.random_seed)
-        np.random.seed(self.random_seed)
-        self.rng = np.random.RandomState(seed=self.random_seed)
-        random.seed(self.random_seed)
 
         self.in_odf = track_dto['in_odf']
         self.wm_file = track_dto['in_mask']
@@ -79,6 +79,9 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.compute_reward = False
         self.scoring_data = None
         self.render = False
+
+        if not track_dto['cpu'] and not torch.cuda.is_available():
+            print('No CUDA installation found. Defaulting to CPU tracking.')
 
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() and not track_dto['cpu']
@@ -117,6 +120,12 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
             self.cmc = hyperparams['cmc']
             self.asymmetric = hyperparams['asymmetric']
+
+        self.random_seed = track_dto['rng_seed']
+        torch.manual_seed(self.random_seed)
+        np.random.seed(self.random_seed)
+        random.seed(self.random_seed)
+        self.rng = np.random.RandomState(seed=self.random_seed)
 
         self.comet_experiment = None
 
@@ -187,13 +196,45 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         tractogram.affine_to_rasmm = env.affine_vox2rasmm
 
-        filetype = nib.streamlines.detect_format(args.out_tractogram)
+        filetype = nib.streamlines.detect_format(self.out_tractogram)
         reference = get_reference_info(self.wm_file)
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly
-        nib.streamlines.save(tractogram, args.out_tractogram, header=header)
+        nib.streamlines.save(tractogram, self.out_tractogram, header=header)
         # print('Saved {} streamlines'.format(len(tractogram)))
+
+
+def add_mandatory_options_tracking(p):
+    p.add_argument('in_odf',
+                   help='File containing the orientation diffusion function \n'
+                        'as spherical harmonics file (.nii.gz). Ex: ODF or '
+                        'fODF.\nCan be of any order and basis (including "full'
+                        '" bases for\nasymmetric ODFs). See also --sh_basis.')
+    p.add_argument('in_seed',
+                   help='Seeding mask (.nii.gz).')
+    p.add_argument('in_mask',
+                   help='Tracking mask (.nii.gz).\n'
+                        'Tracking will stop outside this mask.')
+    p.add_argument('out_tractogram',
+                   help='Tractogram output file (must be .trk or .tck).')
+
+
+def add_out_options(p):
+    out_g = p.add_argument_group('Output options')
+    out_g.add_argument('--compress', type=float, metavar='thresh',
+                       help='If set, will compress streamlines. The parameter '
+                            'value is the \ndistance threshold. A rule of '
+                            'thumb is to set it to 0.1mm for \ndeterministic '
+                            'streamlines and 0.2mm for probabilitic '
+                            'streamlines [%(default)s].')
+    add_overwrite_arg(out_g)
+    out_g.add_argument('--save_seeds', action='store_true',
+                       help='If set, save the seeds used for the tracking \n '
+                            'in the data_per_streamline property.\n'
+                            'Hint: you can then use '
+                            'scilpy_compute_seed_density_map.')
+    return out_g
 
 
 def add_track_args(parser):
@@ -204,26 +245,38 @@ def add_track_args(parser):
     add_sh_basis_args(basis_group)
     add_out_options(parser)
 
-    parser.add_argument('--policy', type=str,
-                        help='Path to the folder containing .pth files.\n'
-                        'If not set, will default to the example '
-                        'models.\n'
-                        'Example: example_models/SAC_Auto_ISMRM2015_WM/')
-    parser.add_argument(
+    agent_group = parser.add_argument_group('Tracking agent options')
+    agent_group.add_argument('--policy', type=str,
+                             help='Path to the folder containing .pth files.\n'
+                             'If not set, will default to the example '
+                             'models.\n'
+                             '[{}]'.format(DEFAULT_WM_MODEL))
+    agent_group.add_argument(
         '--hyperparameters', type=str,
         help='Path to the .json file containing the '
         'hyperparameters of your tracking agent. \n'
         'If not set, will default to the example models.\n'
-        'Example: example_models/SAC_Auto_ISMRM2015_WM/hyperparameters.json')
+        '[{}]'.format(DEFAULT_INTERFACE_MODEL))
+    agent_group.add_argument('--n_actor', type=int, default=10000, metavar='N',
+                             help='Number of streamlines to track simultaneous'
+                             'ly.\nLimited by the size of your GPU and RAM. A '
+                             'higher value\nwill speed up tracking up to a '
+                             'point [%(default)s].')
+
+    agent_group.add_argument('--cpu', action='store_true',
+                             help='Use CPU for tracking.\n'
+                                  'Defaults to tracking on GPU without this '
+                                  'flag.')
 
     seed_group = parser.add_argument_group('Seeding options')
     seed_group.add_argument('--npv', type=int, default=1,
-                            help='Number of seeds per voxel.')
+                            help='Number of seeds per voxel [%(default)s].')
     seed_group.add_argument('--interface', action='store_true',
                             help='If set, tracking will be presumed to be '
-                            'initialized at the WM/GM interface.\n**Be '
-                            'careful to provide the proper seeding '
-                                 'mask.**')
+                            'initialized at the WM/GM\ninterface and omits '
+                            'the "retracking" phase".\n**Be mindful to '
+                            'provide the proper seeding mask.**\n'
+                            'Defaults to WM seeding without this flag.')
     track_g = parser.add_argument_group('Tracking options')
     track_g.add_argument('--min_length', type=float, default=10.,
                          metavar='m',
@@ -236,21 +289,12 @@ def add_track_args(parser):
     track_g.add_argument('--prob', type=float, default=0.0, metavar='sigma',
                          help='Add noise ~ N (0, `prob`) to the agent\'s\n'
                          'output to make tracking more probabilistic.\n'
-                         'Should be between 0.0 and 0.1.'
-                         '[%(default)s]')
+                         'Should be between 0.0 and 0.1 [%(default)s].')
     track_g.add_argument('--fa_map', type=str, default=None,
                          help='Scale the added noise (see `--prob`) according'
                          '\nto the provided FA map (.nii.gz). Optional.')
-
-    ml_g = parser.add_argument_group('Machine-Learning options')
-    ml_g.add_argument('--n_actor', type=int, default=10000, metavar='N',
-                      help='Number of streamlines to track simultaneously.\n'
-                      'Can be seen as the "batch size". Limited by the'
-                      ' size of your GPU and RAM.\n[%(default)s]')
-    ml_g.add_argument('--rng_seed', default=1337, type=int,
-                      help='Random number generator seed.')
-    parser.add_argument('--cpu', action='store_true',
-                        help='Use CPU for tracking.')
+    parser.add_argument('--rng_seed', default=1337, type=int,
+                        help='Random number generator seed [%(default)s].')
 
 
 def verify_policy_option(parser, args):
@@ -293,16 +337,16 @@ def parse_args():
     return args
 
 
-def main(experiment):
+def main():
     """ Main tracking script """
-    experiment.run()
-
-
-if __name__ == '__main__':
     args = parse_args()
 
     experiment = TrackToLearnTrack(
         vars(args)
     )
 
-    main(experiment)
+    experiment.run()
+
+
+if __name__ == '__main__':
+    main()
