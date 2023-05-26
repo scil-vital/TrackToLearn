@@ -1,12 +1,10 @@
 import numpy as np
 
-from dwi_ml.data.dataset.streamline_containers import LazySFTData
-from dipy.reconst.shm import (
-    sh_to_sf,
-    sf_to_sh)
-from scilpy.reconst.utils import get_sh_order_and_fullness
-
 from dipy.data import get_sphere
+from dipy.reconst.csdeconv import sph_harm_ind_list
+from dwi_ml.data.dataset.streamline_containers import LazySFTData
+from scilpy.reconst.utils import get_sh_order_and_fullness
+from scilpy.reconst.multi_processes import convert_sh_basis
 
 
 class MRIDataVolume(object):
@@ -155,20 +153,24 @@ def convert_length_mm2vox(
 
 
 def set_sh_order_basis(
-    sh, sh_basis, target_basis='descoteaux07', target_order=6
+    sh,
+    sh_basis,
+    target_basis='descoteaux07',
+    target_order=6,
+    sphere_name='repulsion724',
 ):
     """ Convert SH to the target basis and order. In practice, it is always
     order 6 and descoteaux07 basis.
+
+    This uses a lot of "hacks" to convert the ODFs. To go from full to
+    symmetric basis, only even coefficents are selected.
+
+    To go from order N to order 6, SH coefficients are either truncated
+    or padded.
+
     """
 
-    convert = False
-    sphere = get_sphere('repulsion724')
-
-    # If SH are not in the descoteaux07 basis, convert them
-    if sh_basis != target_basis:
-        convert = True
-        print('SH coefficients are in the {} basis, '
-              'converting them to {}.'.format(sh_basis, target_basis))
+    sphere = get_sphere(sphere_name)
 
     n_coefs = sh.shape[-1]
     sh_order, full_basis = get_sh_order_and_fullness(n_coefs)
@@ -176,22 +178,30 @@ def set_sh_order_basis(
 
     # If SH in full basis, convert them
     if full_basis is True:
-        convert = True
         print('SH coefficients are in "full" basis, only even coefficients '
               'will be used.')
+        _, orders = sph_harm_ind_list(sh_order, full_basis)
+        sh = sh[..., orders % 2 == 0]
 
     # If SH are not of order 6, convert them
     if sh_order != target_order:
-        convert = True
         print('SH coefficients are of order {}, '
               'converting them to order {}.'.format(sh_order, target_order))
+        target_n_coefs = len(sph_harm_ind_list(target_order)[0])
 
-    if convert is True:
-        sf = sh_to_sf(
-            sh, sphere, sh_order=sh_order, basis_type=sh_basis,
-            full_basis=full_basis)
-        sh = sf_to_sh(
-            sf, sphere, sh_order=target_order, basis_type=target_basis,
-            full_basis=False)
+        if n_coefs > target_n_coefs:
+            sh = sh[..., :target_n_coefs]
+        else:
+            X, Y, Z = sh.shape[:3]
+            n_missing_coefs = target_n_coefs - n_coefs
+            sh = np.concatenate(
+                (sh, np.zeros((X, Y, Z, n_missing_coefs))), axis=-1)
+
+    # If SH are not in the descoteaux07 basis, convert them
+    if sh_basis != target_basis:
+        print('SH coefficients are in the {} basis, '
+              'converting them to {}.'.format(sh_basis, target_basis))
+        sh = convert_sh_basis(
+            sh, sphere, input_basis=sh_basis, nbr_processes=1)
 
     return sh
