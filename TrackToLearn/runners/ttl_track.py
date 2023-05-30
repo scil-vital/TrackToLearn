@@ -289,7 +289,8 @@ def add_track_args(parser):
     track_g.add_argument('--prob', type=float, default=0.0, metavar='sigma',
                          help='Add noise ~ N (0, `prob`) to the agent\'s\n'
                          'output to make tracking more probabilistic.\n'
-                         'Should be between 0.0 and 0.1 [%(default)s].')
+                         'Around 0.1 generally gives good results '
+                         '[%(default)s].')
     track_g.add_argument('--fa_map', type=str, default=None,
                          help='Scale the added noise (see `--prob`) according'
                          '\nto the provided FA map (.nii.gz). Optional.')
