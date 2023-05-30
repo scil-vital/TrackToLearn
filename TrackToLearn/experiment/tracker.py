@@ -1,3 +1,5 @@
+import numpy as np
+
 from collections import defaultdict
 from tqdm import tqdm
 from typing import Tuple
@@ -75,6 +77,10 @@ class Tracker(object):
         compress_th_vox = self.compress / vox_size
 
         batch_size = self.n_actor
+
+        # Shuffle seeds so that massive tractograms wont load "sequentially"
+        # when partially displayed
+        np.random.shuffle(self.env.seeds)
 
         def tracking_generator():
             # Switch policy to eval mode so no gradients are computed
