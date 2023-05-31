@@ -15,7 +15,12 @@ from TrackToLearn.datasets.utils import (
     set_sh_order_basis
 )
 
-from TrackToLearn.environments.reward import Reward
+from TrackToLearn.environments.reward import RewardFunction
+from TrackToLearn.environments.local_reward import (
+    PeaksAlignmentReward,
+    TargetReward,
+    LengthReward)
+from TrackToLearn.environments.oracle_reward import OracleReward
 
 from TrackToLearn.environments.stopping_criteria import (
     BinaryStoppingCriterion,
@@ -108,8 +113,12 @@ class BaseEnv(object):
         self.target_bonus_factor = env_dto['target_bonus_factor']
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
+        self.oracle_bonus = env_dto['oracle_weighting']
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
+
+        self.oracle_bonus = 1
+        self.checkpoint = 'checkpoint.ckpt'
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -132,22 +141,18 @@ class BaseEnv(object):
         self.min_nb_steps = int(self.min_length / step_size_mm)
 
         if self.compute_reward:
-            self.reward_function = Reward(
-                peaks=self.peaks,
-                exclude=self.exclude_mask,
-                target=self.target_mask,
-                max_nb_steps=self.max_nb_steps,
-                theta=self.theta,
-                min_nb_steps=self.min_nb_steps,
-                asymmetric=self.asymmetric,
-                alignment_weighting=self.alignment_weighting,
-                straightness_weighting=self.straightness_weighting,
-                length_weighting=self.length_weighting,
-                target_bonus_factor=self.target_bonus_factor,
-                exclude_penalty_factor=self.exclude_penalty_factor,
-                angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=self.scoring_data,
-                reference=self.reference)
+            peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
+            target_reward = TargetReward(self.target_mask)
+            length_reward = LengthReward(self.max_nb_steps)
+            oracle_reward = OracleReward(self.checkpoint,
+                                         self.min_nb_steps, self.device)
+            self.reward_function = RewardFunction(
+                [peaks_reward, target_reward,
+                 length_reward, oracle_reward],
+                [self.alignment_weighting,
+                 self.target_bonus_factor,
+                 self.length_weighting,
+                 10])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
@@ -388,22 +393,14 @@ class BaseEnv(object):
         self.min_nb_steps = int(self.min_length / step_size_mm)
 
         if self.compute_reward:
-            self.reward_function = Reward(
-                peaks=self.peaks,
-                exclude=self.exclude_mask,
-                target=self.target_mask,
-                max_nb_steps=self.max_nb_steps,
-                theta=self.theta,
-                min_nb_steps=self.min_nb_steps,
-                asymmetric=self.asymmetric,
-                alignment_weighting=self.alignment_weighting,
-                straightness_weighting=self.straightness_weighting,
-                length_weighting=self.length_weighting,
-                target_bonus_factor=self.target_bonus_factor,
-                exclude_penalty_factor=self.exclude_penalty_factor,
-                angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=self.scoring_data,
-                reference=self.reference)
+            peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
+            target_reward = TargetReward(self.target_mask)
+            length_reward = LengthReward(self.max_nb_steps)
+            self.reward_function = RewardFunction(
+                [peaks_reward, target_reward, length_reward],
+                [self.alignment_weighting,
+                 self.target_bonus_factor,
+                 self.length_weighting])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

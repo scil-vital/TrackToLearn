@@ -9,7 +9,12 @@ from TrackToLearn.datasets.utils import (
     convert_length_mm2vox,
 )
 
-from TrackToLearn.environments.reward import Reward
+from TrackToLearn.environments.reward import RewardFunction
+from TrackToLearn.environments.local_reward import (
+    PeaksAlignmentReward,
+    TargetReward,
+    LengthReward)
+from TrackToLearn.environments.oracle_reward import OracleReward
 
 from TrackToLearn.environments.stopping_criteria import (
     is_flag_set,
@@ -70,6 +75,9 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.compute_reward = env_dto['compute_reward']
 
+        self.oracle_bonus = 1
+        self.checkpoint = 'checkpoint.ckpt'
+
         self.rng = env_dto['rng']
         self.device = env_dto['device']
 
@@ -89,22 +97,18 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         self.min_nb_steps = int(self.min_length / step_size_mm)
 
         if self.compute_reward:
-            self.reward_function = Reward(
-                peaks=self.peaks,
-                exclude=self.exclude_mask,
-                target=self.target_mask,
-                max_nb_steps=self.max_nb_steps,
-                theta=self.theta,
-                min_nb_steps=self.min_nb_steps,
-                asymmetric=self.asymmetric,
-                alignment_weighting=self.alignment_weighting,
-                straightness_weighting=self.straightness_weighting,
-                length_weighting=self.length_weighting,
-                target_bonus_factor=self.target_bonus_factor,
-                exclude_penalty_factor=self.exclude_penalty_factor,
-                angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=None,  # TODO: Add scoring back
-                reference=env.reference)
+            peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
+            target_reward = TargetReward(self.target_mask)
+            length_reward = LengthReward(self.max_nb_steps)
+            oracle_reward = OracleReward(self.checkpoint,
+                                         self.min_nb_steps, self.device)
+            self.reward_function = RewardFunction(
+                [peaks_reward, target_reward,
+                 length_reward, oracle_reward],
+                [self.alignment_weighting,
+                 self.target_bonus_factor,
+                 self.length_weighting,
+                 10])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

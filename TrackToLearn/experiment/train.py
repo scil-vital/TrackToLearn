@@ -35,7 +35,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         """
         self.experiment_path = train_dto['path']
         self.experiment = train_dto['experiment']
-        self.id = train_dto['id']
+        self.name = train_dto['id']
 
         # RL parameters
         self.max_ep = train_dto['max_ep']
@@ -69,6 +69,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.target_bonus_factor = train_dto['target_bonus_factor']
         self.exclude_penalty_factor = train_dto['exclude_penalty_factor']
         self.angle_penalty_factor = train_dto['angle_penalty_factor']
+        self.oracle_weighting = train_dto['oracle_weighting']
 
         # Model parameters
         self.hidden_dims = train_dto['hidden_dims']
@@ -102,7 +103,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         self.hyperparameters = {
             # RL parameters
-            'id': self.id,
+            'name': self.name,
             'experiment': self.experiment,
             'max_ep': self.max_ep,
             'log_interval': self.log_interval,

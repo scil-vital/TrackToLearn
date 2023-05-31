@@ -144,8 +144,8 @@ def interpolate_volume_at_coordinates(
     output : 2D array
         Values from volume.
     """
-    # map_coordinates uses the center of the voxel, so should we shift to
-    # the corner?
+    # map_coordinates uses the center of the voxel as 0.0, code uses the corner
+    # coords = coords + 0.5
 
     if volume.ndim <= 2 or volume.ndim >= 5:
         raise ValueError("Volume must be 3D or 4D!")

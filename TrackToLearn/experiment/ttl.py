@@ -89,7 +89,7 @@ class TrackToLearnExperiment(Experiment):
         """
         # The comet object that will handle monitors
         self.comet_monitor = CometMonitor(
-            self.comet_experiment, self.id, self.experiment_path,
+            self.comet_experiment, self.name, self.experiment_path,
             prefix, self.render)
 
         self.comet_monitor.log_parameters(self.hyperparameters)
@@ -122,6 +122,7 @@ class TrackToLearnExperiment(Experiment):
             'target_bonus_factor': self.target_bonus_factor,
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
+            'oracle_weighting': self.oracle_weighting,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
             'device': self.device
@@ -292,7 +293,7 @@ class TrackToLearnExperiment(Experiment):
         # and more
         filename = pjoin(
             self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                self.experiment, self.id, self.valid_subject_id))
+                self.experiment, self.name, self.valid_subject_id))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.

@@ -93,6 +93,8 @@ def add_experiment_args(parser):
                         help='Name of experiment.')
     parser.add_argument('id', type=str,
                         help='ID of experiment.')
+    parser.add_argument('--workspace', type=str, default='TractOracle',
+                        help='Comet.ml workspace')
     parser.add_argument('--use_gpu', action='store_true',
                         help='Use gpu or not')
     parser.add_argument('--rng_seed', default=1337, type=int,
@@ -151,6 +153,8 @@ def add_reward_args(parser):
                         'mask')
     parser.add_argument('--angle_penalty_factor', default=0, type=float,
                         help='Penalty for looping or too-curvy streamlines')
+    parser.add_argument('--oracle_weighting', default=10, type=float,
+                        help='Oracle weighting for reward')
 
 
 def add_model_args(parser):
