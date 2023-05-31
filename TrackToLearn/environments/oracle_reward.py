@@ -54,13 +54,13 @@ class FeedForwardOracle(nn.Module):
         layers = hyper_parameters['layers']
         lr = hyper_parameters['lr']
 
-        model = cls.__init__(input_size, output_size, layers, lr)
+        model = FeedForwardOracle(input_size, output_size, layers, lr)
 
         model_weights = checkpoint["state_dict"]
 
         # update keys by dropping `auto_encoder.`
         for key in list(model_weights):
-            model_weights[key.replace("network.", "")] = \
+            model_weights[key] = \
                 model_weights.pop(key)
 
         model.load_state_dict(model_weights)
@@ -190,7 +190,7 @@ class OracleReward(Reward):
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
         N, L, P = streamlines.shape
-        if L > self.min_nb_steps:
+        if L > 3:
 
             array_seq = ArraySequence(streamlines)
 
@@ -203,5 +203,6 @@ class OracleReward(Reward):
                 data = torch.as_tensor(
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
+
             return predictions
         return np.zeros((N))
