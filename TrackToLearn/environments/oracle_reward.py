@@ -155,6 +155,8 @@ class OracleReward(Reward):
         min_nb_steps: int,
         device: str
     ):
+        self.name = 'oracle_reward'
+
         if checkpoint:
             self.checkpoint = torch.load(checkpoint)
 
@@ -205,8 +207,8 @@ class OracleReward(Reward):
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
 
-                if np.any(predictions > 0.5):
-                    self.render(streamlines[predictions > 0.5])
+                # if np.any(predictions > 0.5):
+                #     self.render(streamlines[predictions > 0.5])
             return predictions
 
         return np.zeros((N))

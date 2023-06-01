@@ -7,9 +7,12 @@ class Reward(object):
     """
 
     def __call__(
+        self,
         streamlines: np.ndarray,
         dones: np.ndarray
     ):
+        self.name = "Undefined"
+
         assert False, "Not implemented"
 
 
@@ -61,7 +64,12 @@ class RewardFunction():
         for i, (w, f) in enumerate(zip(self.weights, self.factors)):
             if w > 0:
                 rewards_factors[i] = w * f(streamlines, dones)
+        info = {
+        }
+
+        for i, f in enumerate(self.factors):
+            info[f.name] = np.mean(rewards_factors[i])
 
         reward = np.sum(rewards_factors, axis=0)
 
-        return reward
+        return reward, info

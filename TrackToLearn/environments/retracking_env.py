@@ -300,12 +300,13 @@ class RetrackingEnvironment(TrackingEnvironment):
         self.flags[
             self.stopping_idx] = new_flags[diff_stopping_idx]
 
-        # Compute reward
         reward = np.zeros(self.streamlines.shape[0])
+        reward_info = {}
+        # Compute reward if wanted. At valid time, no need
+        # to compute it and slow down the tracking process
         if self.compute_reward:
-            # Reward streamline step
-            reward = self.reward_function(
-                self.streamlines[self.continue_idx, :self.length, :],
+            reward, reward_info = self.reward_function(
+                self.streamlines[self.continue_idx, :self.length],
                 self.dones[self.continue_idx])
 
         # If a streamline is still being retracked
@@ -322,4 +323,5 @@ class RetrackingEnvironment(TrackingEnvironment):
             self._format_state(
                 self.streamlines[self.continue_idx, :self.length]),
             reward, self.dones[self.continue_idx],
-            {'continue_idx': self.continue_idx})
+            {'continue_idx': self.continue_idx,
+             'reward_info': reward_info})

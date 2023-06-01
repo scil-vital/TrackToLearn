@@ -19,6 +19,8 @@ class PeaksAlignmentReward(Reward):
         peaks: MRIDataVolume,
         asymmetric: bool = False
     ):
+        self.name = 'peaks_reward'
+
         self.peaks = peaks.data
         self.asymmetric = asymmetric
 
@@ -124,6 +126,8 @@ class LengthReward(Reward):
             Maximum streamline length, in steps.
         """
 
+        self.name = 'length_reward'
+
         self.max_length = max_length
 
     def __call__(
@@ -166,6 +170,8 @@ class TargetReward(Reward):
         target: np.ndarray
             Grey matter mask
         """
+
+        self.name = 'target_reward'
 
         self.target = target.data,
 

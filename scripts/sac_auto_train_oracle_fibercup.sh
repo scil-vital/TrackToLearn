@@ -24,8 +24,8 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=10000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.00005 # Learning rate
-gamma=0.75 # Gamma for reward discounting
+lr=0.001 # Learning rate
+gamma=0.9 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -63,7 +63,8 @@ do
     --npv=${npv} \
     --theta=${theta} \
     --alignment_weighting=0.1 \
-    --oracle_weighting=10.0 \
+    --oracle_weighting=1.0 \
+    --n_dirs=10 \
     --interface_seeding \
     --use_gpu \
     --use_comet \
