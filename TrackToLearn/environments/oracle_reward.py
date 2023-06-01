@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from dipy.tracking.streamline import set_number_of_points
+from fury import window, actor
 from nibabel.streamlines.array_sequence import ArraySequence
 from torch import nn
 
@@ -204,5 +205,16 @@ class OracleReward(Reward):
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
 
-            return dones.astype(int) * predictions
+                if np.any(predictions > 0.5):
+                    self.render(streamlines[predictions > 0.5])
+            return predictions
+
         return np.zeros((N))
+
+    def render(self, streamlines):
+
+        scene = window.Scene()
+
+        line_actor = actor.streamtube(
+            streamlines, linewidth=1.0)
+        scene.add(line_actor)

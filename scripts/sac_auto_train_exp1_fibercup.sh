@@ -25,7 +25,7 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 lr=0.0005 # Learning rate
-gamma=0.5 # Gamma for reward discounting
+gamma=0.99 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
