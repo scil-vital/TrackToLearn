@@ -190,6 +190,7 @@ class OracleReward(Reward):
         rewards: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
             Array containing the reward
         """
+
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
         N, L, P = streamlines.shape
@@ -209,7 +210,7 @@ class OracleReward(Reward):
 
                 # if np.any(predictions > 0.5):
                 #     self.render(streamlines[predictions > 0.5])
-            return predictions
+            return predictions * dones.astype(int)
 
         return np.zeros((N))
 
@@ -220,3 +221,7 @@ class OracleReward(Reward):
         line_actor = actor.streamtube(
             streamlines, linewidth=1.0)
         scene.add(line_actor)
+
+        showm = window.ShowManager(scene, reset_camera=True)
+        showm.initialize()
+        showm.start()

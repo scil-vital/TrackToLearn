@@ -160,7 +160,7 @@ def add_reward_args(parser):
 def add_model_args(parser):
     parser.add_argument('--n_actor', default=4096, type=int,
                         help='Number of learners')
-    parser.add_argument('--hidden_dims', default='1024-1024', type=str,
+    parser.add_argument('--hidden_dims', default='1024-2048-1024', type=str,
                         help='Hidden layers of the model')
     parser.add_argument('--load_policy', default=None, type=str,
                         help='Path to pretrained model')

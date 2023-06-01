@@ -61,7 +61,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.npv = valid_dto['npv']
         self.min_length = valid_dto['min_length']
         self.max_length = valid_dto['max_length']
-        self.compute_reward = False
+        self.compute_reward = True
         self.run_tractometer = self.scoring_data is not None
 
         self.fa_map = None

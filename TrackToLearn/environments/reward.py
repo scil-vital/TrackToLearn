@@ -32,7 +32,7 @@ class RewardFunction():
         """
         """
         assert len(factors) == len(weights)
-        print(factors, weights)
+
         self.factors = factors
         self.weights = weights
 
@@ -62,11 +62,11 @@ class RewardFunction():
         rewards_factors = np.zeros((self.F, N))
 
         for i, (w, f) in enumerate(zip(self.weights, self.factors)):
+
             if w > 0:
                 rewards_factors[i] = w * f(streamlines, dones)
-        info = {
-        }
 
+        info = {}
         for i, f in enumerate(self.factors):
             info[f.name] = np.mean(rewards_factors[i])
 

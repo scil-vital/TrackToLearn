@@ -395,11 +395,15 @@ class BaseEnv(object):
             peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
             target_reward = TargetReward(self.target_mask)
             length_reward = LengthReward(self.max_nb_steps)
+            oracle_reward = OracleReward(self.checkpoint,
+                                         self.min_nb_steps, self.device)
             self.reward_function = RewardFunction(
-                [peaks_reward, target_reward, length_reward],
+                [peaks_reward, target_reward,
+                 length_reward, oracle_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
-                 self.length_weighting])
+                 self.length_weighting,
+                 self.oracle_bonus])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

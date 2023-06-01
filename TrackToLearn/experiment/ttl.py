@@ -122,7 +122,7 @@ class TrackToLearnExperiment(Experiment):
             'target_bonus_factor': self.target_bonus_factor,
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
-            'oracle_weighting': self.oracle_weighting,
+            'oracle_weighting': 10,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
             'device': self.device

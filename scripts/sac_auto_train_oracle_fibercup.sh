@@ -31,7 +31,7 @@ gamma=0.9 # Gamma for reward discounting
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=10 # Seed per voxel
+npv=30 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=SAC_Auto_FiberCupTrainOracle
