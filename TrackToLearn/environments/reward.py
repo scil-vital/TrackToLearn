@@ -29,7 +29,7 @@ class RewardFunction():
         """
         """
         assert len(factors) == len(weights)
-
+        print(factors, weights)
         self.factors = factors
         self.weights = weights
 

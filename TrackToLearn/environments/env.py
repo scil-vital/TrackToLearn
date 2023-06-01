@@ -117,7 +117,6 @@ class BaseEnv(object):
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
-        self.oracle_bonus = 1
         self.checkpoint = 'checkpoint.ckpt'
 
         self.rng = env_dto['rng']
@@ -152,7 +151,7 @@ class BaseEnv(object):
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
-                 10])
+                 self.oracle_bonus])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

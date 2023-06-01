@@ -75,7 +75,6 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.compute_reward = env_dto['compute_reward']
 
-        self.oracle_bonus = 1
         self.checkpoint = 'checkpoint.ckpt'
 
         self.rng = env_dto['rng']
@@ -108,7 +107,7 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
-                 10])
+                 self.oracle_bonus])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

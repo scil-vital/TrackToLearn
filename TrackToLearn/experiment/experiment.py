@@ -153,7 +153,7 @@ def add_reward_args(parser):
                         'mask')
     parser.add_argument('--angle_penalty_factor', default=0, type=float,
                         help='Penalty for looping or too-curvy streamlines')
-    parser.add_argument('--oracle_weighting', default=10, type=float,
+    parser.add_argument('--oracle_weighting', default=1, type=float,
                         help='Oracle weighting for reward')
 
 
