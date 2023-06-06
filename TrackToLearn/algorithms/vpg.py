@@ -132,6 +132,7 @@ class VPG(RLAlgorithm):
         state = initial_state
         done = False
         running_losses = defaultdict(list)
+        running_reward_factors = defaultdict(list)
 
         episode_length = 0
         indices = np.asarray(range(state.shape[0]))
@@ -150,7 +151,9 @@ class VPG(RLAlgorithm):
                 action)
 
             # Perform action
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
+            running_reward_factors = add_item_to_means(
+                running_reward_factors, info['reward_info'])
 
             vp, *_ = self.policy.get_evaluation(
                 next_state,
@@ -180,7 +183,8 @@ class VPG(RLAlgorithm):
         return (
             running_reward,
             running_losses,
-            episode_length)
+            episode_length,
+            running_reward_factors)
 
     def update(
         self,

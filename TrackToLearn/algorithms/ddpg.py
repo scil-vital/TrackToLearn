@@ -161,6 +161,7 @@ class DDPG(RLAlgorithm):
         state = initial_state
         done = False
         running_losses = defaultdict(list)
+        running_reward_factors = defaultdict(list)
 
         episode_length = 0
 
@@ -171,8 +172,11 @@ class DDPG(RLAlgorithm):
 
             self.t += action.shape[0]
             # Perform action
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
             done_bool = done
+
+            running_reward_factors = add_item_to_means(
+                running_reward_factors, info['reward_info'])
 
             # Store data in replay buffer
             # WARNING: This is a bit of a trick and I'm not entirely sure this
@@ -201,11 +205,11 @@ class DDPG(RLAlgorithm):
 
             # Keeping track of episode length
             episode_length += 1
-
         return (
             running_reward,
             running_losses,
-            episode_length)
+            episode_length,
+            running_reward_factors)
 
     def update(
         self,

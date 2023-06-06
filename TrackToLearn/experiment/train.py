@@ -137,6 +137,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'target_bonus_factor': self.target_bonus_factor,
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
+            'oracle_weighting': self.oracle_weighting,
         }
 
     def save_hyperparameters(self):
@@ -223,7 +224,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.last_episode = i_episode
 
             # Train for an episode
-            tractogram, losses, reward = train_tracker.track_and_train()
+            tractogram, losses, reward, reward_factors = \
+                train_tracker.track_and_train()
 
             lens = [slength(s) for s in tractogram.streamlines]
 
@@ -242,6 +244,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             # Update monitors
             self.train_reward_monitor.update(avg_reward)
             self.train_reward_monitor.end_epoch(i_episode)
+
+            mean_ep_reward_factors = mean_losses(reward_factors)
+            self.comet_monitor.log_losses(mean_ep_reward_factors, i_episode)
 
             i_episode += 1
             if self.use_comet and self.comet_experiment is not None:

@@ -156,40 +156,44 @@ class Tracker(object):
         self.alg.policy.train()
 
         mean_losses = defaultdict(list)
+        mean_reward_factors = defaultdict(list)
 
         # Fetch n=n_actor seeds
         state = self.env.nreset(self.n_actor)
 
         # Track and train forward
-        reward, losses, length = \
+        reward, losses, length, reward_factors = \
             self.alg._episode(state, self.env)
         # Get the streamlines generated from forward training
         train_tractogram = self.env.get_streamlines()
 
         mean_losses = add_to_means(mean_losses, losses)
+        mean_reward_factors = add_to_means(mean_reward_factors, reward_factors)
 
         if not self.interface_seeding:
             # Flip streamlines to initialize backwards tracking
             state = self.back_env.reset(train_tractogram.streamlines)
 
             # Track and train backwards
-            back_reward, losses, length = \
+            back_reward, losses, length, reward_factors = \
                 self.alg._episode(state, self.back_env)
             # Get the streamlines generated from backward training
             train_tractogram = self.back_env.get_streamlines()
 
             mean_losses = add_to_means(mean_losses, losses)
+            mean_reward_factors = add_to_means(
+                mean_reward_factors, reward_factors)
 
             # Retracking also rewards the agents
             if self.no_retrack:
                 reward += back_reward
             else:
                 reward = back_reward
-
         return (
             train_tractogram,
             mean_losses,
-            reward)
+            reward,
+            mean_reward_factors)
 
     def track_and_validate(
         self,
