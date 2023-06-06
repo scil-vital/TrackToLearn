@@ -156,6 +156,8 @@ class TrackToLearnExperiment(Experiment):
             "Forward" environment only initialized with seeds
         """
 
+        print('Hello get_envs')
+
         class_dict, env_dto = self._get_env_dict_and_dto(
             self.interface_seeding, self.no_retrack, False)
 

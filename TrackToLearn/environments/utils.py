@@ -1,6 +1,9 @@
 import numpy as np
 import torch
 
+from dipy.tracking import metrics as tm
+from multiprocessing import Pool
+
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_at_coordinates,
     torch_trilinear_interpolation)
@@ -286,6 +289,44 @@ def is_looping(streamlines: np.ndarray, loop_threshold: float):
         Array telling whether a streamline is too curvy or not
     """
 
-    angles = winding(streamlines)
+    clean_ids = remove_loops_and_sharp_turns(
+        streamlines, loop_threshold, num_processes=8)
+    mask = np.full(streamlines.shape[0], True)
+    mask[clean_ids] = False
+    return mask
 
-    return angles > loop_threshold
+
+def remove_loops_and_sharp_turns(streamlines,
+                                 max_angle,
+                                 num_processes=1):
+    """
+    Remove loops and sharp turns from a list of streamlines.
+    Parameters
+    ----------
+    streamlines: list of ndarray
+        The list of streamlines from which to remove loops and sharp turns.
+    max_angle: float
+        Maximal winding angle a streamline can have before
+        being classified as a loop.
+    use_qb: bool
+        Set to True if the additional QuickBundles pass is done.
+        This will help remove sharp turns. Should only be used on
+        bundled streamlines, not on whole-brain tractograms.
+    qb_threshold: float
+        Quickbundles distance threshold, only used if use_qb is True.
+    qb_seed: int
+        Seed to initialize randomness in QuickBundles
+
+    Returns
+    -------
+    list: the ids of clean streamlines
+        Only the ids are returned so proper filtering can be done afterwards
+    """
+
+    ids = []
+    pool = Pool(num_processes)
+    windings = pool.map(tm.winding, streamlines)
+    pool.close()
+    ids = list(np.where(np.array(windings) < max_angle)[0])
+
+    return ids

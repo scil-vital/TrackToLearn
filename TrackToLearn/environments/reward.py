@@ -62,13 +62,13 @@ class RewardFunction():
         rewards_factors = np.zeros((self.F, N))
 
         for i, (w, f) in enumerate(zip(self.weights, self.factors)):
-
             if w > 0:
                 rewards_factors[i] = w * f(streamlines, dones)
 
         info = {}
-        for i, f in enumerate(self.factors):
-            info[f.name] = np.mean(rewards_factors[i])
+        # TODO: Investigate why this causes memory leaks
+        # for i, f in enumerate(self.factors):
+        #     info[f.name] = np.mean(rewards_factors[i])
 
         reward = np.sum(rewards_factors, axis=0)
 

@@ -3,6 +3,24 @@ import torch
 
 from scipy.ndimage.interpolation import map_coordinates
 
+B1 = np.asarray([[1, 0, 0, 0, 0, 0, 0, 0],
+                [-1, 0, 0, 0, 1, 0, 0, 0],
+                [-1, 0, 1, 0, 0, 0, 0, 0],
+                [-1, 1, 0, 0, 0, 0, 0, 0],
+                [1, 0, -1, 0, -1, 0, 1, 0],
+                [1, -1, -1, 1, 0, 0, 0, 0],
+                [1, -1, 0, 0, -1, 1, 0, 0],
+                [-1, 1, 1, -1, 1, -1, -1, 1]])
+
+idx = np.asarray([[0, 0, 0],
+                  [0, 0, 1],
+                  [0, 1, 0],
+                  [0, 1, 1],
+                  [1, 0, 0],
+                  [1, 0, 1],
+                  [1, 1, 0],
+                  [1, 1, 1]])
+
 
 def torch_trilinear_interpolation(
     volume: torch.Tensor,
@@ -39,24 +57,10 @@ def torch_trilinear_interpolation(
 
     device = volume.device
 
-    B1_torch = torch.tensor([[1, 0, 0, 0, 0, 0, 0, 0],
-                             [-1, 0, 0, 0, 1, 0, 0, 0],
-                             [-1, 0, 1, 0, 0, 0, 0, 0],
-                             [-1, 1, 0, 0, 0, 0, 0, 0],
-                             [1, 0, -1, 0, -1, 0, 1, 0],
-                             [1, -1, -1, 1, 0, 0, 0, 0],
-                             [1, -1, 0, 0, -1, 1, 0, 0],
-                             [-1, 1, 1, -1, 1, -1, -1, 1]],
-                            dtype=torch.float32, device=device)
+    B1_torch = torch.as_tensor(B1, dtype=torch.float32, device=device)
 
-    idx_torch = torch.tensor([[0, 0, 0],
-                              [0, 0, 1],
-                              [0, 1, 0],
-                              [0, 1, 1],
-                              [1, 0, 0],
-                              [1, 0, 1],
-                              [1, 1, 0],
-                              [1, 1, 1]], dtype=torch.float32, device=device)
+    idx_torch = torch.as_tensor(idx, dtype=torch.float32,
+                                device=device)
 
     if volume.dim() <= 2 or volume.dim() >= 5:
         raise ValueError("Volume must be 3D or 4D!")

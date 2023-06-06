@@ -30,6 +30,7 @@ from TrackToLearn.environments.stopping_criteria import (
 from TrackToLearn.environments.utils import (
     get_neighborhood_directions,
     get_sh,
+    # is_looping,
     is_too_curvy,
     is_too_long)
 
@@ -78,8 +79,8 @@ class BaseEnv(object):
         self.affine_vox2rasmm = input_volume.affine_vox2rasmm
         self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
 
-        self.data_volume = torch.tensor(
-            input_volume.data, dtype=torch.float32, device=env_dto['device'])
+        self.data_volume = torch.from_numpy(
+            input_volume.data).to(env_dto['device'], dtype=torch.float32)
         self.tracking_mask = tracking_mask
         self.target_mask = target_mask
         self.include_mask = include_mask
@@ -179,7 +180,7 @@ class BaseEnv(object):
         # self.stopping_criteria[
         #     StoppingFlags.STOPPING_LOOP] = \
         #     functools.partial(is_looping,
-        #                       loop_threshold=300)
+        #                       loop_threshold=360)
 
         # Convert neighborhood to voxel space
         self.add_neighborhood_vox = None
@@ -217,6 +218,7 @@ class BaseEnv(object):
                 dataset_file, split, subject_id, interface_seeding
         )
 
+        print('Hello from_dataset')
         return cls(
             input_volume,
             tracking_mask,
