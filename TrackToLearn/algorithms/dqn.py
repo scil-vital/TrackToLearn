@@ -15,7 +15,9 @@ from TrackToLearn.environments.env import BaseEnv
 
 class DQN(RLAlgorithm):
     """
-    Training algorithm.
+    Training algorithm. While the class is named DQN, it is actually Rainbow,
+    or parts of it.
+
     Based on
 
     Cite RAINBOW
@@ -244,9 +246,9 @@ class DQN(RLAlgorithm):
         action = action.to(dtype=torch.int64)
         with torch.no_grad():
             # Compute the target Q value
+            target_action = self.agent.act(next_state)[..., None]
             target_Q = self.target.evaluate(
-                next_state)
-            target_Q = target_Q.max(dim=1).values
+                next_state).gather(1, target_action)[..., 0]
             backup = reward + not_done * self.gamma * target_Q
         # Get current Q estimates
         current_Q = self.agent.evaluate(
