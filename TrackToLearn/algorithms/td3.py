@@ -69,27 +69,27 @@ class TD3(DDPG):
         self.gamma = gamma
 
         # Initialize main policy
-        self.policy = TD3ActorCritic(
+        self.agent = TD3ActorCritic(
             input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline
-        self.target = copy.deepcopy(self.policy)
+        self.target = copy.deepcopy(self.agent)
 
         # DDPG requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.Adam(
-            self.policy.actor.parameters(), lr=lr)
+            self.agent.actor.parameters(), lr=lr)
 
         # Optimizer for critic
         self.critic_optimizer = torch.optim.Adam(
-            self.policy.critic.parameters(), lr=lr)
+            self.agent.critic.parameters(), lr=lr)
 
         # TD3-specific parameters
         self.action_std = action_std
         self.max_action = 1.
         self.noise_clip = 1.
-        self.policy_freq = 2
+        self.agent_freq = 2
 
         # Off-policy parameters
         self.on_policy = False
@@ -114,7 +114,7 @@ class TD3(DDPG):
         """
 
         # Select action according to policy + noise for exploration
-        a = self.policy.select_action(state)
+        a = self.agent.select_action(state)
         action = (
             a + self.rng.normal(
                 0, self.max_action * self.action_std,
@@ -171,7 +171,7 @@ class TD3(DDPG):
             target_Q = reward + not_done * self.gamma * target_Q
 
         # Get current Q estimates for s
-        current_Q1, current_Q2 = self.policy.critic(
+        current_Q1, current_Q2 = self.agent.critic(
             state, action)
 
         # Compute critic loss Q(s,a) - r + yQ(s',a)
@@ -195,11 +195,11 @@ class TD3(DDPG):
         self.critic_optimizer.step()
 
         # Delayed policy updates
-        if self.total_it % self.policy_freq == 0:
+        if self.total_it % self.agent_freq == 0:
 
             # Compute actor loss -Q(s,a)
-            actor_loss = -self.policy.critic.Q1(
-                state, self.policy.actor(state)).mean()
+            actor_loss = -self.agent.critic.Q1(
+                state, self.agent.actor(state)).mean()
 
             losses.update({'actor_loss': actor_loss.item()})
 
@@ -210,14 +210,14 @@ class TD3(DDPG):
 
             # Update the frozen target models
             for param, target_param in zip(
-                self.policy.critic.parameters(),
+                self.agent.critic.parameters(),
                 self.target.critic.parameters()
             ):
                 target_param.data.copy_(
                     self.tau * param.data + (1 - self.tau) * target_param.data)
 
             for param, target_param in zip(
-                self.policy.actor.parameters(),
+                self.agent.actor.parameters(),
                 self.target.actor.parameters()
             ):
                 target_param.data.copy_(

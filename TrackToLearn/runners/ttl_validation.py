@@ -56,7 +56,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.reference_file = valid_dto['reference_file']
         self.scoring_data = valid_dto['scoring_data']
         self.prob = valid_dto['prob']
-        self.policy = valid_dto['policy']
+        self.agent = valid_dto['agent']
         self.n_actor = valid_dto['n_actor']
         self.npv = valid_dto['npv']
         self.min_length = valid_dto['min_length']
@@ -223,7 +223,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             device=self.device)
 
         # Load pretrained policies
-        alg.policy.load(self.policy, 'last_model_state')
+        alg.agent.load(self.agent, 'last_model_state')
 
         # Initialize Tracker, which will handle streamline generation
         tracker = Tracker(
@@ -254,7 +254,7 @@ def add_valid_args(parser):
                         help='Subject id to fetch from the dataset file')
     parser.add_argument('reference_file',
                         help='Path to binary seeding mask (.nii|.nii.gz)')
-    parser.add_argument('policy',
+    parser.add_argument('agent',
                         help='Path to the policy')
     parser.add_argument('hyperparameters',
                         help='File containing the hyperparameters for the '

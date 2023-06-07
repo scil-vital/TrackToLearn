@@ -96,13 +96,13 @@ class PPO(A2C):
         self.on_policy = True
 
         # Declare policy
-        self.policy = ActorCritic(
+        self.agent = ActorCritic(
             input_size, action_size, hidden_dims, device, action_std,
         ).to(device)
 
         # Note the optimizer is ran on the target network's params
         self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=lr)
+            self.agent.parameters(), lr=lr)
 
         # GAE Parameter
         self.lmbda = lmbda
@@ -188,7 +188,7 @@ class PPO(A2C):
                 old_prob = torch.FloatTensor(p[i:j]).to(self.device)
 
                 # V_pi'(s) and pi'(a|s)
-                v, logprob, entropy, *_ = self.policy.evaluate(
+                v, logprob, entropy, *_ = self.agent.evaluate(
                     state,
                     action)
 
@@ -239,7 +239,7 @@ class PPO(A2C):
                 ((critic_loss * 0.5) + actor_loss).backward()
 
                 # Gradient step
-                nn.utils.clip_grad_norm_(self.policy.parameters(),
+                nn.utils.clip_grad_norm_(self.agent.parameters(),
                                          0.5)
                 self.optimizer.step()
 

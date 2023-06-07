@@ -34,7 +34,7 @@ prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 npv=30 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 
-EXPERIMENT=SAC_Auto_FiberCupTrainOracle
+EXPERIMENT=DQN_FiberCupTrainOracle
 
 ID=$(date +"%F-%H_%M_%S")
 
@@ -45,7 +45,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python TrackToLearn/trainers/sac_auto_train.py \
+  python TrackToLearn/trainers/dqn_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -62,9 +62,10 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
-    --alignment_weighting=0.0 \
-    --oracle_weighting=1.0 \
+    --alignment_weighting=1.0 \
+    --oracle_weighting=10.0 \
     --n_dirs=10 \
+    --sphere='repulsion724' \
     --interface_seeding \
     --use_gpu \
     --use_comet \

@@ -111,6 +111,7 @@ class TrackToLearnExperiment(Experiment):
             'max_length': self.max_length,
             'cmc': self.cmc,
             'asymmetric': self.asymmetric,
+            'sphere': self.sphere,
             'prob': self.prob,
             'npv': self.npv,
             'rng': self.rng,
@@ -122,7 +123,7 @@ class TrackToLearnExperiment(Experiment):
             'target_bonus_factor': self.target_bonus_factor,
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
-            'oracle_weighting': 10,
+            'oracle_weighting': self.oracle_weighting,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
             'device': self.device

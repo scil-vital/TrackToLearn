@@ -4,7 +4,7 @@ from typing import Tuple
 
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.environments.noisy_tracker import NoisyTrackingEnvironment
-from TrackToLearn.utils.utils import normalize_vectors
+from TrackToLearn.utils.utils import from_sphere, normalize_vectors
 
 
 class InterfaceTrackingEnvironment(TrackingEnvironment):
@@ -33,6 +33,8 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
             Whether the episode is done
         info: dict
         """
+        if directions.shape[-1] != 3:
+            directions = from_sphere(directions, self.sphere)
 
         # If the streamline goes out the tracking mask at the first
         # step, flip it
@@ -83,6 +85,8 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
             Whether the episode is done
         info: dict
         """
+        if directions.shape[-1] != 3:
+            directions = from_sphere(directions, self.sphere)
 
         # If the streamline goes out the tracking mask at the first
         # step, flip it

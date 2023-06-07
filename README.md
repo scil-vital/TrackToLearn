@@ -39,7 +39,7 @@ You will need a trained agent for tracking. One is provided in the `example_mode
 
 ```
 usage: ttl_track.py [-h] [--sh_basis {descoteaux07,tournier07}] [--compress thresh] [-f] [--save_seeds]
-                    [--policy POLICY] [--hyperparameters HYPERPARAMETERS] [--npv NPV] [--interface]
+                    [--agent POLICY] [--hyperparameters HYPERPARAMETERS] [--npv NPV] [--interface]
                     [--min_length m] [--max_length M] [--prob sigma] [--fa_map FA_MAP] [--n_actor N]
                     [--rng_seed RNG_SEED]
                     in_odf in_seed in_mask out_tractogram
@@ -76,7 +76,7 @@ usage: ppo_train.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
                     [--run_tractometer] [--render] [--n_signal N_SIGNAL]
                     [--n_dirs N_DIRS] [--add_neighborhood ADD_NEIGHBORHOOD]
                     [--cmc] [--asymmetric] [--n_actor N_ACTOR]
-                    [--hidden_dims HIDDEN_DIMS] [--load_policy LOAD_POLICY]
+                    [--hidden_dims HIDDEN_DIMS] [--load_agent LOAD_POLICY]
                     [--max_ep MAX_EP] [--log_interval LOG_INTERVAL] [--lr LR]
                     [--gamma GAMMA]
                     [--alignment_weighting ALIGNMENT_WEIGHTING]

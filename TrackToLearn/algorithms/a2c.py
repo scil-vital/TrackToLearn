@@ -85,12 +85,12 @@ class A2C(VPG):
         self.on_policy = True
 
         # Declare policy
-        self.policy = ActorCritic(
+        self.agent = ActorCritic(
             input_size, action_size, hidden_dims, device, action_std
         ).to(device)
 
         self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=lr)
+            self.agent.parameters(), lr=lr)
 
         self.entropy_loss_coeff = entropy_loss_coeff
 
@@ -155,7 +155,7 @@ class A2C(VPG):
             returns = torch.FloatTensor(ret[i:j]).to(self.device)
             advantage = torch.FloatTensor(adv[i:j]).to(self.device)
 
-            v, log_prob, entropy, *_ = self.policy.evaluate(state, action)
+            v, log_prob, entropy, *_ = self.agent.evaluate(state, action)
 
             # assert log_prob.size() == returns.size(), \
             #     '{}, {}'.format(log_prob.size(), returns.size())
@@ -180,7 +180,7 @@ class A2C(VPG):
             ((critic_loss * 0.5) + actor_loss).backward()
 
             # Gradient step
-            nn.utils.clip_grad_norm_(self.policy.parameters(),
+            nn.utils.clip_grad_norm_(self.agent.parameters(),
                                      0.5)
             self.optimizer.step()
 

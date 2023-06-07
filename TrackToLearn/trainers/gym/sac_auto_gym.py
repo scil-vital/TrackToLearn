@@ -131,7 +131,7 @@ class SAC_AutoGymTraining(GymTraining):
             Seed for general randomness
         load_teacher: str
             Path to pretrained model for imitation learning
-        load_policy: str
+        load_agent: str
             Path to pretrained policy
         """
 

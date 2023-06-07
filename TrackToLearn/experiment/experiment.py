@@ -137,6 +137,12 @@ def add_environment_args(parser):
     parser.add_argument('--asymmetric', action='store_true',
                         help='If set, presume asymmetric fODFs when '
                         'computing reward.')
+    parser.add_argument('--sphere', default=None, type=str,
+                        choices=[
+                            None, 'repulsion100', 'repulsion200',
+                            'repulsion724'],
+                        help='Number of possible directions. \'None\' for'
+                             '3D directions.')
 
 
 def add_reward_args(parser):
@@ -162,7 +168,7 @@ def add_model_args(parser):
                         help='Number of learners')
     parser.add_argument('--hidden_dims', default='1024-2048-1024', type=str,
                         help='Hidden layers of the model')
-    parser.add_argument('--load_policy', default=None, type=str,
+    parser.add_argument('--load_agent', default=None, type=str,
                         help='Path to pretrained model')
 
 

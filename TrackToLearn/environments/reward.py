@@ -66,9 +66,8 @@ class RewardFunction():
                 rewards_factors[i] = w * f(streamlines, dones)
 
         info = {}
-        # TODO: Investigate why this causes memory leaks
-        # for i, f in enumerate(self.factors):
-        #     info[f.name] = np.mean(rewards_factors[i])
+        for i, f in enumerate(self.factors):
+            info[f.name] = np.mean(rewards_factors[i])
 
         reward = np.sum(rewards_factors, axis=0)
 

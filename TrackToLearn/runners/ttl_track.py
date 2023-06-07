@@ -95,7 +95,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
                 data=fa_image.get_fdata(),
                 affine_vox2rasmm=fa_image.affine)
 
-        self.policy = track_dto['policy']
+        self.agent = track_dto['agent']
         self.hyperparameters = track_dto['hyperparameters']
 
         with open(self.hyperparameters, 'r') as json_file:
@@ -182,7 +182,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             device=self.device)
 
         # Load pretrained policies
-        alg.policy.load(self.policy, 'last_model_state')
+        alg.agent.load(self.agent, 'last_model_state')
 
         # Initialize Tracker, which will handle streamline generation
 
@@ -246,7 +246,7 @@ def add_track_args(parser):
     add_out_options(parser)
 
     agent_group = parser.add_argument_group('Tracking agent options')
-    agent_group.add_argument('--policy', type=str,
+    agent_group.add_argument('--agent', type=str,
                              help='Path to the folder containing .pth files.\n'
                              'If not set, will default to the example '
                              'models.\n'
@@ -298,19 +298,19 @@ def add_track_args(parser):
                         help='Random number generator seed [%(default)s].')
 
 
-def verify_policy_option(parser, args):
+def verify_agent_option(parser, args):
 
-    if (args.policy is not None and args.hyperparameters is None) or \
-       (args.policy is None and args.hyperparameters is not None):
-        parser.error('You must specify both --policy and --hyperparameters '
+    if (args.agent is not None and args.hyperparameters is None) or \
+       (args.agent is None and args.hyperparameters is not None):
+        parser.error('You must specify both --agent and --hyperparameters '
                      'arguments.')
 
-    if args.interface and args.policy is None:
-        args.policy = DEFAULT_INTERFACE_MODEL
+    if args.interface and args.agent is None:
+        args.agent = DEFAULT_INTERFACE_MODEL
         args.hyperparameters = join(
             DEFAULT_INTERFACE_MODEL, 'hyperparameters.json')
-    elif args.policy is None:
-        args.policy = DEFAULT_WM_MODEL
+    elif args.agent is None:
+        args.agent = DEFAULT_WM_MODEL
         args.hyperparameters = join(
             DEFAULT_WM_MODEL, 'hyperparameters.json')
 
@@ -333,7 +333,7 @@ def parse_args():
 
     verify_streamline_length_options(parser, args)
     verify_compression_th(args.compress)
-    verify_policy_option(parser, args)
+    verify_agent_option(parser, args)
 
     return args
 

@@ -33,7 +33,7 @@ class GymRLAlgorithm(RLAlgorithm):
             Cummulative training steps reward
         """
 
-        self.policy.train()
+        self.agent.train()
 
         state = env.reset()
 
@@ -66,7 +66,7 @@ class GymRLAlgorithm(RLAlgorithm):
             Cummulative training steps reward
         """
         # Switch policy to eval mode so no gradients are computed
-        self.policy.eval()
+        self.agent.eval()
         state = env.reset()
         if render:
             env.render()

@@ -130,7 +130,7 @@ class TRPO(A2C):
         self.on_policy = True
 
         # Declare policy
-        self.policy = ActorCritic(
+        self.agent = ActorCritic(
             input_size, action_size, hidden_dims, device,
         ).to(device)
 
@@ -138,10 +138,10 @@ class TRPO(A2C):
         # TRPO: TRPO may use LGBFS optimization for the value function.
         # Kinda special to TRPO
         # self.optimizer = torch.optim.LBFGS(
-        #     self.policy.critic.parameters(), lr=lr, max_iter=25)
+        #     self.agent.critic.parameters(), lr=lr, max_iter=25)
 
         self.optimizer = torch.optim.Adam(
-            self.policy.critic.parameters(), lr=lr)
+            self.agent.critic.parameters(), lr=lr)
 
         # TRPO Specific parameters
         self.lmbda = lmbda
@@ -259,13 +259,13 @@ class TRPO(A2C):
                 """
 
                 flat_grad_kl = get_flat_grads(
-                    kl, self.policy.actor.parameters(), create_graph=True)
+                    kl, self.agent.actor.parameters(), create_graph=True)
 
                 def Hx(x):
 
                     kl_v = (flat_grad_kl @ x.clone())
                     flat_grad_grad_kl = get_flat_grads(
-                        kl_v, self.policy.actor.parameters())
+                        kl_v, self.agent.actor.parameters())
 
                     return flat_grad_grad_kl.detach() + (self.damping * x)
 
@@ -301,15 +301,15 @@ class TRPO(A2C):
                 for i in np.arange(self.max_backtracks):
                     step_size *= self.backtrack_coeff
                     new_params = old_params + (step * step_size)
-                    set_flat_params_to(self.policy.actor, new_params)
+                    set_flat_params_to(self.agent.actor, new_params)
                     with torch.no_grad():
-                        pi_loss, mu, std, entropy = loss_fn(self.policy)
+                        pi_loss, mu, std, entropy = loss_fn(self.agent)
                         kl_mean = kl(mu, std)
                     expected_improve = expected * step_size
                     actual_improvement = old_loss - pi_loss
                     ratio = actual_improvement / expected_improve
 
-                    # set_flat_params_to(self.policy.actor, old_params)
+                    # set_flat_params_to(self.agent.actor, old_params)
                     kl_cond = kl_mean <= self.delta
                     ratio_cond = ratio > 0.1
                     improve_cond = actual_improvement > 0.
@@ -322,11 +322,11 @@ class TRPO(A2C):
 
             loss_fn = get_loss()
 
-            actor_loss, old_mu, old_std, entropy = loss_fn(self.policy)
+            actor_loss, old_mu, old_std, entropy = loss_fn(self.agent)
             kl = get_kl()
             kl_mean = kl(old_mu, old_std)
             loss_grad = get_flat_grads(
-                actor_loss, self.policy.actor.parameters())
+                actor_loss, self.agent.actor.parameters())
 
             Hx = get_hessian(kl_mean)
 
@@ -341,12 +341,12 @@ class TRPO(A2C):
 
             expected = -loss_grad @  max_trpo_step
 
-            old_params = get_flat_params_from(self.policy.actor)
+            old_params = get_flat_params_from(self.agent.actor)
             actor_loss, step_size, kl_mean, entropy = linesearch(
                 max_trpo_step, kl, old_params, actor_loss)
 
             set_flat_params_to(
-                self.policy.actor, old_params + (max_trpo_step * step_size))
+                self.agent.actor, old_params + (max_trpo_step * step_size))
 
             # TODO?: Iterate on all data before K ?
             for _ in range(self.K_epochs):
@@ -355,7 +355,7 @@ class TRPO(A2C):
 
                 # def critic_step():
                 #     # V_pi'(s) and pi'(a|s)
-                #     v_s, *_ = self.policy.evaluate(
+                #     v_s, *_ = self.agent.evaluate(
                 #         state,
                 #         action)
                 #     # TRPO critic loss
@@ -367,7 +367,7 @@ class TRPO(A2C):
 
                 # self.optimizer.step(critic_step)
 
-                v, *_ = self.policy.evaluate(
+                v, *_ = self.agent.evaluate(
                     state,
                     action)
 

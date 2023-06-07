@@ -76,13 +76,13 @@ class VPG(RLAlgorithm):
         self.entropy_loss_coeff = entropy_loss_coeff
 
         # Declare policy
-        self.policy = PolicyGradient(
+        self.agent = PolicyGradient(
             input_size, action_size, hidden_dims, device, action_std
         ).to(device)
 
         # Optimizer for actor
         self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=lr)
+            self.agent.parameters(), lr=lr)
 
         # Replay buffer
         self.replay_buffer = ReplayBuffer(
@@ -141,12 +141,12 @@ class VPG(RLAlgorithm):
 
             # Select action according to policy
             # Noise is already added by the policy
-            action = self.policy.select_action(
+            action = self.agent.select_action(
                 state, stochastic=True)
 
             self.t += action.shape[0]
 
-            v, prob, _, mu, std = self.policy.get_evaluation(
+            v, prob, _, mu, std = self.agent.get_evaluation(
                 state,
                 action)
 
@@ -155,7 +155,7 @@ class VPG(RLAlgorithm):
             running_reward_factors = add_item_to_means(
                 running_reward_factors, info['reward_info'])
 
-            vp, *_ = self.policy.get_evaluation(
+            vp, *_ = self.agent.get_evaluation(
                 next_state,
                 action)
 
@@ -230,7 +230,7 @@ class VPG(RLAlgorithm):
             action = torch.FloatTensor(a[i:j]).to(self.device)
             returns = torch.FloatTensor(ret[i:j]).to(self.device)
 
-            log_prob, entropy, *_ = self.policy.evaluate(state, action)
+            log_prob, entropy, *_ = self.agent.evaluate(state, action)
 
             # VPG policy loss
             actor_loss = -(log_prob * returns).mean() + \

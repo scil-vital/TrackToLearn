@@ -7,24 +7,24 @@ from collections import defaultdict
 from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
-from TrackToLearn.algorithms.shared.offpolicy import ActorCritic
+from TrackToLearn.algorithms.shared.offpolicy import QAgent
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 from TrackToLearn.algorithms.shared.utils import add_item_to_means
 from TrackToLearn.environments.env import BaseEnv
 
 
-class DDPG(RLAlgorithm):
+class DQN(RLAlgorithm):
     """
     Training algorithm.
     Based on
-        Lillicrap, T. P., Hunt, J. J., Pritzel, A., Heess, N., Erez, T., Tassa,
-        Y., ... & Wierstra, D. (2015). Continuous control with deep
-        reinforcement learning. arXiv preprint arXiv:1509.02971.
+
+    Cite RAINBOW
 
     Implementation is based on
-    - https://github.com/sfujim/TD3
+    - https://github.com/Curt-Park/rainbow-is-all-you-need
 
-    Improvements done by TD3 were removed to get DDPG
+    Many thanks to Curt-Park on Github for the modular implementation
+    of Rainbow.
 
     Some alterations have been made to the algorithms so it could be
     fitted to the tractography problem.
@@ -36,9 +36,10 @@ class DDPG(RLAlgorithm):
         input_size: int,
         action_size: int,
         hidden_dims: str,
-        action_std: float = 0.35,
         lr: float = 3e-4,
         gamma: float = 0.99,
+        epsilon_decay: float = 0.9999,
+        target_update_freq: int = 50,
         n_actors: int = 4096,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
@@ -74,27 +75,25 @@ class DDPG(RLAlgorithm):
 
         self.rng = rng
 
-        # Initialize main policy
-        self.agent = ActorCritic(
+        # Initialize main agent
+        self.agent = QAgent(
             input_size, action_size, hidden_dims, device,
         )
 
-        # Initialize target policy to provide baseline
+        # Initialize target agent to provide baseline
         self.target = copy.deepcopy(self.agent)
 
         # DDPG requires a different model for actors and critics
         # Optimizer for actor
-        self.actor_optimizer = torch.optim.Adam(
-            self.agent.actor.parameters(), lr=lr)
+        self.q_optimizer = torch.optim.Adam(
+            self.agent.parameters(), lr=lr)
 
-        # Optimizer for critic
-        self.critic_optimizer = torch.optim.Adam(
-            self.agent.critic.parameters(), lr=lr)
-
-        # DDPG-specific parameters
-        self.action_std = action_std
-        self.max_action = 1.
+        # DQN-specific parameters
+        self.epsilon_decay = epsilon_decay
+        self.epsilon = 1.
+        self.min_epsilon = 0.1
         self.on_policy = False
+        self.target_update_freq = target_update_freq
 
         self.start_timesteps = 1000
         self.total_it = 0
@@ -102,7 +101,7 @@ class DDPG(RLAlgorithm):
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, 1)
 
         self.t = 1
         self.rng = rng
@@ -113,17 +112,12 @@ class DDPG(RLAlgorithm):
         self,
         state: torch.Tensor
     ) -> np.ndarray:
-        """ Sample an action according to the algorithm.
+        """ Epsilon-greedy action sampling
         """
-
-        # Select action according to policy + noise for exploration
-        a = self.agent.select_action(state)
-        action = (
-            a + self.rng.normal(
-                0, self.max_action * self.action_std,
-                size=a.shape)
-        )
-
+        if self.epsilon > np.random.random():
+            action = self.agent.random_action(state)
+        else:
+            action = self.agent.select_action(state)
         return action
 
     def _episode(
@@ -187,7 +181,8 @@ class DDPG(RLAlgorithm):
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state.cpu().numpy(), action, next_state.cpu().numpy(),
+                state.cpu().numpy(), action[..., None],
+                next_state.cpu().numpy(),
                 reward[..., None], done_bool[..., None])
 
             running_reward += sum(reward)
@@ -197,6 +192,10 @@ class DDPG(RLAlgorithm):
                 losses = self.update(
                     self.replay_buffer)
                 running_losses = add_item_to_means(running_losses, losses)
+
+                # Decay exploration rate
+                self.epsilon = max(self.min_epsilon,
+                                   self.epsilon * self.epsilon_decay)
 
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
@@ -242,59 +241,39 @@ class DDPG(RLAlgorithm):
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
             replay_buffer.sample(batch_size)
-
+        action = action.to(dtype=torch.int64)
         with torch.no_grad():
-            # Select action according to policy and add noise
-            noise = torch.randn_like(action) * (self.action_std * 2)
-            next_action = self.target.actor(next_state) + noise
-
             # Compute the target Q value
-            target_Q = self.target.critic(
-                next_state, next_action)
-            target_Q = reward + not_done * self.gamma * target_Q
-
+            target_Q = self.target.evaluate(
+                next_state)
+            target_Q = target_Q.max(dim=1).values
+            backup = reward + not_done * self.gamma * target_Q
         # Get current Q estimates
-        current_Q = self.agent.critic(
-            state, action)
-
-        # Compute critic loss
-        critic_loss = F.mse_loss(current_Q, target_Q)
+        current_Q = self.agent.evaluate(
+            state).gather(1, action)[..., 0]
+        # Compute Huber loss
+        q_loss = F.smooth_l1_loss(current_Q, backup)
 
         # Optimize the critic
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
-
-        # Compute actor loss
-        actor_loss = -self.agent.critic(
-            state, self.agent.actor(state)).mean()
-
-        # Optimize the actor
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
+        self.q_optimizer.zero_grad()
+        q_loss.backward()
+        self.q_optimizer.step()
 
         losses = {
-            'actor_loss': actor_loss.item(),
-            'critic_loss': critic_loss.item(),
+            'q_loss': q_loss.item(),
             'Q': current_Q.mean().item(),
             'Q\'': target_Q.mean().item(),
+            'epsilon': self.epsilon
         }
 
-        # Update the frozen target models
-        for param, target_param in zip(
-            self.agent.critic.parameters(),
-            self.target.critic.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data)
+        # Delayed policy updates
+        if self.total_it % self.target_update_freq == 0:
 
-        for param, target_param in zip(
-            self.agent.actor.parameters(),
-            self.target.actor.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data
-            )
+            # Hard update the frozen target models
+            for param, target_param in zip(
+                self.agent.parameters(),
+                self.target.parameters()
+            ):
+                target_param.data.copy_(param.data)
 
         return losses

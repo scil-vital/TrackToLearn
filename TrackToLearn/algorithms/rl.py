@@ -87,7 +87,7 @@ class RLAlgorithm(object):
         while not np.all(done):
             # Select action according to policy + noise to make tracking
             # probabilistic
-            action = self.policy.select_action(state)
+            action = self.agent.select_action(state)
             # Perform action
             next_state, reward, done, *_ = env.step(action)
 

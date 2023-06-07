@@ -77,21 +77,21 @@ class SAC(DDPG):
         self.rng = rng
 
         # Initialize main policy
-        self.policy = SACActorCritic(
+        self.agent = SACActorCritic(
             input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline
-        self.target = copy.deepcopy(self.policy)
+        self.target = copy.deepcopy(self.agent)
 
         # SAC requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.Adam(
-            self.policy.actor.parameters(), lr=lr)
+            self.agent.actor.parameters(), lr=lr)
 
         # Optimizer for critic
         self.critic_optimizer = torch.optim.Adam(
-            self.policy.critic.parameters(), lr=lr)
+            self.agent.critic.parameters(), lr=lr)
 
         # Temperature
         self.alpha = alpha
@@ -118,7 +118,7 @@ class SAC(DDPG):
         """
 
         # Select action according to policy + noise for exploration
-        action = self.policy.select_action(state, stochastic=True)
+        action = self.agent.select_action(state, stochastic=True)
 
         return action
 
@@ -153,10 +153,10 @@ class SAC(DDPG):
         state, action, next_state, reward, not_done = \
             replay_buffer.sample(batch_size)
 
-        pi, logp_pi = self.policy.act(state)
+        pi, logp_pi = self.agent.act(state)
         alpha = self.alpha
 
-        q1, q2 = self.policy.critic(state, pi)
+        q1, q2 = self.agent.critic(state, pi)
         q_pi = torch.min(q1, q2)
 
         # Entropy-regularized policy loss
@@ -164,7 +164,7 @@ class SAC(DDPG):
 
         with torch.no_grad():
             # Target actions come from *current* policy
-            next_action, logp_next_action = self.policy.act(next_state)
+            next_action, logp_next_action = self.agent.act(next_state)
 
             # Compute the target Q value
             target_Q1, target_Q2 = self.target.critic(
@@ -175,7 +175,7 @@ class SAC(DDPG):
                 (target_Q - alpha * logp_next_action)
 
         # Get current Q estimates
-        current_Q1, current_Q2 = self.policy.critic(
+        current_Q1, current_Q2 = self.agent.critic(
             state, action)
 
         # MSE loss against Bellman backup
@@ -205,14 +205,14 @@ class SAC(DDPG):
 
         # Update the frozen target models
         for param, target_param in zip(
-            self.policy.critic.parameters(),
+            self.agent.critic.parameters(),
             self.target.critic.parameters()
         ):
             target_param.data.copy_(
                 self.tau * param.data + (1 - self.tau) * target_param.data)
 
         for param, target_param in zip(
-            self.policy.actor.parameters(),
+            self.agent.actor.parameters(),
             self.target.actor.parameters()
         ):
             target_param.data.copy_(

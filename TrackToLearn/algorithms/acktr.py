@@ -89,13 +89,13 @@ class ACKTR(A2C):
         self.on_policy = True
 
         # Declare policy
-        self.policy = ActorCritic(
+        self.agent = ActorCritic(
             input_size, action_size, hidden_dims, device, action_std
         ).to(device)
 
         # Optimizer for actor
         self.optimizer = KFACOptimizer(
-            self.policy, lr=lr, kl_clip=delta)
+            self.agent, lr=lr, kl_clip=delta)
 
         self.entropy_loss_coeff = entropy_loss_coeff
 
@@ -166,7 +166,7 @@ class ACKTR(A2C):
             returns = torch.FloatTensor(ret[i:j]).to(self.device)
             advantage = torch.FloatTensor(adv[i:j]).to(self.device)
 
-            v, log_prob, entropy, *_ = self.policy.evaluate(state, action)
+            v, log_prob, entropy, *_ = self.agent.evaluate(state, action)
 
             # Surrogate policy loss
             assert log_prob.size() == advantage.size(), \
@@ -185,7 +185,7 @@ class ACKTR(A2C):
             critic_loss = ((v - returns) ** 2).mean()
 
             if self.optimizer.steps % self.optimizer.Ts == 0:
-                self.policy.zero_grad()
+                self.agent.zero_grad()
                 pg_fisher_loss = -log_prob.mean()
 
                 noisy_v = v + torch.randn(v.size(), device=self.device)

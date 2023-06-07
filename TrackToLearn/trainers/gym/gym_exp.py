@@ -86,7 +86,7 @@ class GymExperiment(Experiment):
             directory = pjoin(self.experiment_path, "model")
             if not os.path.exists(directory):
                 os.makedirs(directory)
-            alg.policy.save(directory, "last_model_state")
+            alg.agent.save(directory, "last_model_state")
 
         # Launch the tracking
         reward = alg.gym_validation(

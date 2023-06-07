@@ -4,6 +4,7 @@ import numpy as np
 import nibabel as nib
 import torch
 
+from dipy.data import get_sphere
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from typing import Callable, Dict, Tuple
@@ -101,6 +102,10 @@ class BaseEnv(object):
         self.npv = env_dto['npv']
         self.cmc = env_dto['cmc']
         self.asymmetric = env_dto['asymmetric']
+        if env_dto['sphere']:
+            self.sphere = get_sphere(env_dto['sphere'])
+        else:
+            self.sphere = None
 
         step_size_mm = env_dto['step_size']
         min_length_mm = env_dto['min_length']
@@ -352,7 +357,8 @@ class BaseEnv(object):
 
     def get_action_size(self):
         """ TODO: Support spherical actions"""
-
+        if self.sphere:
+            return len(self.sphere.vertices)
         return 3
 
     def get_voxel_size(self):

@@ -61,6 +61,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.interface_seeding = train_dto['interface_seeding']
         self.cmc = train_dto['cmc']
         self.asymmetric = train_dto['asymmetric']
+        self.sphere = train_dto['sphere']
 
         # Reward parameters
         self.alignment_weighting = train_dto['alignment_weighting']
@@ -73,7 +74,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Model parameters
         self.hidden_dims = train_dto['hidden_dims']
-        self.load_policy = train_dto['load_policy']
+        self.load_agent = train_dto['load_agent']
         self.comet_experiment = comet_experiment
         self.render = train_dto['render']
         self.run_tractometer = train_dto['run_tractometer']
@@ -121,6 +122,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'max_length': self.max_length,
             'cmc': self.cmc,
             'asymmetric': self.asymmetric,
+            'sphere': self.sphere,
             # Model parameters
             'experiment_path': self.experiment_path,
             'hidden_dims': self.hidden_dims,
@@ -160,7 +162,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         directory = pjoin(self.experiment_path, "model")
         if not os.path.exists(directory):
             os.makedirs(directory)
-        alg.policy.save(directory, "last_model_state")
+        alg.agent.save(directory, "last_model_state")
 
     def rl_train(
         self,
@@ -314,9 +316,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.setup_comet()
 
         # If included, load pretrained policies
-        if self.load_policy:
-            alg.policy.load(self.load_policy)
-            alg.target.load(self.load_policy)
+        if self.load_agent:
+            alg.agent.load(self.load_agent)
+            alg.target.load(self.load_agent)
 
         # Start training !
         self.rl_train(alg, env, back_env, valid_env, back_valid_env)

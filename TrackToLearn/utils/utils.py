@@ -106,5 +106,9 @@ class Timer:
         print("{:.2f} sec.".format(time() - self.start))
 
 
+def from_sphere(direction, sphere):
+    return sphere.vertices[direction]
+
+
 def normalize_vectors(v):
     return v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))

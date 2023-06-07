@@ -84,7 +84,7 @@ class Tracker(object):
 
         def tracking_generator():
             # Switch policy to eval mode so no gradients are computed
-            self.alg.policy.eval()
+            self.alg.agent.eval()
             # Track for every seed in the environment
             for i, start in enumerate(
                 tqdm(range(0, len(self.env.seeds), batch_size))
@@ -153,7 +153,7 @@ class Tracker(object):
             Cummulative training steps reward
         """
 
-        self.alg.policy.train()
+        self.alg.agent.train()
 
         mean_losses = defaultdict(list)
         mean_reward_factors = defaultdict(list)
@@ -210,7 +210,7 @@ class Tracker(object):
             Reward obtained during validation.
         """
         # Switch policy to eval mode so no gradients are computed
-        self.alg.policy.eval()
+        self.alg.agent.eval()
 
         # Initialize tractogram
         tractogram = None
