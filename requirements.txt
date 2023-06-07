@@ -103,8 +103,8 @@ zipp
 # torch is installed instead (notice the sys_platform condition")
 
 -f https://download.pytorch.org/whl/torch_stable.html
-torch==1.9.1+cu111;sys_platform!="darwin"
-torch==1.9.1;sys_platform=="darwin"
-torchvision==0.10.1+cu111;sys_platform!="darwin"
-torchvision==0.10.1;sys_platform=="darwin"
-torchaudio==0.9.1
+torch==1.13.1+cu116;sys_platform!="darwin"
+torch==1.13.1;sys_platform=="darwin"
+torchvision==0.14.1+cu116;sys_platform!="darwin"
+torchvision==0.14.1;sys_platform=="darwin"
+torchaudio==0.13.1

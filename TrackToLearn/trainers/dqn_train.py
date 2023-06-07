@@ -67,9 +67,9 @@ class DQNTrackToLearnTraining(TrackToLearnTraining):
             self.lr,
             self.gamma,
             self.epsilon_decay,
-            self.n_actor,
-            self.rng,
-            device)
+            n_actors=self.n_actor,
+            rng=self.rng,
+            device=device)
         return alg
 
 

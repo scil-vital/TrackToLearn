@@ -8,7 +8,7 @@ from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.offpolicy import QAgent
-from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
+from TrackToLearn.algorithms.shared.per import PrioritizedReplayBuffer
 from TrackToLearn.algorithms.shared.utils import add_item_to_means
 from TrackToLearn.environments.env import BaseEnv
 
@@ -41,7 +41,10 @@ class DQN(RLAlgorithm):
         lr: float = 3e-4,
         gamma: float = 0.99,
         epsilon_decay: float = 0.9999,
-        target_update_freq: int = 50,
+        target_update_freq: int = 1000,
+        alpha: float = 0.2,
+        beta: float = 0.6,
+        prior_eps: float = 1e-6,
         n_actors: int = 4096,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
@@ -96,15 +99,20 @@ class DQN(RLAlgorithm):
         self.min_epsilon = 0.1
         self.on_policy = False
         self.target_update_freq = target_update_freq
+        self.alpha = alpha
+        self.beta = beta
+        self.beta_recay = 1.00001
+        self.prior_eps = prior_eps
 
         self.start_timesteps = 1000
         self.total_it = 0
         self.tau = 0.005
 
         # Replay buffer
-        self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, 1)
+        self.replay_buffer = PrioritizedReplayBuffer(
+            input_size, 1, alpha=self.alpha)
 
+        self.episode_n = 0
         self.t = 1
         self.rng = rng
         self.device = device
@@ -116,7 +124,7 @@ class DQN(RLAlgorithm):
     ) -> np.ndarray:
         """ Epsilon-greedy action sampling
         """
-        if self.epsilon > np.random.random():
+        if self.epsilon > self.rng.random():
             action = self.agent.random_action(state)
         else:
             action = self.agent.select_action(state)
@@ -160,6 +168,15 @@ class DQN(RLAlgorithm):
         running_reward_factors = defaultdict(list)
 
         episode_length = 0
+
+        self.episode_n += 1
+
+        # Decay exploration rate
+        self.beta = min(1.0, self.beta * self.beta_recay)
+
+        # PER: increase beta
+        fraction = min(self.episode_n / 20000000, 1.0)
+        self.beta = self.beta + fraction * (1.0 - self.beta)
 
         while not np.all(done):
 
@@ -214,7 +231,7 @@ class DQN(RLAlgorithm):
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
+        replay_buffer: PrioritizedReplayBuffer,
         batch_size: int = 4096
     ) -> Tuple[float, float]:
         """
@@ -241,8 +258,9 @@ class DQN(RLAlgorithm):
         self.total_it += 1
 
         # Sample replay buffer
-        state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+        state, action, next_state, reward, not_done, weights, indices = \
+            replay_buffer.sample(batch_size, self.beta)
+
         action = action.to(dtype=torch.int64)
         with torch.no_grad():
             # Compute the target Q value
@@ -254,18 +272,26 @@ class DQN(RLAlgorithm):
         current_Q = self.agent.evaluate(
             state).gather(1, action)[..., 0]
         # Compute Huber loss
-        q_loss = F.smooth_l1_loss(current_Q, backup)
+        q_loss = F.smooth_l1_loss(current_Q, backup, reduction="none")
+        per_loss = torch.mean(q_loss * weights)
 
         # Optimize the critic
         self.q_optimizer.zero_grad()
-        q_loss.backward()
+        per_loss.backward()
         self.q_optimizer.step()
 
+        # PER: update priorities
+        loss_for_prior = q_loss.detach().cpu().numpy()
+        new_priorities = loss_for_prior + self.prior_eps
+        self.replay_buffer.update_priorities(indices, new_priorities)
+
         losses = {
-            'q_loss': q_loss.item(),
+            'q_loss': q_loss.mean().item(),
+            'per_loss': per_loss.item(),
             'Q': current_Q.mean().item(),
             'Q\'': target_Q.mean().item(),
-            'epsilon': self.epsilon
+            'epsilon': self.epsilon,
+            'beta': self.beta
         }
 
         # Delayed policy updates

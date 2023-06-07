@@ -334,6 +334,9 @@ class OffPolicyReplayBuffer(object):
         self.ptr = (self.ptr + len(ind)) % self.max_size
         self.size = min(self.size + len(ind), self.max_size)
 
+    def __len__(self):
+        return self.size
+
     def sample(
         self,
         batch_size=4096
