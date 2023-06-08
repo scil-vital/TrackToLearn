@@ -8,7 +8,7 @@ from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.qnetworks import DuelingQAgent
-# from TrackToLearn.algorithms.shared.per import PrioritizedReplayBuffer
+from TrackToLearn.algorithms.shared.per import PrioritizedReplayBuffer
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 from TrackToLearn.algorithms.shared.utils import add_item_to_means
 from TrackToLearn.environments.env import BaseEnv
@@ -107,15 +107,20 @@ class DQN(RLAlgorithm):
         self.beta_recay = 1.0005
         self.prior_eps = prior_eps
 
+        self.use_per = False
+
         self.start_timesteps = 1000
         self.total_it = 0
         self.tau = 0.005
 
-        # # Replay buffer
-        # self.replay_buffer = PrioritizedReplayBuffer(
-        #     input_size, 1, alpha=self.alpha)
-        self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, 1)
+        if self.use_per:
+            # Prioritized Experience Replay buffer
+            self.replay_buffer = PrioritizedReplayBuffer(
+                input_size, 1, alpha=self.alpha)
+        else:
+            # Uniform replay buffer
+            self.replay_buffer = OffPolicyReplayBuffer(
+                input_size, 1)
 
         self.episode_n = 0
         self.t = 1
@@ -177,12 +182,10 @@ class DQN(RLAlgorithm):
 
         self.episode_n += 1
 
-        # Decay exploration rate
-        self.beta = min(1.0, self.beta * self.beta_recay)
-
         # PER: increase beta
-        fraction = min(self.episode_n / 20000000, 1.0)
-        self.beta = self.beta + fraction * (1.0 - self.beta)
+        if self.use_per:
+            # Decay exploration rate
+            self.beta = min(1.0, self.beta * self.beta_recay)
 
         while not np.all(done):
 
@@ -237,8 +240,8 @@ class DQN(RLAlgorithm):
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 4096
+        replay_buffer: PrioritizedReplayBuffer,
+        batch_size: int = 2**14,
     ) -> Tuple[float, float]:
         """
 
@@ -264,38 +267,46 @@ class DQN(RLAlgorithm):
         self.total_it += 1
 
         # Sample replay buffer
-        # state, action, next_state, reward, not_done, weights, indices = \
-        #     replay_buffer.sample(batch_size, self.beta)
-        state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+        if self.use_per:
+            state, action, next_state, reward, not_done, weights, indices = \
+                replay_buffer.sample(batch_size, self.beta)
+        else:
+            state, action, next_state, reward, not_done = \
+                replay_buffer.sample(batch_size)
 
         action = action.to(dtype=torch.int64)
         with torch.no_grad():
             # Compute the target Q value
             target_action = self.agent.act(next_state)[..., None]
             target_Q = self.target.evaluate(
-                next_state).gather(1, target_action)[..., 0]
+                next_state).gather(1, target_action).squeeze(-1)
             backup = reward + not_done * self.gamma * target_Q
 
         # Get current Q estimates
         current_Q = self.agent.evaluate(
-            state).gather(1, action)[..., 0]
+            state).gather(1, action).squeeze(-1)
         # Compute Huber loss
-        q_loss = F.huber_loss(current_Q, backup)
-        # q_loss = F.huber_loss(current_Q, backup, reduction="none")
-        # per_loss = torch.mean(q_loss * weights)
+
+        if self.use_per:
+            q_loss = F.huber_loss(current_Q, backup, reduction="none")
+            per_loss = torch.mean(q_loss * weights)
+        else:
+            q_loss = F.huber_loss(current_Q, backup)
 
         # Optimize the critic
         self.q_optimizer.zero_grad()
-        # per_loss.backward()
-        q_loss.backward()
+        if self.use_per:
+            per_loss.backward()
+        else:
+            q_loss.backward()
         clip_grad_norm_(self.agent.parameters(), 10)
         self.q_optimizer.step()
 
-        # PER: update priorities
-        # loss_for_prior = q_loss.detach().cpu().numpy()
-        # new_priorities = np.abs(loss_for_prior) + self.prior_eps
-        # self.replay_buffer.update_priorities(indices, new_priorities)
+        if self.use_per:
+            # PER: update priorities
+            loss_for_prior = q_loss.detach().cpu().numpy()
+            new_priorities = np.abs(loss_for_prior) + self.prior_eps
+            self.replay_buffer.update_priorities(indices, new_priorities)
 
         # Noisy networks
         self.agent.reset_noise()
@@ -303,12 +314,16 @@ class DQN(RLAlgorithm):
 
         losses = {
             'q_loss': q_loss.mean().item(),
-            # 'per_loss': per_loss.item(),
             'Q': current_Q.mean().item(),
             'Q\'': target_Q.mean().item(),
             'epsilon': self.epsilon,
-            'beta': self.beta
         }
+
+        if self.use_per:
+            losses.update({
+                'beta': self.beta,
+                'per_loss': per_loss.item()
+            })
 
         # Delayed policy updates
         if self.total_it % self.target_update_freq == 0:
