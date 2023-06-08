@@ -4,7 +4,6 @@ import random
 import os
 import torch
 
-from dipy.tracking.metrics import length as slength
 from os.path import join as pjoin
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
@@ -229,11 +228,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             tractogram, losses, reward, reward_factors = \
                 train_tracker.track_and_train()
 
-            lens = [slength(s) for s in tractogram.streamlines]
-
-            avg_length = np.mean(lens)  # Euclidian length
-
             lengths = [len(s) for s in tractogram]
+            avg_length = np.mean(lengths)  # Euclidian length
             # Keep track of how many transitions were gathered
             t += sum(lengths)
             avg_reward = reward / self.n_actor
@@ -246,6 +242,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             # Update monitors
             self.train_reward_monitor.update(avg_reward)
             self.train_reward_monitor.end_epoch(i_episode)
+            self.train_length_monitor.update(avg_length)
+            self.train_length_monitor.end_epoch(i_episode)
 
             mean_ep_reward_factors = mean_losses(reward_factors)
             self.comet_monitor.log_losses(mean_ep_reward_factors, i_episode)
@@ -254,6 +252,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             if self.use_comet and self.comet_experiment is not None:
                 self.comet_monitor.update_train(
                     self.train_reward_monitor, i_episode)
+                self.comet_monitor.update_train(
+                    self.train_length_monitor, i_episode)
                 mean_ep_losses = mean_losses(losses)
                 self.comet_monitor.log_losses(mean_ep_losses, i_episode)
 

@@ -1,14 +1,15 @@
-import copy
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 from collections import defaultdict
+from torch.nn.utils import clip_grad_norm_
 from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
-from TrackToLearn.algorithms.shared.offpolicy import QAgent
-from TrackToLearn.algorithms.shared.per import PrioritizedReplayBuffer
+from TrackToLearn.algorithms.shared.qnetworks import DuelingQAgent
+# from TrackToLearn.algorithms.shared.per import PrioritizedReplayBuffer
+from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 from TrackToLearn.algorithms.shared.utils import add_item_to_means
 from TrackToLearn.environments.env import BaseEnv
 
@@ -41,7 +42,7 @@ class DQN(RLAlgorithm):
         lr: float = 3e-4,
         gamma: float = 0.99,
         epsilon_decay: float = 0.9999,
-        target_update_freq: int = 1000,
+        target_update_freq: int = 200,
         alpha: float = 0.2,
         beta: float = 0.6,
         prior_eps: float = 1e-6,
@@ -81,12 +82,12 @@ class DQN(RLAlgorithm):
         self.rng = rng
 
         # Initialize main agent
-        self.agent = QAgent(
+        self.agent = DuelingQAgent(
             input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target agent to provide baseline
-        self.target = QAgent(
+        self.target = DuelingQAgent(
             input_size, action_size, hidden_dims, device,
         )
 
@@ -103,16 +104,18 @@ class DQN(RLAlgorithm):
         self.target_update_freq = target_update_freq
         self.alpha = alpha
         self.beta = beta
-        self.beta_recay = 1.0001
+        self.beta_recay = 1.0005
         self.prior_eps = prior_eps
 
         self.start_timesteps = 1000
         self.total_it = 0
         self.tau = 0.005
 
-        # Replay buffer
-        self.replay_buffer = PrioritizedReplayBuffer(
-            input_size, 1, alpha=self.alpha)
+        # # Replay buffer
+        # self.replay_buffer = PrioritizedReplayBuffer(
+        #     input_size, 1, alpha=self.alpha)
+        self.replay_buffer = OffPolicyReplayBuffer(
+            input_size, 1)
 
         self.episode_n = 0
         self.t = 1
@@ -126,10 +129,11 @@ class DQN(RLAlgorithm):
     ) -> np.ndarray:
         """ Epsilon-greedy action sampling
         """
-        if self.epsilon > self.rng.random():
-            action = self.agent.random_action(state)
-        else:
-            action = self.agent.select_action(state)
+        # NoisyNets don't require epsilon for exploration
+        # if self.epsilon > self.rng.random():
+        #     action = self.agent.random_action(state)
+        # else:
+        action = self.agent.select_action(state)
         return action
 
     def _episode(
@@ -233,7 +237,7 @@ class DQN(RLAlgorithm):
 
     def update(
         self,
-        replay_buffer: PrioritizedReplayBuffer,
+        replay_buffer: OffPolicyReplayBuffer,
         batch_size: int = 4096
     ) -> Tuple[float, float]:
         """
@@ -260,8 +264,10 @@ class DQN(RLAlgorithm):
         self.total_it += 1
 
         # Sample replay buffer
-        state, action, next_state, reward, not_done, weights, indices = \
-            replay_buffer.sample(batch_size, self.beta)
+        # state, action, next_state, reward, not_done, weights, indices = \
+        #     replay_buffer.sample(batch_size, self.beta)
+        state, action, next_state, reward, not_done = \
+            replay_buffer.sample(batch_size)
 
         action = action.to(dtype=torch.int64)
         with torch.no_grad():
@@ -270,26 +276,34 @@ class DQN(RLAlgorithm):
             target_Q = self.target.evaluate(
                 next_state).gather(1, target_action)[..., 0]
             backup = reward + not_done * self.gamma * target_Q
+
         # Get current Q estimates
         current_Q = self.agent.evaluate(
             state).gather(1, action)[..., 0]
         # Compute Huber loss
-        q_loss = F.huber_loss(current_Q, backup, reduction="none")
-        per_loss = torch.mean(q_loss * weights)
+        q_loss = F.huber_loss(current_Q, backup)
+        # q_loss = F.huber_loss(current_Q, backup, reduction="none")
+        # per_loss = torch.mean(q_loss * weights)
 
         # Optimize the critic
         self.q_optimizer.zero_grad()
-        per_loss.backward()
+        # per_loss.backward()
+        q_loss.backward()
+        clip_grad_norm_(self.agent.parameters(), 10)
         self.q_optimizer.step()
 
         # PER: update priorities
-        loss_for_prior = q_loss.detach().cpu().numpy()
-        new_priorities = np.abs(loss_for_prior) + self.prior_eps
-        self.replay_buffer.update_priorities(indices, new_priorities)
+        # loss_for_prior = q_loss.detach().cpu().numpy()
+        # new_priorities = np.abs(loss_for_prior) + self.prior_eps
+        # self.replay_buffer.update_priorities(indices, new_priorities)
+
+        # Noisy networks
+        self.agent.reset_noise()
+        self.target.reset_noise()
 
         losses = {
             'q_loss': q_loss.mean().item(),
-            'per_loss': per_loss.item(),
+            # 'per_loss': per_loss.item(),
             'Q': current_Q.mean().item(),
             'Q\'': target_Q.mean().item(),
             'epsilon': self.epsilon,
@@ -299,11 +313,6 @@ class DQN(RLAlgorithm):
         # Delayed policy updates
         if self.total_it % self.target_update_freq == 0:
 
-            # Hard update the frozen target models
-            for param, target_param in zip(
-                self.agent.parameters(),
-                self.target.parameters()
-            ):
-                target_param.data.copy_(param.data)
+            self.target.load_state_dict(self.agent.state_dict())
 
         return losses

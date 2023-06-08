@@ -102,8 +102,6 @@ class PrioritizedReplayBuffer(OffPolicyReplayBuffer):
         assert len(indices) == len(priorities)
 
         for idx, priority in zip(indices, priorities):
-            assert priority > 0
-            assert 0 <= idx < len(self)
 
             self.sum_tree[idx] = priority ** self.alpha
             self.min_tree[idx] = priority ** self.alpha

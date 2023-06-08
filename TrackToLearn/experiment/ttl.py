@@ -8,7 +8,6 @@ from challenge_scoring.metrics.scoring import score_submission
 from challenge_scoring.utils.attributes import load_attribs
 from dipy.io.stateful_tractogram import Space, StatefulTractogram
 from dipy.io.streamline import save_tractogram
-from dipy.tracking.metrics import length as slength
 from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.backward_tracking_env import \
@@ -44,7 +43,9 @@ class TrackToLearnExperiment(Experiment):
     def setup_monitors(self):
         #  RL monitors
         self.train_reward_monitor = LossHistory(
-            "Train Reward - Alignment", "train_reward", self.experiment_path)
+            "Train Reward", "train_reward", self.experiment_path)
+        self.train_length_monitor = LossHistory(
+            "Train Length", "length_reward", self.experiment_path)
         self.reward_monitor = LossHistory(
             "Reward - Alignment", "reward", self.experiment_path)
         self.actor_loss_monitor = LossHistory(
@@ -345,7 +346,7 @@ class TrackToLearnExperiment(Experiment):
             Filename to save a screenshot of the rendered environment.
         """
 
-        lens = [slength(s) for s in valid_tractogram.streamlines]
+        lens = [len(s) for s in valid_tractogram.streamlines]
         avg_valid_reward = valid_reward / len(lens)
         avg_length = np.mean(lens)  # Euclidian length
 

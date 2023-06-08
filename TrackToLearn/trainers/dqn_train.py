@@ -74,7 +74,7 @@ class DQNTrackToLearnTraining(TrackToLearnTraining):
 
 
 def add_dqn_args(parser):
-    parser.add_argument('--epsilon_decay', default=0.9999, type=float,
+    parser.add_argument('--epsilon_decay', default=0.999, type=float,
                         help='Decay parameter for exploration.')
 
 

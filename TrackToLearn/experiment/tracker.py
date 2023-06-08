@@ -189,6 +189,7 @@ class Tracker(object):
                 reward += back_reward
             else:
                 reward = back_reward
+
         return (
             train_tractogram,
             mean_losses,

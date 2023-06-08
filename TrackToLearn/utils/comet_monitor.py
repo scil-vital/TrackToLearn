@@ -109,14 +109,14 @@ class CometMonitor():
 
     def update_train(
         self,
-        reward_monitor,
+        monitor,
         i_episode,
     ):
-        reward_x, reward_y = zip(*reward_monitor.epochs)
+        x, y = zip(*monitor.epochs)
 
         self.e.log_metrics(
             {
-                self.prefix + "Train Reward": reward_y[-1],
+                self.prefix + monitor.name: y[-1],
 
             },
             step=i_episode
