@@ -229,7 +229,7 @@ class QAgent(nn.Module):
 
 
 def make_shared_fc_network(
-    widths, input_size, output_size, activation=nn.ReLU,
+    widths, input_size, output_size, atoms=1, activation=nn.ReLU,
     last_activation=nn.Identity
 ):
     first_layer = [nn.Linear(input_size, widths[0]), activation()]
@@ -241,8 +241,8 @@ def make_shared_fc_network(
 
     value_layers = layers.copy()
 
-    layers.extend([NoisyLinear(widths[-1], output_size)])
-    value_layers.extend([NoisyLinear(widths[-1], 1)])
+    layers.extend([NoisyLinear(widths[-1], output_size * atoms)])
+    value_layers.extend([NoisyLinear(widths[-1], atoms)])
 
     return (
         nn.Sequential(*first_layer),
@@ -294,6 +294,54 @@ class DuelingQNetwork(nn.Module):
                 layer.reset_noise()
 
 
+class DuelingCategoricalNetwork(DuelingQNetwork):
+    """
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+        atoms: int,
+        support: torch.Tensor,
+    ):
+        """
+        """
+
+        super(DuelingCategoricalNetwork, self).__init__(
+            state_dim, action_dim, hidden_dims)
+
+        self.action_dim = action_dim
+        self.support = support
+        self.atoms = atoms
+
+        self.hidden_layers = format_widths(hidden_dims)
+
+        self.base, self.a, self.v = make_shared_fc_network(
+            self.hidden_layers, state_dim, action_dim, atoms=atoms)
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """ Forward propagation of the q-network.
+        Outputs a value for all actions according to the state
+        """
+        dist = self.dist(state)
+        q = torch.sum(dist * self.support, dim=-1)
+
+        return q
+
+    def dist(self, state):
+
+        base = self.base(state)
+        a = self.a(base).view(-1, self.action_dim, self.atoms)
+        v = self.v(base).view(-1, 1, self.atoms)
+
+        q = v + a - a.mean(dim=1, keepdim=True)
+
+        dist = F.softmax(q, dim=-1).clamp(min=1e-3)
+        return dist
+
+
 class DuelingQAgent(QAgent):
     """
     """
@@ -320,3 +368,37 @@ class DuelingQAgent(QAgent):
         """
         """
         self.q.reset_noise()
+
+
+class DuelingCategoricalAgent(DuelingQAgent):
+    """
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+        atoms: int,
+        support: torch.Tensor,
+        device: str
+    ):
+        """
+        """
+
+        super(DuelingCategoricalAgent, self).__init__(
+            state_dim, action_dim, hidden_dims, device)
+
+        self.device = device
+        self.action_dim = action_dim
+        self.q = DuelingCategoricalNetwork(
+            state_dim, action_dim, hidden_dims, atoms, support
+        ).to(self.device)
+
+    def reset_noise(self):
+        """
+        """
+        self.q.reset_noise()
+
+    def dist(self, state):
+        return self.q.dist(state)

@@ -1,13 +1,13 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
+# import torch.nn.functional as F
 
 from collections import defaultdict
 from torch.nn.utils import clip_grad_norm_
 from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
-from TrackToLearn.algorithms.shared.qnetworks import DuelingQAgent
+from TrackToLearn.algorithms.shared.qnetworks import DuelingCategoricalAgent
 from TrackToLearn.algorithms.shared.per import PrioritizedReplayBuffer
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 from TrackToLearn.algorithms.shared.utils import add_item_to_means
@@ -79,16 +79,24 @@ class DQN(RLAlgorithm):
         self.lr = lr
         self.gamma = gamma
 
+        self.atoms = 51
+        self.v_min = 0.0
+        self.v_max = 200.0
+        self.support = torch.linspace(
+            self.v_min, self.v_max, self.atoms).to(device)
+
         self.rng = rng
 
         # Initialize main agent
-        self.agent = DuelingQAgent(
-            input_size, action_size, hidden_dims, device,
+        self.agent = DuelingCategoricalAgent(
+            input_size, action_size, hidden_dims,
+            self.atoms, self.support, device,
         )
 
         # Initialize target agent to provide baseline
-        self.target = DuelingQAgent(
-            input_size, action_size, hidden_dims, device,
+        self.target = DuelingCategoricalAgent(
+            input_size, action_size, hidden_dims,
+            self.atoms, self.support, device,
         )
 
         # DDPG requires a different model for actors and critics
@@ -241,7 +249,7 @@ class DQN(RLAlgorithm):
     def update(
         self,
         replay_buffer: PrioritizedReplayBuffer,
-        batch_size: int = 2**14,
+        batch_size: int = 2 ** 10,
     ) -> Tuple[float, float]:
         """
 
@@ -275,30 +283,74 @@ class DQN(RLAlgorithm):
                 replay_buffer.sample(batch_size)
 
         action = action.to(dtype=torch.int64)
+
+        # with torch.no_grad():
+        #     # Compute the target Q value
+        #     target_action = self.agent.act(next_state)[..., None]
+        #     target_Q = self.target.evaluate(
+        #         next_state).gather(1, target_action).squeeze(-1)
+        #     backup = reward + not_done * self.gamma * target_Q
+
+        # # Get current Q estimates
+        # current_Q = self.agent.evaluate(
+        #     state).gather(1, action).squeeze(-1)
+        # # Compute Huber loss
+
+        # if self.use_per:
+        #     q_loss = F.huber_loss(current_Q, backup, reduction="none")
+        #     per_loss = torch.mean(q_loss * weights)
+        # else:
+        #     q_loss = F.huber_loss(current_Q, backup)
+
+        delta_z = float(self.v_max - self.v_min) / (self.atoms - 1)
+
         with torch.no_grad():
-            # Compute the target Q value
-            target_action = self.agent.act(next_state)[..., None]
-            target_Q = self.target.evaluate(
-                next_state).gather(1, target_action).squeeze(-1)
-            backup = reward + not_done * self.gamma * target_Q
 
-        # Get current Q estimates
-        current_Q = self.agent.evaluate(
-            state).gather(1, action).squeeze(-1)
-        # Compute Huber loss
+            next_action = self.agent.evaluate(next_state).argmax(1)
+            next_dist = self.target.dist(next_state)
+            next_dist = next_dist[range(batch_size), next_action]
 
-        if self.use_per:
-            q_loss = F.huber_loss(current_Q, backup, reduction="none")
-            per_loss = torch.mean(q_loss * weights)
-        else:
-            q_loss = F.huber_loss(current_Q, backup)
+            t_z = (reward.unsqueeze(-1) +
+                   not_done.unsqueeze(-1) * self.gamma * self.support)
+            t_z = t_z.clamp(min=self.v_min, max=self.v_max)
+            b = (t_z - self.v_min) / delta_z
+            print(b)
+            # TODO: for loop
+            l = b.floor().long()
+            u = b.ceil().long()
+
+            # offset = (
+            #     torch.linspace(
+            #         0, (batch_size - 1) * self.atoms, batch_size
+            #     ).long()
+            #     .unsqueeze(1)
+            #     .expand(batch_size, self.atoms)
+            #     .to(self.device)
+            # )
+
+            m = torch.zeros(next_dist.size(), device=self.device)
+            print(m.size(), l.size(), u.size(), b.size())
+            m[l] = m[l] + next_dist * (u.float() - b)
+            m[u] = m[u] + next_dist * (b - l.float())
+            # proj_dist = torch.zeros(next_dist.size(), device=self.device)
+            # proj_dist.view(-1).index_add_(
+            #     0, (l + offset).view(-1), (next_dist * (u.float() - b)).view(-1)
+            # )
+            # proj_dist.view(-1).index_add_(
+            #     0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1)
+            # )
+
+        dist = self.agent.dist(state)
+        log_p = torch.log(dist[range(batch_size), action])
+
+        q_loss = -(m * log_p).sum(1).mean()
 
         # Optimize the critic
         self.q_optimizer.zero_grad()
-        if self.use_per:
-            per_loss.backward()
-        else:
-            q_loss.backward()
+        # if self.use_per:
+        #     per_loss.backward()
+        # else:
+        q_loss.backward()
         clip_grad_norm_(self.agent.parameters(), 10)
         self.q_optimizer.step()
 
@@ -314,16 +366,16 @@ class DQN(RLAlgorithm):
 
         losses = {
             'q_loss': q_loss.mean().item(),
-            'Q': current_Q.mean().item(),
-            'Q\'': target_Q.mean().item(),
+            # 'Q': current_Q.mean().item(),
+            # 'Q\'': target_Q.mean().item(),
             'epsilon': self.epsilon,
         }
 
-        if self.use_per:
-            losses.update({
-                'beta': self.beta,
-                'per_loss': per_loss.item()
-            })
+        # if self.use_per:
+        #     losses.update({
+        #         'beta': self.beta,
+        #         'per_loss': per_loss.item()
+        #     })
 
         # Delayed policy updates
         if self.total_it % self.target_update_freq == 0:
