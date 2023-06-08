@@ -210,7 +210,7 @@ class OracleReward(Reward):
 
                 # if np.any(predictions > 0.5):
                 #     self.render(streamlines[predictions > 0.5])
-            return np.clip(predictions, 0, 1)
+            return np.clip(predictions, 0, 1) * dones.astype(int)
 
         return np.zeros((N))
 

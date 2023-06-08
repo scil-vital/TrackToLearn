@@ -86,7 +86,9 @@ class DQN(RLAlgorithm):
         )
 
         # Initialize target agent to provide baseline
-        self.target = copy.deepcopy(self.agent)
+        self.target = QAgent(
+            input_size, action_size, hidden_dims, device,
+        )
 
         # DDPG requires a different model for actors and critics
         # Optimizer for actor
@@ -101,7 +103,7 @@ class DQN(RLAlgorithm):
         self.target_update_freq = target_update_freq
         self.alpha = alpha
         self.beta = beta
-        self.beta_recay = 1.00001
+        self.beta_recay = 1.0001
         self.prior_eps = prior_eps
 
         self.start_timesteps = 1000
@@ -272,7 +274,7 @@ class DQN(RLAlgorithm):
         current_Q = self.agent.evaluate(
             state).gather(1, action)[..., 0]
         # Compute Huber loss
-        q_loss = F.smooth_l1_loss(current_Q, backup, reduction="none")
+        q_loss = F.huber_loss(current_Q, backup, reduction="none")
         per_loss = torch.mean(q_loss * weights)
 
         # Optimize the critic
@@ -282,7 +284,7 @@ class DQN(RLAlgorithm):
 
         # PER: update priorities
         loss_for_prior = q_loss.detach().cpu().numpy()
-        new_priorities = loss_for_prior + self.prior_eps
+        new_priorities = np.abs(loss_for_prior) + self.prior_eps
         self.replay_buffer.update_priorities(indices, new_priorities)
 
         losses = {

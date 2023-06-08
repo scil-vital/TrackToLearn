@@ -68,6 +68,16 @@ class PrioritizedReplayBuffer(OffPolicyReplayBuffer):
 
         ind = self._sample_proportional(batch_size)
 
+        weights = []
+        p_min = self.min_tree.min() / self.sum_tree.sum()
+        max_weight = (p_min * len(self)) ** (-beta)
+
+        for idx in ind:
+            p_sample = self.sum_tree[idx] / self.sum_tree.sum()
+            weight = (p_sample * len(self)) ** (-beta)
+            weights.append(weight / max_weight)
+        weights = np.array(weights)
+
         s = torch.as_tensor(
             self.state[ind], dtype=torch.float32, device=self.device)
         a = torch.as_tensor(
@@ -82,9 +92,7 @@ class PrioritizedReplayBuffer(OffPolicyReplayBuffer):
             self.not_done[ind], dtype=torch.float32, device=self.device
         ).squeeze(-1)
 
-        w = torch.as_tensor(
-            [self._calculate_weight(i, beta) for i in ind],
-            dtype=torch.float32, device=self.device)
+        w = torch.as_tensor(weights, dtype=torch.float32, device=self.device)
 
         return s, a, ns, r, d, w, ind
 
@@ -109,23 +117,8 @@ class PrioritizedReplayBuffer(OffPolicyReplayBuffer):
         segment = p_total / batch_size
 
         for i in range(batch_size):
-            a = segment * i
-            b = segment * (i + 1)
-            upperbound = random.uniform(a, b)
-            idx = self.sum_tree.retrieve(upperbound)
+            mass = random.random() * segment + i * segment
+            idx = self.sum_tree.find_prefixsum_idx(mass)
             indices.append(idx)
 
         return indices
-
-    def _calculate_weight(self, idx: int, beta: float):
-        """Calculate the weight of the experience at idx."""
-        # get max weight
-        p_min = self.min_tree.min() / self.sum_tree.sum()
-        max_weight = (p_min * len(self)) ** (-beta)
-
-        # calculate weights
-        p_sample = self.sum_tree[idx] / self.sum_tree.sum()
-        weight = (p_sample * len(self)) ** (-beta)
-        weight = weight / max_weight
-
-        return weight
