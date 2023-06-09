@@ -42,7 +42,7 @@ class DQN(RLAlgorithm):
         lr: float = 3e-4,
         gamma: float = 0.99,
         epsilon_decay: float = 0.9999,
-        target_update_freq: int = 200,
+        target_update_freq: int = 1000,
         alpha: float = 0.2,
         beta: float = 0.6,
         prior_eps: float = 1e-6,
@@ -117,7 +117,7 @@ class DQN(RLAlgorithm):
 
         self.use_per = False
 
-        self.start_timesteps = 1000
+        self.start_timesteps = 80000
         self.total_it = 0
         self.tau = 0.005
 
@@ -249,7 +249,7 @@ class DQN(RLAlgorithm):
     def update(
         self,
         replay_buffer: PrioritizedReplayBuffer,
-        batch_size: int = 2 ** 12,
+        batch_size: int = 2 ** 13,
     ) -> Tuple[float, float]:
         """
 

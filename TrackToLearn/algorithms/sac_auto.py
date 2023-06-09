@@ -115,7 +115,7 @@ class SACAuto(SAC):
         self.max_action = 1.
         self.on_policy = False
 
-        self.start_timesteps = 1000
+        self.start_timesteps = 80000
         self.total_it = 0
         self.tau = 0.005
 
@@ -128,7 +128,7 @@ class SACAuto(SAC):
     def update(
         self,
         replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**12
+        batch_size: int = 2**14
     ) -> Tuple[float, float]:
         """
 
