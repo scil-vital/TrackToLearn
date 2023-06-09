@@ -249,7 +249,7 @@ class DQN(RLAlgorithm):
     def update(
         self,
         replay_buffer: PrioritizedReplayBuffer,
-        batch_size: int = 2 ** 10,
+        batch_size: int = 2 ** 12,
     ) -> Tuple[float, float]:
         """
 
