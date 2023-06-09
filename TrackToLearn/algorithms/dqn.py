@@ -80,13 +80,10 @@ class DQN(RLAlgorithm):
         self.gamma = gamma
 
         self.atoms = 51
-        self.v_min = -0.1
+        self.v_min = -1.0
         self.v_max = 200.0
-
-        self.delta_z = float(self.v_max - self.v_min) / (self.atoms - 1)
-
         self.support = torch.linspace(
-            self.v_min, self.v_max, self.atoms).to(device) * self.delta_z
+            self.v_min, self.v_max, self.atoms).to(device)
 
         self.rng = rng
 
@@ -305,6 +302,8 @@ class DQN(RLAlgorithm):
         # else:
         #     q_loss = F.huber_loss(current_Q, backup)
 
+        delta_z = float(self.v_max - self.v_min) / (self.atoms - 1)
+
         with torch.no_grad():
 
             next_action = self.agent.evaluate(next_state).argmax(1)
@@ -314,7 +313,7 @@ class DQN(RLAlgorithm):
             t_z = (reward.unsqueeze(-1) +
                    not_done.unsqueeze(-1) * self.gamma * self.support)
             t_z = t_z.clamp(min=self.v_min, max=self.v_max)
-            b = (t_z - self.v_min) / self.delta_z
+            b = (t_z - self.v_min) / delta_z
             # print(b)
             # TODO: for loop
             l = b.floor().long()
