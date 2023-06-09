@@ -284,6 +284,8 @@ class DQN(RLAlgorithm):
 
         action = action.to(dtype=torch.int64)
 
+        # DDQN loss
+
         # with torch.no_grad():
         #     # Compute the target Q value
         #     target_action = self.agent.act(next_state)[..., None]
@@ -302,22 +304,22 @@ class DQN(RLAlgorithm):
         # else:
         #     q_loss = F.huber_loss(current_Q, backup)
 
+        # Categorical loss
+
         delta_z = float(self.v_max - self.v_min) / (self.atoms - 1)
 
         with torch.no_grad():
 
-            next_action = self.agent.evaluate(next_state).argmax(1)
-            next_dist = self.target.dist(next_state)
-            next_dist = next_dist[range(batch_size), next_action]
+            a_star = self.agent.evaluate(next_state).argmax(1)
+            p_st1_as = self.target.dist(next_state)[range(batch_size), a_star]
 
             t_z = (reward.unsqueeze(-1) +
                    not_done.unsqueeze(-1) * self.gamma * self.support)
             t_z = t_z.clamp(min=self.v_min, max=self.v_max)
             b = (t_z - self.v_min) / delta_z
-            # print(b)
-            # TODO: for loop
-            l = b.floor().long()
-            u = b.ceil().long()
+
+            lower = b.floor().long()
+            upper = b.ceil().long()
 
             offset = (
                 torch.linspace(
@@ -328,22 +330,19 @@ class DQN(RLAlgorithm):
                 .to(self.device)
             )
 
-            # m = torch.zeros(next_dist.size(), device=self.device)
-            # print(m.size(), l.size(), u.size(), b.size())
-            # m[l] = m[l] + next_dist * (u.float() - b)
-            # m[u] = m[u] + next_dist * (b - l.float())
-            m = torch.zeros(next_dist.size(), device=self.device)
+            m = torch.zeros((batch_size, self.atoms), device=self.device)
             m.view(-1).index_add_(
-                0, (l + offset).view(-1), (next_dist * (u.float() - b)).view(-1)
+                0, (lower + offset).view(-1),
+                (p_st1_as * (upper.float() - b)).view(-1)
             )
             m.view(-1).index_add_(
-                0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1)
+                0, (upper + offset).view(-1),
+                (p_st1_as * (b - lower.float())).view(-1)
             )
 
-        dist = self.agent.dist(state)
-        log_p = torch.log(dist[range(batch_size), action.squeeze(-1)])
-        assert m.shape == log_p.shape, (m.shape, log_p.shape)
-        q_loss = -(m * log_p).sum(1).mean()
+        p_s_a = self.agent.dist(state)[range(batch_size), action.squeeze(-1)]
+
+        q_loss = -(m * torch.log(p_s_a)).sum(1).mean()
 
         # Optimize the critic
         self.q_optimizer.zero_grad()
@@ -366,8 +365,10 @@ class DQN(RLAlgorithm):
 
         losses = {
             'q_loss': q_loss.mean().item(),
-            # 'Q': current_Q.mean().item(),
-            # 'Q\'': target_Q.mean().item(),
+            'Q_hist': torch.mul(p_s_a.mean(dim=0), self.support
+                                ).detach().cpu().numpy(),
+            'Q\'_hist': torch.mul(p_st1_as.mean(dim=0), self.support
+                                  ).cpu().numpy(),
             'epsilon': self.epsilon,
         }
 

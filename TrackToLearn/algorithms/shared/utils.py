@@ -12,7 +12,14 @@ def add_to_means(means, dic):
 
 
 def mean_losses(dic):
-    return {k: np.mean(dic[k]) for k in dic.keys()}
+    ret = {}
+    for k in dic.keys():
+        print(k)
+        val = np.asarray(dic[k])
+        print(k, val)
+        ret[k] = np.mean(val, axis=0)
+    return ret
+    return {k: np.mean(np.asarray(dic[k]), axis=0) for k in dic.keys()}
 
 
 def harvest_states(i, *args):

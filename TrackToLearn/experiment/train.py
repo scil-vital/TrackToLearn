@@ -7,6 +7,7 @@ import torch
 from os.path import join as pjoin
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
+from TrackToLearn.algorithms.shared.utils import mean_losses
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
@@ -187,8 +188,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 the same as the "forward" tracking environment but initalized
                 with half-streamlines
         """
-        def mean_losses(dic):
-            return {k: np.mean(dic[k]) for k in dic.keys()}
 
         # Current epoch
         i_episode = 0
