@@ -80,10 +80,13 @@ class DQN(RLAlgorithm):
         self.gamma = gamma
 
         self.atoms = 51
-        self.v_min = 0.0
+        self.v_min = -0.1
         self.v_max = 200.0
+
+        self.delta_z = float(self.v_max - self.v_min) / (self.atoms - 1)
+
         self.support = torch.linspace(
-            self.v_min, self.v_max, self.atoms).to(device)
+            self.v_min, self.v_max, self.atoms).to(device) * self.delta_z
 
         self.rng = rng
 
@@ -302,8 +305,6 @@ class DQN(RLAlgorithm):
         # else:
         #     q_loss = F.huber_loss(current_Q, backup)
 
-        delta_z = float(self.v_max - self.v_min) / (self.atoms - 1)
-
         with torch.no_grad():
 
             next_action = self.agent.evaluate(next_state).argmax(1)
@@ -313,21 +314,36 @@ class DQN(RLAlgorithm):
             t_z = (reward.unsqueeze(-1) +
                    not_done.unsqueeze(-1) * self.gamma * self.support)
             t_z = t_z.clamp(min=self.v_min, max=self.v_max)
-            b = (t_z - self.v_min) / delta_z
+            b = (t_z - self.v_min) / self.delta_z
+            # print(b)
+            # TODO: for loop
+            l = b.floor().long()
+            u = b.ceil().long()
 
-            m = torch.zeros((batch_size, self.atoms), device=self.device)
-            for a in range(self.atoms):
-                # TODO: for loop
-                b_j = b[a]
-                l = b_j.floor().long()
-                u = b_j.ceil().long()
+            offset = (
+                torch.linspace(
+                    0, (batch_size - 1) * self.atoms, batch_size
+                ).long()
+                .unsqueeze(1)
+                .expand(batch_size, self.atoms)
+                .to(self.device)
+            )
 
-                m[l] = m[l] + next_dist * (u.float() - b_j)
-                m[u] = m[u] + next_dist * (b_j - l.float())
+            # m = torch.zeros(next_dist.size(), device=self.device)
+            # print(m.size(), l.size(), u.size(), b.size())
+            # m[l] = m[l] + next_dist * (u.float() - b)
+            # m[u] = m[u] + next_dist * (b - l.float())
+            m = torch.zeros(next_dist.size(), device=self.device)
+            m.view(-1).index_add_(
+                0, (l + offset).view(-1), (next_dist * (u.float() - b)).view(-1)
+            )
+            m.view(-1).index_add_(
+                0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1)
+            )
 
         dist = self.agent.dist(state)
-        log_p = torch.log(dist[range(batch_size), action])
-
+        log_p = torch.log(dist[range(batch_size), action.squeeze(-1)])
+        assert m.shape == log_p.shape, (m.shape, log_p.shape)
         q_loss = -(m * log_p).sum(1).mean()
 
         # Optimize the critic
