@@ -314,31 +314,16 @@ class DQN(RLAlgorithm):
                    not_done.unsqueeze(-1) * self.gamma * self.support)
             t_z = t_z.clamp(min=self.v_min, max=self.v_max)
             b = (t_z - self.v_min) / delta_z
-            print(b)
-            # TODO: for loop
-            l = b.floor().long()
-            u = b.ceil().long()
 
-            # offset = (
-            #     torch.linspace(
-            #         0, (batch_size - 1) * self.atoms, batch_size
-            #     ).long()
-            #     .unsqueeze(1)
-            #     .expand(batch_size, self.atoms)
-            #     .to(self.device)
-            # )
+            m = torch.zeros((batch_size, self.atoms), device=self.device)
+            for a in range(self.atoms):
+                # TODO: for loop
+                b_j = b[a]
+                l = b_j.floor().long()
+                u = b_j.ceil().long()
 
-            m = torch.zeros(next_dist.size(), device=self.device)
-            print(m.size(), l.size(), u.size(), b.size())
-            m[l] = m[l] + next_dist * (u.float() - b)
-            m[u] = m[u] + next_dist * (b - l.float())
-            # proj_dist = torch.zeros(next_dist.size(), device=self.device)
-            # proj_dist.view(-1).index_add_(
-            #     0, (l + offset).view(-1), (next_dist * (u.float() - b)).view(-1)
-            # )
-            # proj_dist.view(-1).index_add_(
-            #     0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1)
-            # )
+                m[l] = m[l] + next_dist * (u.float() - b_j)
+                m[u] = m[u] + next_dist * (b_j - l.float())
 
         dist = self.agent.dist(state)
         log_p = torch.log(dist[range(batch_size), action])
