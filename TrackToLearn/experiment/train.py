@@ -71,6 +71,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.exclude_penalty_factor = train_dto['exclude_penalty_factor']
         self.angle_penalty_factor = train_dto['angle_penalty_factor']
         self.oracle_weighting = train_dto['oracle_weighting']
+        self.coverage_weighting = train_dto['coverage_weighting']
 
         # Model parameters
         self.hidden_dims = train_dto['hidden_dims']
@@ -139,6 +140,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'target_bonus_factor': self.target_bonus_factor,
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
+            'coverage_weighting': self.coverage_weighting,
             'oracle_weighting': self.oracle_weighting,
         }
 

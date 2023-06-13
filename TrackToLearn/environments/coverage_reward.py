@@ -38,25 +38,20 @@ class CoverageReward(Reward):
             Array containing the reward
         """
         N, L, P = streamlines.shape
-        if L >= 3:
 
-            is_in_wm = is_inside_mask(
-                streamlines, self.mask, 0.5).astype(int)
+        is_in_wm = is_inside_mask(
+            streamlines, self.mask, 0.5).astype(int)
 
-            already_covered = 1 - is_inside_mask(
-                streamlines, self.coverage, 0.5).astype(int)
+        already_covered = 1 - is_inside_mask(
+            streamlines, self.coverage, 0.5).astype(int)
 
-            X, Y, Z = (streamlines[..., -1, 0],
-                       streamlines[..., -1, 1],
-                       streamlines[..., -1, 2])
+        X, Y, Z = (streamlines[..., -1, 0],
+                   streamlines[..., -1, 1],
+                   streamlines[..., -1, 2])
 
-            self.coverage[X.astype(int), Y.astype(int), Z.astype(int)] = 1.
+        self.coverage[X.astype(int), Y.astype(int), Z.astype(int)] = 1.
 
-            # self.render(streamlines)
-
-            return is_in_wm * already_covered
-
-        return np.zeros((N))
+        return is_in_wm * already_covered
 
     def reset(self):
 

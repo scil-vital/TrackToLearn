@@ -165,7 +165,9 @@ def add_reward_args(parser):
     parser.add_argument('--angle_penalty_factor', default=0, type=float,
                         help='Penalty for looping or too-curvy streamlines')
     parser.add_argument('--oracle_weighting', default=1, type=float,
-                        help='Oracle weighting for reward')
+                        help='Oracle weighting for reward.')
+    parser.add_argument('--coverage_weighting', default=0.5, type=float,
+                        help='Coverage weighting for reward.')
 
 
 def add_model_args(parser):

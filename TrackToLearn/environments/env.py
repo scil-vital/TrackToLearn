@@ -120,7 +120,8 @@ class BaseEnv(object):
         self.target_bonus_factor = env_dto['target_bonus_factor']
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.oracle_bonus = env_dto['oracle_weighting']
+        self.oracle_weighting = env_dto['oracle_weighting']
+        self.coverage_weighting = env_dto['coverage_weighting']
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
@@ -159,8 +160,8 @@ class BaseEnv(object):
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
-                 self.oracle_bonus,
-                 1.0])
+                 self.oracle_weighting,
+                 self.coverage_weighting])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

@@ -112,7 +112,8 @@ class TrackToLearnExperiment(Experiment):
             'max_length': self.max_length,
             'cmc': self.cmc,
             'asymmetric': self.asymmetric,
-            'sphere': self.sphere,
+            'sphere': self.sphere
+            if hasattr(self, 'sphere') else None,
             'prob': self.prob,
             'npv': self.npv,
             'rng': self.rng,
@@ -125,6 +126,7 @@ class TrackToLearnExperiment(Experiment):
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
             'oracle_weighting': self.oracle_weighting,
+            'coverage_weighting': self.coverage_weighting,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
             'device': self.device
