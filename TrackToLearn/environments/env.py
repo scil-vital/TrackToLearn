@@ -17,6 +17,7 @@ from TrackToLearn.datasets.utils import (
 )
 
 from TrackToLearn.environments.reward import RewardFunction
+from TrackToLearn.environments.coverage_reward import CoverageReward
 from TrackToLearn.environments.local_reward import (
     PeaksAlignmentReward,
     TargetReward,
@@ -151,13 +152,15 @@ class BaseEnv(object):
             length_reward = LengthReward(self.max_nb_steps)
             oracle_reward = OracleReward(self.checkpoint,
                                          self.min_nb_steps, self.device)
+            cover_reward = CoverageReward(self.tracking_mask)
             self.reward_function = RewardFunction(
                 [peaks_reward, target_reward,
-                 length_reward, oracle_reward],
+                 length_reward, oracle_reward, cover_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
-                 self.oracle_bonus])
+                 self.oracle_bonus,
+                 1.0])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
@@ -565,10 +568,11 @@ class BaseEnv(object):
         """
         pass
 
-    def reset():
+    def reset(self):
         """ Initialize tracking seeds and streamlines
         """
-        pass
+        if self.compute_reward:
+            self.reward_function.reset()
 
     def step():
         """

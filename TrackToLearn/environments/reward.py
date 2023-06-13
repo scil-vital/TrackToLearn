@@ -15,6 +15,11 @@ class Reward(object):
 
         assert False, "Not implemented"
 
+    def reset(self):
+        """ Most reward factors do not need to be reset.
+        """
+        pass
+
 
 class RewardFunction():
 
@@ -72,3 +77,10 @@ class RewardFunction():
         reward = np.sum(rewards_factors, axis=0)
 
         return reward, info
+
+    def reset(self):
+        """
+        """
+
+        for f in self.factors:
+            f.reset()

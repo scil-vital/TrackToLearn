@@ -81,6 +81,8 @@ class TrackingEnvironment(BaseEnv):
             Initial state for RL model
         """
 
+        super().reset()
+
         # Heuristic to avoid duplicating seeds if fewer seeds than actors.
         replace = n_seeds > len(self.seeds)
         seeds = np.random.choice(
@@ -121,6 +123,9 @@ class TrackingEnvironment(BaseEnv):
         state: numpy.ndarray
             Initial state for RL model
         """
+
+        super().reset()
+
         # Initialize seeds as streamlines
         self.initial_points = self.seeds[start:end]
         N = self.initial_points.shape[0]

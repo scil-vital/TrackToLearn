@@ -210,6 +210,8 @@ class RetrackingEnvironment(TrackingEnvironment):
             Initial state for RL model
         """
 
+        super().reset()
+
         # Half-streamlines
         self.initial_points = np.array([s[0] for s in half_streamlines])
 

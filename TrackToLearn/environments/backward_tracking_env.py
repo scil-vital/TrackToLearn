@@ -172,6 +172,8 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
             Initial state for RL model
         """
 
+        super().reset()
+
         # Half-streamlines
         self.seeding_streamlines = [s[:] for s in streamlines]
         N = len(streamlines)
