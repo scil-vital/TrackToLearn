@@ -22,16 +22,16 @@ validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/$
 reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VALIDATION_SUBJECT_ID}_wm.nii.gz
 
 # RL params
-max_ep=10000 # Chosen empirically
+max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.001 # Learning rate
-gamma=0.99 # Gamma for reward discounting
+lr=0.0001 # Learning rate
+gamma=0.75 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=30 # Seed per voxel
+npv=100 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=SAC_Auto_FiberCupTrainOracle
@@ -62,9 +62,9 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
-    --alignment_weighting=0.0 \
-    --oracle_weighting=1.0 \
-    --n_dirs=10 \
+    --alignment_weighting=1.0 \
+    --oracle_weighting=5.0 \
+    --n_dirs=100 \
     --interface_seeding \
     --use_gpu \
     --use_comet \

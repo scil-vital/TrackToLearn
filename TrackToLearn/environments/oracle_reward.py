@@ -208,11 +208,12 @@ class OracleReward(Reward):
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
 
-                # if np.any(predictions > 0.5):
-                #     self.render(streamlines[predictions > 0.5])
-            return np.clip(predictions, 0, 1) * dones.astype(int) * L
+            scores = np.zeros_like(predictions)
+            scores[predictions > 0.3] = 1.
+            scores[predictions <= 0.3] = -1.
+            return scores * dones.astype(int)
 
-        return np.zeros((N))
+        return np.zeros((N)) - 1.
 
     def render(self, streamlines):
 
