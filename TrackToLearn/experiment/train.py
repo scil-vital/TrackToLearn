@@ -210,8 +210,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
-        self.save_vox_tractogram(valid_tractogram)
-        scores = self.score_tractogram(valid_tractogram)
+        filename = self.save_vox_tractogram(valid_tractogram)
+        scores = self.score_tractogram(filename)
         self.save_model(alg)
 
         # Display the results of the untrained network
@@ -266,8 +266,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 # Validation run
                 valid_tractogram, valid_reward = \
                     valid_tracker.track_and_validate()
-                self.save_vox_tractogram(valid_tractogram)
-                scores = self.score_tractogram(valid_tractogram)
+                filename = self.save_vox_tractogram(valid_tractogram)
+                scores = self.score_tractogram(filename)
 
                 # Display what the network is capable-of "now"
                 self.log(
@@ -278,8 +278,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Validation run
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
-        self.save_vox_tractogram(valid_tractogram)
-        scores = self.score_tractogram(valid_tractogram)
+        filename = self.save_vox_tractogram(valid_tractogram)
+        scores = self.score_tractogram(filename)
 
         # Display what the network is capable-of "now"
         self.log(
