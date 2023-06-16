@@ -24,13 +24,8 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.00001 # Learning rate
-gamma=0.9 # Gamma for reward discounting
-action_std=0.0
-eps_clip=0.1
-lmbda=0.95
-K_epochs=10
-entropy_loss_coeff=0.001
+lr=0.0001 # Learning rate
+gamma=0.85 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -41,7 +36,7 @@ theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=PPO_FiberCupTrainOracle
 
-ID=2023-03-01-16_02_18
+ID=$(date +"%F-%H_%M_%S")
 
 seeds=(1111 2222 3333 4444 5555)
 
@@ -50,7 +45,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python TrackToLearn/trainers/ppo_train.py \
+  python TrackToLearn/trainers/ppo_lstm_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -64,19 +59,15 @@ do
     --log_interval=${log_interval} \
     --lr=${lr} \
     --gamma=${gamma} \
-    --action_std=${action_std} \
-    --entropy_loss_coeff=${entropy_loss_coeff} \
-    --eps_clip=${eps_clip} \
-    --lmbda=${lmbda} \
-    --K_epochs=${K_epochs} \
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
-    --alignment_weighting=0.1 \
-    --oracle_weighting=1.0 \
+    --alignment_weighting=1.0 \
+    --oracle_weighting=0.0 \
+    --n_dirs=0 \
     --interface_seeding \
-    --use_comet \
     --use_gpu \
+    --use_comet \
     --run_tractometer
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"

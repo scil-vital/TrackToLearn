@@ -19,7 +19,7 @@ class Actor(nn.Module):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dims: str,
+        hidden_layers: list,
         device: torch.device,
         action_std: float = 0.0,
     ):
@@ -36,10 +36,8 @@ class Actor(nn.Module):
         """
         super(Actor, self).__init__()
 
-        self.hidden_layers = format_widths(hidden_dims)
-
         self.layers = make_fc_network(
-            self.hidden_layers, state_dim, action_dim, activation=nn.Tanh)
+            hidden_layers, state_dim, action_dim, activation=nn.Tanh)
 
         # State-independent STD, as opposed to SAC which uses a
         # state-dependent STD.
@@ -85,8 +83,10 @@ class PolicyGradient(nn.Module):
         self.device = device
         self.action_dim = action_dim
 
+        self.hidden_layers = format_widths(hidden_dims)
+
         self.actor = Actor(
-            state_dim, action_dim, hidden_dims, action_std,
+            state_dim, action_dim, self.hidden_layers, action_std,
         ).to(device)
 
     def act(
@@ -247,7 +247,7 @@ class Critic(nn.Module):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_dims: int,
+        hidden_layers: list,
     ):
         """
         Parameters:
@@ -263,10 +263,8 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
 
-        self.hidden_layers = format_widths(hidden_dims)
-
         self.layers = make_fc_network(
-            self.hidden_layers, state_dim, 1, activation=nn.Tanh)
+            hidden_layers, state_dim, 1, activation=nn.Tanh)
 
     def forward(self, state) -> torch.Tensor:
         """ Forward propagation of the actor.
@@ -299,7 +297,7 @@ class ActorCritic(PolicyGradient):
         )
 
         self.critic = Critic(
-            state_dim, action_dim, hidden_dims,
+            state_dim, action_dim, self.hidden_layers,
         ).to(self.device)
 
         print(self)
@@ -348,7 +346,6 @@ class ActorCritic(PolicyGradient):
             state = state[None, :]
         if len(action.shape) < 2:
             action = action[None, :]
-
 
         state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
         action = torch.as_tensor(
@@ -418,3 +415,161 @@ class ActorCritic(PolicyGradient):
         """
         self.actor.train()
         self.critic.train()
+
+
+class LSTMActorCritic(ActorCritic):
+    """ Actor-Critic module that handles both actions and values
+    Actors and critics here don't share a body but do share a loss
+    function. Therefore they are both in the same module
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+        device: torch.device,
+        action_std: float = 0.0,
+    ):
+        nn.Module.__init__(self)
+        self.device = device
+        self.action_dim = action_dim
+
+        self.hidden_layers = format_widths(hidden_dims)
+
+        self.base = nn.Sequential(*[
+            nn.Linear(state_dim, self.hidden_layers[0]),
+            nn.Tanh()])
+
+        self.lstm = nn.LSTMCell(self.hidden_layers[0], self.hidden_layers[1])
+        self.tanh = nn.Tanh()
+
+        self.actor = Actor(
+            self.hidden_layers[1], action_dim, self.hidden_layers[2:],
+            action_std).to(device)
+
+        self.critic = Critic(
+            self.hidden_layers[2], action_dim, self.hidden_layers[2:],
+        ).to(self.device)
+
+    def forward(self, x, h, c):
+        x = self.base(x)
+        h, c = self.lstm(x, (h, c))
+        x = self.tanh(h)
+        return x, h, c
+
+    def reset(self, state):
+
+        N = state.shape[0]
+
+        h = torch.zeros((N, self.hidden_layers[0]), device=self.device)
+        c = torch.zeros((N, self.hidden_layers[0]), device=self.device)
+
+        return h, c
+
+    def select_action(
+        self, state: np.array, h, c, stochastic=True,
+    ) -> np.ndarray:
+        """ Move state to torch tensor, select action and
+        move it back to numpy array
+
+        Parameters:
+        -----------
+            state: np.array
+                State of the environment
+
+        Returns:
+        --------
+            action: np.array
+                Action selected by the policy
+        """
+
+        if len(state.shape) < 2:
+            state = state[None, :]
+
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+        action, h, c = self.act(state, h, c, stochastic)
+
+        return action.cpu().data.numpy(), h, c
+
+    def act(
+        self, state: torch.Tensor, h, c, stochastic: bool = True,
+    ) -> torch.Tensor:
+        """ Select noisy action according to actor
+        """
+        x, h, c = self(state, h, c)
+
+        pi = self.actor.forward(x)
+        # Should always be stochastic
+        if stochastic:
+            action = pi.sample()  # if stochastic else pi.mean
+        else:
+            action = pi.mean
+
+        return action, h, c
+
+    def evaluate(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        h: torch.Tensor,
+        c: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """ Get output of value function for the actions, as well as
+        logprob of actions and entropy of policy for loss
+        """
+        x, h, c = self(state, h, c)
+
+        pi = self.actor(x)
+        mu, std = pi.mean, pi.stddev
+        action_logprob = pi.log_prob(action).sum(axis=-1)
+        entropy = pi.entropy()
+
+        values = self.critic(x).squeeze(-1)
+
+        return values, action_logprob, entropy, mu, std, h, c
+
+    def get_evaluation(
+        self, state: np.array, action: np.array, h, c
+    ) -> Tuple[np.array, np.array, np.array]:
+        """ Move state and action to torch tensor,
+        get value estimates for states, probabilities of actions
+        and entropy for action distribution, then move everything
+        back to numpy array
+
+        Parameters:
+        -----------
+            state: np.array
+                State of the environment
+            action: np.array
+                Actions taken by the policy
+
+        Returns:
+        --------
+            v: np.array
+                Value estimates for state
+            prob: np.array
+                Probabilities of actions
+            entropy: np.array
+                Entropy of policy
+        """
+
+        if len(state.shape) < 2:
+            state = state[None, :]
+        if len(action.shape) < 2:
+            action = action[None, :]
+
+        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+        action = torch.as_tensor(
+            action, dtype=torch.float32, device=self.device)
+
+        v, prob, entropy, mu, std, h, c = self.evaluate(state, action, h, c)
+
+        return (
+            v.cpu().data.numpy(),
+            prob.cpu().data.numpy(),
+            entropy.cpu().data.numpy(),
+            mu.cpu().data.numpy(),
+            std.cpu().data.numpy(),
+            h,
+            c)
