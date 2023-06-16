@@ -147,7 +147,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
     def save_hyperparameters(self):
 
         self.hyperparameters.update({'input_size': self.input_size,
-                                     'action_size': self.action_size})
+                                     'action_size': self.action_size,
+                                     'voxel_size': self.voxel_size})
         directory = pjoin(self.experiment_path, "model")
         with open(
             pjoin(directory, "hyperparameters.json"),
@@ -209,6 +210,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
+        self.save_vox_tractogram(valid_tractogram)
         scores = self.score_tractogram(valid_tractogram)
         self.save_model(alg)
 
@@ -264,6 +266,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 # Validation run
                 valid_tractogram, valid_reward = \
                     valid_tracker.track_and_validate()
+                self.save_vox_tractogram(valid_tractogram)
                 scores = self.score_tractogram(valid_tractogram)
 
                 # Display what the network is capable-of "now"
@@ -275,6 +278,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Validation run
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
+        self.save_vox_tractogram(valid_tractogram)
         scores = self.score_tractogram(valid_tractogram)
 
         # Display what the network is capable-of "now"
@@ -298,6 +302,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Get example state to define NN input size
         self.input_size = env.get_state_size()
         self.action_size = env.get_action_size()
+        self.voxel_size = env.get_voxel_size()
 
         # Voxel size
         self.voxel_size = env.get_voxel_size()

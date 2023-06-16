@@ -34,7 +34,7 @@ do
   DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
   out_tractogram="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"/tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".trk
 
-  python ttl_track.py \
+  ttl_track.py \
     "$DEST_FOLDER" \
     "$EXPERIMENT" \
     "$ID" \

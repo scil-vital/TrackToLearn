@@ -257,7 +257,7 @@ class TrackToLearnExperiment(Experiment):
 
         return back_env, env
 
-    def score_tractogram(self, tractogram):
+    def score_tractogram(self, filename):
 
         #  Load bundle attributes for tractometer
         # TODO: No need to load this every time, should only be loaded
@@ -265,8 +265,6 @@ class TrackToLearnExperiment(Experiment):
         gt_bundles_attribs_path = pjoin(
             self.scoring_data, 'gt_bundles_attributes.json')
         basic_bundles_attribs = load_attribs(gt_bundles_attribs_path)
-
-        filename = self.save_vox_tractogram(tractogram)
 
         # Score tractogram
         scores = score_submission(

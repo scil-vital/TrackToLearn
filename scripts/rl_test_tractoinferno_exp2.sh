@@ -18,7 +18,7 @@ do
 
     mkdir -p $tracking_folder
 
-    python ttl_track.py \
+    ttl_track.py \
       ${data_path}/fodf/sub-1006__fodf_6_descoteaux.nii.gz \
       ${data_path}/mask/sub-1006__mask_wm.nii.gz \
       ${data_path}/maps/sub-1006__interface.nii.gz \

@@ -409,13 +409,17 @@ class BaseEnv(object):
             length_reward = LengthReward(self.max_nb_steps)
             oracle_reward = OracleReward(self.checkpoint,
                                          self.min_nb_steps, self.device)
+
+            cover_reward = CoverageReward(self.tracking_mask)
             self.reward_function = RewardFunction(
                 [peaks_reward, target_reward,
-                 length_reward, oracle_reward],
+                 length_reward, oracle_reward,
+                 cover_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
-                 self.oracle_bonus])
+                 self.oracle_weighting,
+                 self.coverage_weighting])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

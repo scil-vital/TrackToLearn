@@ -21,7 +21,7 @@ max_length=200
 EXPERIMENT=$1
 ID=$2
 
-validstds=(0.0 0.1 0.2)
+validstds=(0.0 0.1)
 subjectids=(fibercup fibercup_flipped)
 seeds=(1111 2222 3333 4444 5555)
 
@@ -39,7 +39,7 @@ do
       reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
       echo $DEST_FOLDER/model/hyperparameters.json
-      python ttl_validation.py \
+      ttl_validation.py \
         "$DEST_FOLDER" \
         "$EXPERIMENT" \
         "$ID" \

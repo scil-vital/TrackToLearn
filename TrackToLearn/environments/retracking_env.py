@@ -8,6 +8,7 @@ from TrackToLearn.datasets.utils import (
     convert_length_mm2vox,
 )
 
+from TrackToLearn.environments.coverage_reward import CoverageReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.local_reward import (
     PeaksAlignmentReward,
@@ -77,6 +78,8 @@ class RetrackingEnvironment(TrackingEnvironment):
         self.target_bonus_factor = env_dto['target_bonus_factor']
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
+        self.oracle_weighting = env_dto['oracle_weighting']
+        self.coverage_weighting = env_dto['coverage_weighting']
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
@@ -106,13 +109,15 @@ class RetrackingEnvironment(TrackingEnvironment):
             length_reward = LengthReward(self.max_nb_steps)
             oracle_reward = OracleReward(self.checkpoint,
                                          self.min_nb_steps, self.device)
+            cover_reward = CoverageReward(self.tracking_mask)
             self.reward_function = RewardFunction(
                 [peaks_reward, target_reward,
-                 length_reward, oracle_reward],
+                 length_reward, oracle_reward, cover_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
-                 self.oracle_bonus])
+                 self.oracle_weighting,
+                 self.coverage_weighting])
 
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,

@@ -37,7 +37,7 @@ do
       reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
       echo $DEST_FOLDER/model/hyperparameters.json
-      python ttl_validation.py \
+      ttl_validation.py \
         "$DEST_FOLDER" \
         "$EXPERIMENT" \
         "$ID" \

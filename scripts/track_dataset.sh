@@ -27,7 +27,7 @@ DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
 dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
 
-python ttl_validation.py \
+ttl_validation.py \
   "$DEST_FOLDER" \
   "$EXPERIMENT" \
   "$ID" \

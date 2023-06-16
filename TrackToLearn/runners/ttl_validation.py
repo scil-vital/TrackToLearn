@@ -85,6 +85,8 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.target_bonus_factor = hyperparams['target_bonus_factor']
             self.exclude_penalty_factor = hyperparams['exclude_penalty_factor']
             self.angle_penalty_factor = hyperparams['angle_penalty_factor']
+            self.oracle_weighting = hyperparams['oracle_weighting']
+            self.coverage_weighting = hyperparams['coverage_weighting']
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
