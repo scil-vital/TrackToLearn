@@ -148,7 +148,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         self.hyperparameters.update({'input_size': self.input_size,
                                      'action_size': self.action_size,
-                                     'voxel_size': self.voxel_size})
+                                     'voxel_size': str(self.voxel_size)})
         directory = pjoin(self.experiment_path, "model")
         with open(
             pjoin(directory, "hyperparameters.json"),
