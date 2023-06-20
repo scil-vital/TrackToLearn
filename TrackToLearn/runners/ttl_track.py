@@ -77,7 +77,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         self.run_tractometer = False
         self.compute_reward = False
-        self.scoring_data = None
+        self.run_tractometer = None
         self.render = False
 
         if not track_dto['cpu'] and not torch.cuda.is_available():

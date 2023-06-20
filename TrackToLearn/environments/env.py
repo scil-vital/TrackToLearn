@@ -36,6 +36,9 @@ from TrackToLearn.environments.utils import (
     is_too_curvy,
     is_too_long)
 
+from TrackToLearn.utils.utils import (from_polar, from_sphere,
+                                      normalize_vectors)
+
 
 class BaseEnv(object):
     """
@@ -103,6 +106,9 @@ class BaseEnv(object):
         self.npv = env_dto['npv']
         self.cmc = env_dto['cmc']
         self.asymmetric = env_dto['asymmetric']
+
+        self.action_type = env_dto['action_type']
+
         if env_dto['sphere']:
             self.sphere = get_sphere(env_dto['sphere'])
         else:
@@ -125,7 +131,7 @@ class BaseEnv(object):
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
-        self.checkpoint = 'checkpoint.ckpt'
+        self.checkpoint = env_dto['oracle_checkpoint']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -361,8 +367,10 @@ class BaseEnv(object):
 
     def get_action_size(self):
         """ TODO: Support spherical actions"""
-        if self.sphere:
+        if self.action_type == 'discrete':
             return len(self.sphere.vertices)
+        elif self.action_type == 'polar':
+            return 2
         return 3
 
     def get_voxel_size(self):
@@ -473,6 +481,21 @@ class BaseEnv(object):
             seeds.extend(seeds_in_seeding_voxel)
         seeds = np.array(seeds, dtype=np.float16)
         return seeds
+
+    def _format_actions(
+        self,
+        actions: np.ndarray,
+    ):
+
+        if self.action_type == 'polar' and actions.shape[-1] == 2:
+            actions = from_polar(actions, self.step_size)
+        if self.action_type == 'discrete' and actions.shape[-1] != 3:
+            actions = from_sphere(actions, self.sphere)
+        else:
+            # Scale actions to step size
+            actions = normalize_vectors(actions) * self.step_size
+
+        return actions
 
     def _format_state(
         self,

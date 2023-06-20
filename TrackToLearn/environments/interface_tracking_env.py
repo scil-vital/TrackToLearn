@@ -4,14 +4,14 @@ from typing import Tuple
 
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.environments.noisy_tracker import NoisyTrackingEnvironment
-from TrackToLearn.utils.utils import from_sphere, normalize_vectors
+from TrackToLearn.utils.utils import normalize_vectors
 
 
 class InterfaceTrackingEnvironment(TrackingEnvironment):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -20,7 +20,7 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -33,8 +33,8 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-        if directions.shape[-1] != 3:
-            directions = from_sphere(directions, self.sphere)
+
+        directions = self._format_actions(actions)
 
         # If the streamline goes out the tracking mask at the first
         # step, flip it
@@ -63,7 +63,7 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -72,7 +72,7 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -85,8 +85,8 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-        if directions.shape[-1] != 3:
-            directions = from_sphere(directions, self.sphere)
+
+        directions = self._format_actions(actions)
 
         # If the streamline goes out the tracking mask at the first
         # step, flip it

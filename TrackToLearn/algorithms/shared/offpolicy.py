@@ -25,6 +25,7 @@ class Actor(nn.Module):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        output_activation=nn.Tanh
     ):
         """
         Parameters:
@@ -46,7 +47,7 @@ class Actor(nn.Module):
         self.layers = make_fc_network(
             self.hidden_layers, state_dim, action_dim)
 
-        self.output_activation = nn.Tanh()
+        self.output_activation = output_activation()
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """ Forward propagation of the actor.
@@ -81,7 +82,7 @@ class MaxEntropyActor(Actor):
 
         """
         super(MaxEntropyActor, self).__init__(
-            state_dim, action_dim, hidden_dims)
+            state_dim, action_dim, hidden_dims, nn.ReLU)
 
         self.action_dim = action_dim
 
@@ -89,8 +90,6 @@ class MaxEntropyActor(Actor):
 
         self.layers = make_fc_network(
             self.hidden_layers, state_dim, action_dim * 2)
-
-        self.output_activation = nn.Tanh()
 
     def forward(
         self,

@@ -28,8 +28,6 @@ from TrackToLearn.environments.utils import (
     is_too_curvy,
     is_too_long)
 
-from TrackToLearn.utils.utils import from_sphere, normalize_vectors
-
 
 class RetrackingEnvironment(TrackingEnvironment):
     """ Pre-initialized environment
@@ -83,7 +81,7 @@ class RetrackingEnvironment(TrackingEnvironment):
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
-        self.checkpoint = 'checkpoint.ckpt'
+        self.checkpoint = env_dto['oracle_checkpoint']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -249,7 +247,7 @@ class RetrackingEnvironment(TrackingEnvironment):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -259,7 +257,7 @@ class RetrackingEnvironment(TrackingEnvironment):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -272,11 +270,8 @@ class RetrackingEnvironment(TrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-        if self.sphere:
-            directions = from_sphere(directions, self.sphere)
-        else:
-            # Scale directions to step size
-            directions = normalize_vectors(directions) * self.step_size
+
+        directions = self._format_actions(actions)
 
         # Grow streamlines one step forward
         self.streamlines[self.continue_idx, self.length,

@@ -1,5 +1,7 @@
 import os
 import sys
+
+from dipy.core.geometry import sphere2cart
 from os.path import join as pjoin
 from time import time
 
@@ -112,3 +114,13 @@ def from_sphere(direction, sphere):
 
 def normalize_vectors(v):
     return v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))
+
+
+def from_polar(actions, radius):
+
+    radii = np.ones((actions.shape[0])) * radius
+    theta = actions[..., 0]
+    phi = actions[..., 1]
+
+    cart_directions = np.asarray(sphere2cart(radii, theta, phi)).T
+    return cart_directions

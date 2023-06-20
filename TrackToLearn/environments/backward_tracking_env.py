@@ -79,7 +79,7 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
-        self.checkpoint = 'checkpoint.ckpt'
+        self.checkpoint = env_dto['oracle_checkpoint']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']

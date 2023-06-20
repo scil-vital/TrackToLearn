@@ -101,12 +101,18 @@ def add_experiment_args(parser):
                         help='Seed to fix general randomness')
     parser.add_argument('--use_comet', action='store_true',
                         help='Use comet to display training or not')
-    parser.add_argument('--run_tractometer', action='store_true',
-                        help='Run tractometer during validation to monitor' +
-                        ' how the training is doing w.r.t. ground truth')
     parser.add_argument('--render', action='store_true',
                         help='Save screenshots of tracking as it goes along.' +
                         'Preferably disabled on non-graphical environments')
+
+
+def add_validator_args(parser):
+    parser.add_argument('--run_tractometer', type=str, default=None,
+                        help='Run tractometer during validation to monitor' +
+                        ' how the training is doing w.r.t. ground truth.')
+    parser.add_argument('--run_oracle', type=str, default=None,
+                        help='Run a TractOracle model during validation to '
+                        'monitor how the training is doing.')
 
 
 def add_data_args(parser):
@@ -120,8 +126,6 @@ def add_data_args(parser):
                         help='Subject id to fetch from the dataset file')
     parser.add_argument('reference_file',
                         help='Path to reference anatomy (.nii.gz).')
-    parser.add_argument('scoring_data',
-                        help='Path to Tractometer files.')
 
 
 def add_environment_args(parser):
@@ -137,6 +141,9 @@ def add_environment_args(parser):
     parser.add_argument('--asymmetric', action='store_true',
                         help='If set, presume asymmetric fODFs when '
                         'computing reward.')
+    parser.add_argument('--action_type', default='cartesian', type=str,
+                        choices=['cartesian', 'polar', 'discrete'],
+                        help='Type of action produced by the agent.')
     parser.add_argument('--sphere', default=None, type=str,
                         choices=[
                             None,

@@ -12,6 +12,8 @@ from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 from TrackToLearn.experiment.experiment import add_reward_args
+from TrackToLearn.experiment.validators import (
+    OracleValidator, TractometerValidator)
 
 assert torch.cuda.is_available(), "Training is only possible on CUDA devices."
 
@@ -52,7 +54,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.valid_dataset_file = train_dto['valid_dataset_file']
         self.valid_subject_id = train_dto['valid_subject_id']
         self.reference_file = train_dto['reference_file']
-        self.scoring_data = train_dto['scoring_data']
         self.rng_seed = train_dto['rng_seed']
         self.npv = train_dto['npv']
         self.theta = train_dto['theta']
@@ -62,6 +63,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.cmc = train_dto['cmc']
         self.asymmetric = train_dto['asymmetric']
         self.sphere = train_dto['sphere']
+        self.action_type = train_dto['action_type']
 
         # Reward parameters
         self.alignment_weighting = train_dto['alignment_weighting']
@@ -79,6 +81,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.comet_experiment = comet_experiment
         self.render = train_dto['render']
         self.run_tractometer = train_dto['run_tractometer']
+        self.run_oracle = train_dto['run_oracle']
         self.last_episode = 0
         self.n_actor = train_dto['n_actor']
         self.n_signal = train_dto['n_signal']
@@ -124,6 +127,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'cmc': self.cmc,
             'asymmetric': self.asymmetric,
             'sphere': self.sphere,
+            'action_type': self.action_type,
             # Model parameters
             'experiment_path': self.experiment_path,
             'hidden_dims': self.hidden_dims,
@@ -208,6 +212,14 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.interface_seeding, self.no_retrack,
             compress=0.0)
 
+        self.validators = []
+
+        if self.run_tractometer:
+            self.validators.append(TractometerValidator(self.run_tractometer))
+        if self.run_oracle:
+            self.validators.append(OracleValidator(
+                self.run_oracle, self.device))
+
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
         filename = self.save_vox_tractogram(valid_tractogram)
@@ -216,8 +228,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Display the results of the untrained network
         self.log(
-            valid_tractogram, env, valid_reward, i_episode,
-            scores=scores)
+            valid_tractogram, env, valid_reward, i_episode)
+        self.comet_monitor.log_losses(scores, i_episode)
 
         # Main training loop
         while i_episode < self.max_ep:
@@ -248,11 +260,13 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.train_length_monitor.update(avg_length)
             self.train_length_monitor.end_epoch(i_episode)
 
-            mean_ep_reward_factors = mean_losses(reward_factors)
-            self.comet_monitor.log_losses(mean_ep_reward_factors, i_episode)
-
             i_episode += 1
+
             if self.use_comet and self.comet_experiment is not None:
+                mean_ep_reward_factors = mean_losses(reward_factors)
+                self.comet_monitor.log_losses(
+                    mean_ep_reward_factors, i_episode)
+
                 self.comet_monitor.update_train(
                     self.train_reward_monitor, i_episode)
                 self.comet_monitor.update_train(
@@ -271,9 +285,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
                 # Display what the network is capable-of "now"
                 self.log(
-                    valid_tractogram, env, valid_reward, i_episode,
-                    scores=scores)
-
+                    valid_tractogram, env, valid_reward, i_episode)
+                self.comet_monitor.log_losses(scores, i_episode)
                 self.save_model(alg)
 
         # Validation run
@@ -283,8 +296,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Display what the network is capable-of "now"
         self.log(
-            valid_tractogram, env, valid_reward, i_episode,
-            scores=scores)
+            valid_tractogram, env, valid_reward, i_episode)
+        self.comet_monitor.log_losses(scores, i_episode)
 
         self.save_model(alg)
 

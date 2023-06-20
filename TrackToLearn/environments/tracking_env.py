@@ -9,7 +9,6 @@ from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.environments.stopping_criteria import (
     is_flag_set,
     StoppingFlags)
-from TrackToLearn.utils.utils import from_sphere, normalize_vectors
 
 
 class TrackingEnvironment(BaseEnv):
@@ -149,7 +148,7 @@ class TrackingEnvironment(BaseEnv):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions, rescale actions to step size and grow streamlines
@@ -157,7 +156,7 @@ class TrackingEnvironment(BaseEnv):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -170,11 +169,8 @@ class TrackingEnvironment(BaseEnv):
             Whether the episode is done
         info: dict
         """
-        if directions.shape[-1] != 3:
-            directions = from_sphere(directions, self.sphere)
-        else:
-            # Scale directions to step size
-            directions = normalize_vectors(directions) * self.step_size
+
+        directions = self._format_actions(actions)
 
         # Grow streamlines one step forward
         self.streamlines[self.continue_idx, self.length, :] = \

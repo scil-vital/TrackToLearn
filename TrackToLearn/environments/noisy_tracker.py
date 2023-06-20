@@ -8,7 +8,6 @@ from TrackToLearn.environments.backward_tracking_env import (
 from TrackToLearn.environments.retracking_env import RetrackingEnvironment
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
-from TrackToLearn.utils.utils import from_sphere
 
 
 class NoisyTrackingEnvironment(TrackingEnvironment):
@@ -50,7 +49,7 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -59,7 +58,7 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -72,8 +71,8 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-        if directions.shape[-1] != 3:
-            directions = from_sphere(directions, self.sphere)
+
+        directions = self._format_actions(actions)
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[self.continue_idx,
@@ -117,7 +116,7 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -126,7 +125,7 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -139,8 +138,8 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-        if directions.shape[-1] != 3:
-            directions = from_sphere(directions, self.sphere)
+
+        directions = self._format_actions(actions)
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[self.continue_idx,
@@ -184,7 +183,7 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -194,7 +193,7 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
 
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -207,8 +206,8 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-        if directions.shape[-1] != 3:
-            directions = from_sphere(directions, self.sphere)
+
+        directions = self._format_actions(actions)
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[:, self.length-1].astype(np.int32)

@@ -27,7 +27,8 @@ from TrackToLearn.experiment.experiment import (
     add_environment_args,
     add_experiment_args,
     add_model_args,
-    add_tracking_args)
+    add_tracking_args,
+    add_validator_args)
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
@@ -54,7 +55,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.valid_dataset_file = self.dataset_file = valid_dto['dataset_file']
         self.valid_subject_id = self.subject_id = valid_dto['subject_id']
         self.reference_file = valid_dto['reference_file']
-        self.scoring_data = valid_dto['scoring_data']
+        self.run_tractometer = valid_dto['run_tractometer']
         self.prob = valid_dto['prob']
         self.agent = valid_dto['agent']
         self.n_actor = valid_dto['n_actor']
@@ -62,7 +63,6 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.min_length = valid_dto['min_length']
         self.max_length = valid_dto['max_length']
         self.compute_reward = True
-        self.run_tractometer = self.scoring_data is not None
 
         self.fa_map = None
         if valid_dto['fa_map'] is not None:
@@ -85,8 +85,9 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.target_bonus_factor = hyperparams['target_bonus_factor']
             self.exclude_penalty_factor = hyperparams['exclude_penalty_factor']
             self.angle_penalty_factor = hyperparams['angle_penalty_factor']
-            self.oracle_weighting = hyperparams['oracle_weighting']
-            self.coverage_weighting = hyperparams['coverage_weighting']
+            self.oracle_weighting = hyperparams.get('oracle_weighting', 0.0)
+            self.coverage_weighting = hyperparams.get(
+                'coverage_weighting', 0.0)
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
@@ -261,8 +262,6 @@ def add_valid_args(parser):
     parser.add_argument('hyperparameters',
                         help='File containing the hyperparameters for the '
                              'experiment')
-    parser.add_argument('--scoring_data', default=None,
-                        help='Path to tractometer files.')
     parser.add_argument('--remove_invalid_streamlines', action='store_true')
     parser.add_argument('--fa_map', type=str, default=None,
                         help='FA map to influence STD for probabilistic' +
@@ -282,6 +281,7 @@ def parse_args():
     add_experiment_args(parser)
     add_model_args(parser)
     add_valid_args(parser)
+    add_validator_args(parser)
     add_environment_args(parser)
     add_tracking_args(parser)
 

@@ -4,8 +4,6 @@ import numpy as np
 from os.path import join as pjoin
 from typing import Tuple
 
-from challenge_scoring.metrics.scoring import score_submission
-from challenge_scoring.utils.attributes import load_attribs
 from dipy.io.stateful_tractogram import Space, StatefulTractogram
 from dipy.io.streamline import save_tractogram
 from nibabel.streamlines import Tractogram
@@ -114,10 +112,12 @@ class TrackToLearnExperiment(Experiment):
             'asymmetric': self.asymmetric,
             'sphere': self.sphere
             if hasattr(self, 'sphere') else None,
+            'action_type': self.action_type,
             'prob': self.prob,
             'npv': self.npv,
             'rng': self.rng,
-            'scoring_data': self.scoring_data,
+            'scoring_data': self.run_tractometer,
+            'oracle_checkpoint': self.run_oracle,
             'reference': self.reference_file,
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
@@ -258,22 +258,16 @@ class TrackToLearnExperiment(Experiment):
         return back_env, env
 
     def score_tractogram(self, filename):
+        """ TODO:
+        """
 
-        #  Load bundle attributes for tractometer
-        # TODO: No need to load this every time, should only be loaded
-        # once
-        gt_bundles_attribs_path = pjoin(
-            self.scoring_data, 'gt_bundles_attributes.json')
-        basic_bundles_attribs = load_attribs(gt_bundles_attribs_path)
+        all_scores = {}
+        for scorer in self.validators:
+            scores = scorer(filename)
 
-        # Score tractogram
-        scores = score_submission(
-            filename,
-            self.scoring_data,
-            basic_bundles_attribs,
-            compute_ic_ib=True)
+            all_scores.update(scores)
 
-        return scores
+        return all_scores
 
     def save_vox_tractogram(
         self,
