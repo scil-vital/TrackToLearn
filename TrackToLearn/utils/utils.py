@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 
@@ -122,8 +123,8 @@ def normalize_vectors(v, norm=1.):
 def from_polar(actions, radius):
 
     radii = np.ones((actions.shape[0])) * radius
-    theta = actions[..., 0]
-    phi = actions[..., 1]
+    theta = ((actions[..., 0] + 1) / 2.) * (2 * math.pi)
+    phi = ((actions[..., 1] + 1) / 2.) * math.pi
 
     cart_directions = np.asarray(sphere2cart(radii, theta, phi)).T
     return cart_directions

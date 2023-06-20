@@ -82,7 +82,7 @@ class MaxEntropyActor(Actor):
 
         """
         super(MaxEntropyActor, self).__init__(
-            state_dim, action_dim, hidden_dims, nn.ReLU)
+            state_dim, action_dim, hidden_dims)
 
         self.action_dim = action_dim
 
@@ -249,7 +249,7 @@ class ActorCritic(object):
         """
         self.device = device
         self.actor = Actor(
-            state_dim, action_dim, hidden_dims,
+            state_dim, action_dim, hidden_dims
         ).to(device)
 
         self.critic = Critic(
