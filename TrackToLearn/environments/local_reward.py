@@ -57,12 +57,13 @@ class PeaksAlignmentReward(Reward):
         if self.asymmetric:
             v = np.reshape(v, (N, 5 * 2, P // (5 * 2)))
         else:
-            v = np.reshape(v, (N, 5, P // 5))
+            v = np.reshape(v, (N * 5, P // 5))
 
             with np.errstate(divide='ignore', invalid='ignore'):
                 # # Normalize peaks
                 v = normalize_vectors(v)
 
+            v = np.reshape(v, (N, 5, P // 5))
             # Zero NaNs
             v = np.nan_to_num(v)
 

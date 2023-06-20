@@ -4,7 +4,6 @@ from typing import Tuple
 
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.environments.noisy_tracker import NoisyTrackingEnvironment
-from TrackToLearn.utils.utils import normalize_vectors
 
 
 class InterfaceTrackingEnvironment(TrackingEnvironment):
@@ -39,9 +38,6 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
         # If the streamline goes out the tracking mask at the first
         # step, flip it
         if self.length == 1:
-            # Scale directions to step size
-            directions = normalize_vectors(directions) * self.step_size
-
             # Grow streamlines one step forward
             streamlines = self.streamlines[self.continue_idx].copy()
             streamlines[:, self.length, :] = \
@@ -91,9 +87,6 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
         # If the streamline goes out the tracking mask at the first
         # step, flip it
         if self.length == 1:
-            # Scale directions to step size
-            directions = normalize_vectors(directions) * self.step_size
-
             # Grow streamlines one step forward
             streamlines = self.streamlines[self.continue_idx].copy()
             streamlines[:, self.length, :] = \

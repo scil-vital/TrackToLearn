@@ -128,7 +128,7 @@ class SACAuto(SAC):
     def update(
         self,
         replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**14
+        batch_size: int = 2**12
     ) -> Tuple[float, float]:
         """
 

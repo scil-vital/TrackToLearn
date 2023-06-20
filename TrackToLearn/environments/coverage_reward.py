@@ -48,7 +48,6 @@ class CoverageReward(Reward):
         X, Y, Z = (streamlines[..., -1, 0],
                    streamlines[..., -1, 1],
                    streamlines[..., -1, 2])
-
         self.coverage[X.astype(int), Y.astype(int), Z.astype(int)] = 1.
 
         return is_in_wm * already_covered

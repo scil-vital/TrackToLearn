@@ -486,14 +486,13 @@ class BaseEnv(object):
         self,
         actions: np.ndarray,
     ):
-
         if self.action_type == 'polar' and actions.shape[-1] == 2:
             actions = from_polar(actions, self.step_size)
         if self.action_type == 'discrete' and actions.shape[-1] != 3:
-            actions = from_sphere(actions, self.sphere)
+            actions = from_sphere(actions, self.sphere, self.step_size)
         else:
             # Scale actions to step size
-            actions = normalize_vectors(actions) * self.step_size
+            actions = normalize_vectors(actions, self.step_size)
 
         return actions
 

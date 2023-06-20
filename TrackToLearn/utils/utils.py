@@ -108,12 +108,15 @@ class Timer:
         print("{:.2f} sec.".format(time() - self.start))
 
 
-def from_sphere(direction, sphere):
-    return sphere.vertices[direction]
+def from_sphere(direction, sphere, norm=1.):
+    return sphere.vertices[direction] * norm
 
 
-def normalize_vectors(v):
-    return v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))
+def normalize_vectors(v, norm=1.):
+    # v = (v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))) * norm
+    v = (v / np.sqrt(np.einsum('...i,...i', v, v))[..., None]) * norm
+    # assert np.all(np.isnan(v) == False), (v, np.argwhere(np.isnan(v)))
+    return v
 
 
 def from_polar(actions, radius):

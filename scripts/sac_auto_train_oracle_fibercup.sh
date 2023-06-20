@@ -24,7 +24,7 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.001 # Learning rate
+lr=0.0001 # Learning rate
 gamma=0.5 # Gamma for reward discounting
 
 # Model params
@@ -45,7 +45,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python TrackToLearn/trainers/sac_auto_train.py \
+  python -m cProfile -o program.prof TrackToLearn/trainers/sac_auto_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -63,7 +63,7 @@ do
     --theta=${theta} \
     --alignment_weighting=1.0 \
     --oracle_weighting=0.0 \
-    --n_dirs=2 \
+    --n_dirs=4 \
     --action_type='polar' \
     --interface_seeding \
     --use_gpu \
