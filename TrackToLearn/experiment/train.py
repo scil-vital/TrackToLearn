@@ -13,7 +13,9 @@ from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 from TrackToLearn.experiment.experiment import add_reward_args
 from TrackToLearn.experiment.validators import (
-    OracleValidator, TractometerValidator)
+    OracleValidator)
+from TrackToLearn.experiment.tractometer_validator import (
+    TractometerValidator)
 
 assert torch.cuda.is_available(), "Training is only possible on CUDA devices."
 
@@ -215,7 +217,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.validators = []
 
         if self.run_tractometer:
-            self.validators.append(TractometerValidator(self.run_tractometer))
+            self.validators.append(TractometerValidator(
+                self.run_tractometer, self.reference_file))
         if self.run_oracle:
             self.validators.append(OracleValidator(
                 self.run_oracle, self.device))

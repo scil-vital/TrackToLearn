@@ -120,11 +120,12 @@ def normalize_vectors(v, norm=1.):
     return v
 
 
-def from_polar(actions, radius):
+def from_polar(actions, radius=1.):
 
     radii = np.ones((actions.shape[0])) * radius
     theta = ((actions[..., 0] + 1) / 2.) * (math.pi)
     phi = ((actions[..., 1] + 1) / 2.) * (2 * math.pi)
 
-    cart_directions = np.asarray(sphere2cart(radii, theta, phi)).T
+    X, Y, Z = sphere2cart(radii, theta, phi)
+    cart_directions = np.stack((X, Y, Z), axis=-1)
     return cart_directions

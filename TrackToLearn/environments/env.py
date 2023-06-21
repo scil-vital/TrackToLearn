@@ -4,6 +4,7 @@ import numpy as np
 import nibabel as nib
 import torch
 
+from dipy.core.geometry import cart2sphere
 from dipy.data import get_sphere
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
@@ -233,7 +234,6 @@ class BaseEnv(object):
                 dataset_file, split, subject_id, interface_seeding
         )
 
-        print('Hello from_dataset')
         return cls(
             input_volume,
             tracking_mask,
@@ -487,12 +487,12 @@ class BaseEnv(object):
         actions: np.ndarray,
     ):
         if self.action_type == 'polar' and actions.shape[-1] == 2:
-            actions = from_polar(actions, self.step_size)
+            actions = from_polar(actions)
         if self.action_type == 'discrete' and actions.shape[-1] != 3:
-            actions = from_sphere(actions, self.sphere, self.step_size)
-        else:
-            # Scale actions to step size
-            actions = normalize_vectors(actions, self.step_size)
+            actions = from_sphere(actions, self.sphere)
+
+        # Scale actions to step size
+        actions = normalize_vectors(actions) * self.step_size
 
         return actions
 
@@ -515,8 +515,13 @@ class BaseEnv(object):
             Observations of the state, incl. previous directions.
         """
         N, L, P = streamlines.shape
+
+        if self.action_type == 'polar':
+            P = P - 1
+
         if N <= 0:
             return []
+
         segments = streamlines[:, -1, :][:, None, :]
 
         signal = get_sh(
@@ -537,6 +542,15 @@ class BaseEnv(object):
         previous_dirs = np.zeros((N, self.n_dirs, P), dtype=np.float32)
         if L > 1:
             dirs = np.diff(streamlines, axis=1)
+
+            if self.action_type == 'polar':
+                X, Y, Z = (dirs[..., 0],
+                           dirs[..., 1],
+                           dirs[..., 2])
+                r, theta, phi = cart2sphere(X, Y, Z)
+
+                dirs = np.stack((theta, phi), axis=-1)
+
             previous_dirs[:, :min(dirs.shape[1], self.n_dirs), :] = \
                 dirs[:, :-(self.n_dirs+1):-1, :]
 
