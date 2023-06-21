@@ -13,7 +13,8 @@ from TrackToLearn.experiment.experiment import (
     add_environment_args,
     add_experiment_args,
     add_model_args,
-    add_tracking_args)
+    add_tracking_args,
+    add_validator_args)
 from TrackToLearn.experiment.train import (
     add_rl_args,
     TrackToLearnTraining)
@@ -108,6 +109,7 @@ def parse_args():
     add_model_args(parser)
     add_rl_args(parser)
     add_tracking_args(parser)
+    add_validator_args(parser)
 
     add_a2c_args(parser)
     add_ppo_args(parser)

@@ -221,7 +221,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 self.run_tractometer, self.reference_file))
         if self.run_oracle:
             self.validators.append(OracleValidator(
-                self.run_oracle, self.device))
+                self.run_oracle, self.reference_file, self.device))
 
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()

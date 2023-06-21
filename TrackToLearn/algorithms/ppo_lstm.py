@@ -123,8 +123,8 @@ class PPOLSTM(LSTMRLAlgorithm):
         # Replay buffer
         self.replay_buffer = LSTMReplayBuffer(
             input_size, action_size, n_actors,
-            max_traj_length, int(self.agent.hidden_layers[0]),
-            int(self.agent.hidden_layers[0]),
+            max_traj_length, int(self.agent.hidden_layers[1]),
+            int(self.agent.hidden_layers[1]),
             self.gamma, self.lmbda)
 
         self.rng = rng
@@ -223,7 +223,7 @@ class PPOLSTM(LSTMRLAlgorithm):
     def update(
         self,
         replay_buffer,
-        batch_size=2048,
+        batch_size=4096,
     ) -> Tuple[float, float]:
         """
         Policy update function, where we want to maximize the probability of
@@ -270,8 +270,8 @@ class PPOLSTM(LSTMRLAlgorithm):
 
         # PPO allows for multiple gradient steps on the same data
         # TODO: Should be switched with the batch ?
-        for _ in range(self.K_epochs):
 
+        for _ in range(self.K_epochs):
             for i in range(0, len(s), batch_size):
                 # you can slice further than an array's length
                 j = i + batch_size

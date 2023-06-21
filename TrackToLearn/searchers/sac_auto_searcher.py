@@ -48,7 +48,7 @@ def main():
 
     for experiment in opt.get_experiments():
         experiment.auto_metric_logging = False
-        experiment.workspace = 'TrackToLearn'
+        experiment.workspace = args.workspace
         experiment.parse_args = False
         experiment.disabled = not args.use_comet
 

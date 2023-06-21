@@ -449,21 +449,23 @@ class LSTMActorCritic(ActorCritic):
             action_std).to(device)
 
         self.critic = Critic(
-            self.hidden_layers[2], action_dim, self.hidden_layers[2:],
+            self.hidden_layers[1], action_dim, self.hidden_layers[2:],
         ).to(self.device)
+
+        print(self)
 
     def forward(self, x, h, c):
         x = self.base(x)
         h, c = self.lstm(x, (h, c))
         x = self.tanh(h)
-        return x, h, c
+        return x, h.detach(), c.detach()
 
     def reset(self, state):
 
         N = state.shape[0]
 
-        h = torch.zeros((N, self.hidden_layers[0]), device=self.device)
-        c = torch.zeros((N, self.hidden_layers[0]), device=self.device)
+        h = torch.zeros((N, self.hidden_layers[1]), device=self.device)
+        c = torch.zeros((N, self.hidden_layers[1]), device=self.device)
 
         return h, c
 

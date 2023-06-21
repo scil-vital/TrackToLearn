@@ -186,11 +186,12 @@ class AutoencoderOracle(nn.Module):
 
 class OracleValidator(Validator):
 
-    def __init__(self, checkpoint, device):
+    def __init__(self, checkpoint, reference, device):
 
         self.name = 'Oracle'
 
         self.checkpoint = torch.load(checkpoint)
+        self.reference = reference
 
         hyper_parameters = self.checkpoint["hyper_parameters"]
         # The model's class is saved in hparams
@@ -206,8 +207,10 @@ class OracleValidator(Validator):
 
     def __call__(self, filename):
 
-        sft = load_tractogram(filename, 'same',
+        sft = load_tractogram(filename, self.reference,
                               bbox_valid_check=False, trk_header_check=False)
+
+        sft.to_vox()
 
         streamlines = sft.streamlines
         # Resample streamlines to a fixed number of points. This should be
@@ -223,4 +226,4 @@ class OracleValidator(Validator):
                 dirs, dtype=torch.float, device=self.device)
             predictions = self.model(data).cpu().numpy()
 
-        return {'Oracle': np.mean(predictions)}
+        return {'Oracle': np.mean(predictions > 0.5)}

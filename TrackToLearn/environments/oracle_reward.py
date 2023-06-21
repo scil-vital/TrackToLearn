@@ -208,14 +208,11 @@ class OracleReward(Reward):
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
 
-            scores = np.zeros_like(predictions)
-            scores[predictions > 0.3] = 1.
-            scores[predictions <= 0.3] = -1.
-            return scores * dones.astype(int)
+            return predictions * dones.astype(int)
 
-        return np.zeros((N)) - 1.
+        return np.zeros((N))
 
-    def render(self, streamlines):
+    def render(self, streamlines, predictions=None):
 
         scene = window.Scene()
 
