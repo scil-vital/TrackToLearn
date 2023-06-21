@@ -490,7 +490,6 @@ class BaseEnv(object):
             actions = from_polar(actions)
         if self.action_type == 'discrete' and actions.shape[-1] != 3:
             actions = from_sphere(actions, self.sphere)
-
         # Scale actions to step size
         actions = normalize_vectors(actions) * self.step_size
 

@@ -25,7 +25,7 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 lr=0.0001 # Learning rate
-gamma=0.5 # Gamma for reward discounting
+gamma=0.75 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -45,7 +45,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python -m cProfile -o program.prof TrackToLearn/trainers/sac_auto_train.py \
+  python TrackToLearn/trainers/sac_auto_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -62,14 +62,15 @@ do
     --npv=${npv} \
     --theta=${theta} \
     --alignment_weighting=1.0 \
-    --oracle_weighting=0.0 \
+    --oracle_weighting=10.0 \
+    --coverage_weighting=1.0 \
     --n_dirs=4 \
-    --action_type='polar' \
+    --action_type='cartesian' \
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --run_oracle='checkpoint.ckpt'
-    # --run_tractometer=${SCORING_DATA}
+    --run_oracle='checkpoint.ckpt' \
+    --run_tractometer=${SCORING_DATA}
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

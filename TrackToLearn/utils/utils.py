@@ -109,8 +109,9 @@ class Timer:
         print("{:.2f} sec.".format(time() - self.start))
 
 
-def from_sphere(direction, sphere, norm=1.):
-    return sphere.vertices[direction] * norm
+def from_sphere(actions, sphere, norm=1.):
+    vertices = sphere.vertices[actions]
+    return vertices * norm
 
 
 def normalize_vectors(v, norm=1.):

@@ -54,7 +54,6 @@ do
     "${validation_dataset_file}" \
     "${VALIDATION_SUBJECT_ID}" \
     "${reference_file}" \
-    "${SCORING_DATA}" \
     --max_ep=${max_ep} \
     --log_interval=${log_interval} \
     --lr=${lr} \
@@ -66,10 +65,12 @@ do
     --oracle_weighting=0.0 \
     --n_dirs=4 \
     --sphere='repulsion200' \
+    --action_type='discrete' \
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --run_tractometer
+    --run_oracle='checkpoint.ckpt' \
+    --run_tractometer="${SCORING_DATA}"
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

@@ -208,7 +208,9 @@ class OracleReward(Reward):
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
 
-            return predictions * dones.astype(int)
+            scores = np.zeros_like(predictions)
+            scores[predictions > 0.5] = 1.
+            return scores * dones.astype(int)
 
         return np.zeros((N))
 
