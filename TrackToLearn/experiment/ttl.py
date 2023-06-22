@@ -305,7 +305,8 @@ class TrackToLearnExperiment(Experiment):
             Space.VOX,
             data_per_streamline=data_per_streamline,
             data_per_point=data_per_point)
-
+        sft.to_rasmm()
+        sft.to_corner()
         save_tractogram(sft, filename, bbox_valid_check=False)
 
         return filename

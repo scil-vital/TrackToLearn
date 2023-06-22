@@ -270,10 +270,12 @@ class TrackingEnvironment(BaseEnv):
         stopped_streamlines = [self.streamlines[i, :self.lengths[i], :]
                                for i in range(len(self.streamlines))]
 
-        flags = is_flag_set(
-            self.flags, StoppingFlags.STOPPING_CURVATURE)
+        # flags = is_flag_set(
+        #     self.flags, StoppingFlags.STOPPING_CURVATURE)
+
+        # Last point triggered a stop, we remove it
         stopped_streamlines = [
-            s[:-1] if f else s for f, s in zip(flags, stopped_streamlines)]
+            s[:-1] for s in stopped_streamlines]
 
         stopped_seeds = self.initial_points
 

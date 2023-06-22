@@ -3,8 +3,10 @@ import numpy as np
 from fury import window, actor
 
 from TrackToLearn.datasets.utils import MRIDataVolume
+
+from TrackToLearn.environments.interpolation import (
+    interpolate_volume_at_coordinates)
 from TrackToLearn.environments.reward import Reward
-from TrackToLearn.environments.utils import is_inside_mask
 
 
 class CoverageReward(Reward):
@@ -18,7 +20,7 @@ class CoverageReward(Reward):
     ):
         self.name = 'coverage_reward'
 
-        self.mask = mask.data
+        self.mask = 1. - mask.data
         self.coverage = np.zeros_like(self.mask)
 
     def __call__(
@@ -38,19 +40,11 @@ class CoverageReward(Reward):
             Array containing the reward
         """
         N, L, P = streamlines.shape
+        # Get last streamlines coordinates
+        borders = interpolate_volume_at_coordinates(
+            self.mask, streamlines[:, -1, :], mode='constant', order=3)
 
-        is_in_wm = is_inside_mask(
-            streamlines, self.mask, 0.5).astype(int)
-
-        already_covered = 1 - is_inside_mask(
-            streamlines, self.coverage, 0.5).astype(int)
-
-        X, Y, Z = (streamlines[..., -1, 0],
-                   streamlines[..., -1, 1],
-                   streamlines[..., -1, 2])
-        self.coverage[X.astype(int), Y.astype(int), Z.astype(int)] = 1.
-
-        return is_in_wm * already_covered
+        return borders
 
     def reset(self):
 

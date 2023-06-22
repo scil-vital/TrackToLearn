@@ -226,11 +226,9 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
             i, self.max_half_len - self.half_lengths[i]:self.lengths[i], :]
             for i in range(len(self.streamlines))]
 
-        # Remove last point if the resulting segment had an angle too high.
-        flags = is_flag_set(
-            self.flags, StoppingFlags.STOPPING_CURVATURE)
+        # Remove last point.
         stopped_streamlines = [
-            s[:-1] if f else s for f, s in zip(flags, stopped_streamlines)]
+            s[:-1] for s in stopped_streamlines]
 
         stopped_seeds = self.initial_points
 
