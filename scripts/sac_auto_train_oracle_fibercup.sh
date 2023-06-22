@@ -24,7 +24,11 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
+<<<<<<< Updated upstream
 lr=0.0001 # Learning rate
+=======
+lr=0.00005 # Learning rate
+>>>>>>> Stashed changes
 gamma=0.75 # Gamma for reward discounting
 
 # Model params

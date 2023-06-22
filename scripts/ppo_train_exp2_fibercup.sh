@@ -44,43 +44,43 @@ EXPERIMENT=PPO_FiberCupTrainExp2
 ID=2023-03-01-16_02_18
 
 seeds=(1111 2222 3333 4444 5555)
-rng_seed=$1
+# rng_seed=$1
 
-# for rng_seed in "${seeds[@]}"
-# do
+for rng_seed in "${seeds[@]}"
+do
 
-DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
+  DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-python TrackToLearn/trainers/ppo_train.py \
-  $DEST_FOLDER \
-  "$EXPERIMENT" \
-  "$ID" \
-  "${dataset_file}" \
-  "${SUBJECT_ID}" \
-  "${validation_dataset_file}" \
-  "${VALIDATION_SUBJECT_ID}" \
-  "${reference_file}" \
-  "${SCORING_DATA}" \
-  --max_ep=${max_ep} \
-  --log_interval=${log_interval} \
-  --lr=${lr} \
-  --gamma=${gamma} \
-  --action_std=${action_std} \
-  --entropy_loss_coeff=${entropy_loss_coeff} \
-  --eps_clip=${eps_clip} \
-  --lmbda=${lmbda} \
-  --K_epochs=${K_epochs} \
-  --rng_seed=${rng_seed} \
-  --npv=${npv} \
-  --theta=${theta} \
-  --interface_seeding \
-  --use_comet \
-  --use_gpu \
-  --run_tractometer
+  python TrackToLearn/trainers/ppo_train.py \
+    $DEST_FOLDER \
+    "$EXPERIMENT" \
+    "$ID" \
+    "${dataset_file}" \
+    "${SUBJECT_ID}" \
+    "${validation_dataset_file}" \
+    "${VALIDATION_SUBJECT_ID}" \
+    "${reference_file}" \
+    --max_ep=${max_ep} \
+    --log_interval=${log_interval} \
+    --lr=${lr} \
+    --gamma=${gamma} \
+    --action_std=${action_std} \
+    --entropy_loss_coeff=${entropy_loss_coeff} \
+    --eps_clip=${eps_clip} \
+    --lmbda=${lmbda} \
+    --K_epochs=${K_epochs} \
+    --rng_seed=${rng_seed} \
+    --npv=${npv} \
+    --theta=${theta} \
+    --interface_seeding \
+    --action_type='polar' \
+    --use_comet \
+    --use_gpu \
+    --run_tractometer="${SCORING_DATA}"
 
-mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
-mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
-mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"/
-cp -f -r $DEST_FOLDER "$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/
+  mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
+  mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
+  mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"/
+  cp -f -r $DEST_FOLDER "$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/
 
-# done
+done
