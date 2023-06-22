@@ -211,6 +211,7 @@ class OracleValidator(Validator):
                               bbox_valid_check=False, trk_header_check=False)
 
         sft.to_vox()
+        sft.to_corner()
 
         streamlines = sft.streamlines
         # Resample streamlines to a fixed number of points. This should be
