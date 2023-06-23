@@ -1,6 +1,7 @@
 import numpy as np
 
 from fury import window, actor
+from scipy.ndimage import binary_erosion
 
 from TrackToLearn.datasets.utils import MRIDataVolume
 
@@ -20,8 +21,17 @@ class CoverageReward(Reward):
     ):
         self.name = 'coverage_reward'
 
-        self.mask = 1. - mask.data
-        self.coverage = np.zeros_like(self.mask)
+        mask = mask.data
+
+        wm_density = np.zeros_like(mask, dtype=int)
+
+        while not np.all(mask == 0.):
+            eroded_mask = binary_erosion(mask).astype(int)
+            wm_density += eroded_mask
+            mask = eroded_mask
+
+        self.max_density = np.max(wm_density)
+        self.inv_density = self.max_density - wm_density
 
     def __call__(
         self,
@@ -41,14 +51,13 @@ class CoverageReward(Reward):
         """
         N, L, P = streamlines.shape
         # Get last streamlines coordinates
-        borders = interpolate_volume_at_coordinates(
-            self.mask, streamlines[:, -1, :], mode='constant', order=3)
-
-        return borders
+        density = interpolate_volume_at_coordinates(
+            self.inv_density, streamlines[:, -1, :], mode='constant', order=3)
+        return density / self.max_density
 
     def reset(self):
 
-        self.coverage = np.zeros_like(self.mask)
+        pass
 
     def render(self, streamlines):
 
@@ -58,7 +67,7 @@ class CoverageReward(Reward):
             streamlines, linewidth=1.0)
         scene.add(line_actor)
 
-        slice_actor = actor.slicer(self.coverage)
+        slice_actor = actor.slicer(self.inv_density.astype(int))
         scene.add(slice_actor)
 
         showm = window.ShowManager(scene, reset_camera=True)
