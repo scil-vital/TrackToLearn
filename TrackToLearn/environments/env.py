@@ -189,7 +189,7 @@ class BaseEnv(object):
         else:
             binary_criterion = BinaryStoppingCriterion(
                 mask_data,
-                0.5)
+                0.9)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
 

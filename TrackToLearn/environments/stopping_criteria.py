@@ -76,7 +76,7 @@ class BinaryStoppingCriterion(object):
         # Get last streamlines coordinates
         return interpolate_volume_at_coordinates(
             self.mask, streamlines[:, -1, :], mode='constant',
-            order=0) < self.threshold
+            order=3) < self.threshold
 
 
 class CmcStoppingCriterion(object):

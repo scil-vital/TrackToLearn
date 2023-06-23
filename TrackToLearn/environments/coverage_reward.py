@@ -29,7 +29,6 @@ class CoverageReward(Reward):
             eroded_mask = binary_erosion(mask).astype(int)
             wm_density += eroded_mask
             mask = eroded_mask
-
         self.max_density = np.max(wm_density)
         self.inv_density = self.max_density - wm_density
 
