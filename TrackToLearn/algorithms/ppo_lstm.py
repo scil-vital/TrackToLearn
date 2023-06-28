@@ -196,9 +196,10 @@ class PPOLSTM(LSTMRLAlgorithm):
 
             # Store data in replay buffer
             self.replay_buffer.add(
-                indices, state.cpu().numpy(), action, next_state.cpu().numpy(),
+                indices, state.cpu().numpy(), action,
+                next_state.cpu().numpy(),
                 reward, done, v, vp, prob, mu, std,
-                h.cpu().data.numpy(), c.cpu().data.numpy())
+                h, c)
 
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
@@ -261,6 +262,7 @@ class PPOLSTM(LSTMRLAlgorithm):
         losses: dict
             Dict. containing losses and training-related metrics.
         """
+        torch.autograd.set_detect_anomaly(True)
 
         running_losses = defaultdict(list)
 
@@ -280,12 +282,12 @@ class PPOLSTM(LSTMRLAlgorithm):
                 returns = torch.FloatTensor(ret[i:j]).to(self.device)
                 advantage = torch.FloatTensor(adv[i:j]).to(self.device)
                 old_prob = torch.FloatTensor(p[i:j]).to(self.device)
-                h_state = torch.FloatTensor(h[i:j]).to(self.device)
-                c_state = torch.FloatTensor(c[i:j]).to(self.device)
+                h_state = h[i:j].clone().detach()
+                c_state = c[i:j].clone().detach()
 
                 # V_pi'(s) and pi'(a|s)
                 v, logprob, entropy, *_ = self.agent.evaluate(
-                    state, action, h_state.detach(), c_state.detach())
+                    state, action, h_state, c_state)
 
                 # Ratio between probabilities of action according to policy and
                 # target policies
@@ -331,7 +333,8 @@ class PPOLSTM(LSTMRLAlgorithm):
                 running_losses = add_item_to_means(running_losses, losses)
 
                 self.optimizer.zero_grad()
-                ((critic_loss * 0.5) + actor_loss).backward()
+                loss = (critic_loss * 0.5) + actor_loss
+                loss.backward(retain_graph=True)
 
                 # Gradient step
                 nn.utils.clip_grad_norm_(self.agent.parameters(),

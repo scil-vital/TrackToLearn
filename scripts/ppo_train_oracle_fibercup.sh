@@ -24,8 +24,8 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.0001 # Learning rate
-gamma=0.5 # Gamma for reward discounting
+lr=0.00001 # Learning rate
+gamma=0.75 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -54,7 +54,6 @@ do
     "${validation_dataset_file}" \
     "${VALIDATION_SUBJECT_ID}" \
     "${reference_file}" \
-    "${SCORING_DATA}" \
     --max_ep=${max_ep} \
     --log_interval=${log_interval} \
     --lr=${lr} \
@@ -64,12 +63,14 @@ do
     --theta=${theta} \
     --alignment_weighting=1.0 \
     --oracle_weighting=0.0 \
-    --n_dirs=2 \
+    --coverage_weighting=0.0 \
+    --n_dirs=1 \
     --hidden_dims='1024-1024-1024' \
+    --n_actor=1024 \
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --run_tractometer
+    --run_oracle='checkpoint.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

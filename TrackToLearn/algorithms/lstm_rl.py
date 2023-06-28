@@ -89,22 +89,23 @@ class LSTMRLAlgorithm(RLAlgorithm):
         h, c = self.agent.reset(state)
         indices = np.asarray(range(state.shape[0]))
 
-        while not np.all(done):
-            # Select action according to policy + noise to make tracking
-            # probabilistic
-            action, h, c = self.agent.select_action(state, h, c)
-            # Perform action
-            next_state, reward, done, *_ = env.step(action)
+        with torch.no_grad():
+            while not np.all(done):
+                # Select action according to policy + noise to make tracking
+                # probabilistic
+                action, h, c = self.agent.select_action(state, h, c)
+                # Perform action
+                next_state, reward, done, *_ = env.step(action)
 
-            # Keep track of reward
-            running_reward += sum(reward)
+                # Keep track of reward
+                running_reward += sum(reward)
 
-            # "Harvesting" here means removing "done" trajectories
-            # from state. This line also set the next_state as the
-            # state
-            state, idx = env.harvest(next_state)
+                # "Harvesting" here means removing "done" trajectories
+                # from state. This line also set the next_state as the
+                # state
+                state, idx = env.harvest(next_state)
 
-            h, c = h[idx], c[idx]
-            indices = indices[idx]
+                h, c = h[idx], c[idx]
+                indices = indices[idx]
 
         return running_reward

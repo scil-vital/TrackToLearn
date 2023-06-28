@@ -56,6 +56,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.valid_subject_id = self.subject_id = valid_dto['subject_id']
         self.reference_file = valid_dto['reference_file']
         self.run_tractometer = valid_dto['run_tractometer']
+        self.run_oracle = valid_dto['run_oracle']
         self.prob = valid_dto['prob']
         self.agent = valid_dto['agent']
         self.n_actor = valid_dto['n_actor']
@@ -95,6 +96,8 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.cmc = hyperparams.get('cmc', False)
             self.asymmetric = hyperparams.get('asymmetric', False)
             self.no_retrack = hyperparams.get('no_retrack', False)
+            self.action_type = hyperparams.get("action_type", "cartesian")
+            self.action_size = hyperparams.get("action_size", 3)
 
         self.comet_experiment = None
         self.remove_invalid_streamlines = valid_dto[

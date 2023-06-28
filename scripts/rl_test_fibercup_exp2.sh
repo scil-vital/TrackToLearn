@@ -3,7 +3,7 @@
 set -e
 
 # This should point to your dataset folder
-DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}
+DATASET_FOLDER=${TRACK_TO_LEARN_DATA}
 
 # Should be relatively stable
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
@@ -21,9 +21,9 @@ max_length=200
 EXPERIMENT=$1
 ID=$2
 
-validstds=(0.0 0.1)
+validstds=(0.05 0.1)
 subjectids=(fibercup)
-seeds=(1111 2222 3333 4444 5555)
+seeds=(1111)
 
 for SEED in "${seeds[@]}"
 do
@@ -53,6 +53,7 @@ do
         --n_actor="${n_actor}" \
         --min_length="$min_length" \
         --max_length="$max_length" \
+        --run_oracle="checkpoint.ckpt" \
         --interface_seeding \
         --use_gpu \
         --fa_map="$DATASET_FOLDER"/datasets/${SUBJECT_ID}/dti/"${SUBJECT_ID}"_fa.nii.gz \

@@ -81,12 +81,13 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
             Whether the episode is done
         info: dict
         """
-
-        directions = self._format_actions(actions)
-
+        directions = actions
         # If the streamline goes out the tracking mask at the first
         # step, flip it
         if self.length == 1:
+
+            directions = self._format_actions(actions)
+
             # Grow streamlines one step forward
             streamlines = self.streamlines[self.continue_idx].copy()
             streamlines[:, self.length, :] = \

@@ -72,10 +72,10 @@ class LSTMReplayBuffer(object):
         self.stds = np.zeros(
             (self.n_trajectories, self.max_traj_length, self.action_dim))
 
-        self.hs = np.zeros(
-            (self.n_trajectories, self.max_traj_length, self.h_size))
-        self.cs = np.zeros(
-            (self.n_trajectories, self.max_traj_length, self.c_size))
+        self.hs = torch.zeros(
+            (self.n_trajectories, self.max_traj_length, self.h_size), device="cuda")
+        self.cs = torch.zeros(
+            (self.n_trajectories, self.max_traj_length, self.c_size), device="cuda")
 
         # GAE buffers
         self.ret = np.zeros((self.n_trajectories, self.max_traj_length))
@@ -263,10 +263,10 @@ class LSTMReplayBuffer(object):
         self.stds = np.zeros(
             (self.n_trajectories, self.max_traj_length, self.action_dim))
 
-        self.hs = np.zeros(
-            (self.n_trajectories, self.max_traj_length, self.h_size))
-        self.cs = np.zeros(
-            (self.n_trajectories, self.max_traj_length, self.c_size))
+        self.hs = torch.zeros(
+            (self.n_trajectories, self.max_traj_length, self.h_size), device="cuda")
+        self.cs = torch.zeros(
+            (self.n_trajectories, self.max_traj_length, self.c_size), device="cuda")
 
         # GAE buffers
         self.ret = np.zeros((self.n_trajectories, self.max_traj_length))

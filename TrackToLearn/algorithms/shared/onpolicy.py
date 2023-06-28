@@ -458,7 +458,7 @@ class LSTMActorCritic(ActorCritic):
         x = self.base(x)
         h, c = self.lstm(x, (h, c))
         x = self.tanh(h)
-        return x, h.detach(), c.detach()
+        return x, h, c
 
     def reset(self, state):
 

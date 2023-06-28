@@ -80,10 +80,10 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
 
             # Get peaks at streamline end
             fa = interpolate_volume_at_coordinates(
-                self.fa_map, idx, mode='constant', order=0)
+                self.fa_map, idx, mode='constant', order=3)
             noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.prob] * len(directions))
+            noise = np.asarray([self.prob] * directions.shape[0])
 
         directions = (
             directions + self.rng.normal(np.zeros((3, 1)), noise).T)
