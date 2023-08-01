@@ -365,11 +365,11 @@ class TractometerValidator(Validator):
 
         args_mocker = namedtuple('args', [
             'compute_ic', 'save_wpc_separately', 'unique', 'reference',
-            'bbox_check', 'out_dir', 'dilate_endpoints'])
+            'bbox_check', 'out_dir', 'dilate_endpoints', 'no_empty'])
 
         temp = tempfile.mkdtemp()
         args = args_mocker(
-            True, False, True, self.reference, False, temp, 2)
+            True, False, True, self.reference, False, temp, 2, False)
 
         # Segment VB, WPC, IB
         (vb_sft_list, wpc_sft_list, ib_sft_list, nc_sft,

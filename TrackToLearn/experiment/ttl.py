@@ -106,6 +106,7 @@ class TrackToLearnExperiment(Experiment):
             'n_dirs': self.n_dirs,
             'step_size': self.step_size,
             'theta': self.theta,
+            'epsilon': self.epsilon,
             'min_length': self.min_length,
             'max_length': self.max_length,
             'cmc': self.cmc,

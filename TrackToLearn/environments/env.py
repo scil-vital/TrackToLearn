@@ -26,6 +26,7 @@ from TrackToLearn.environments.local_reward import (
 from TrackToLearn.environments.oracle_reward import OracleReward
 
 from TrackToLearn.environments.stopping_criteria import (
+    AngularErrorCriterion,
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
     StoppingFlags)
@@ -104,6 +105,8 @@ class BaseEnv(object):
         self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
         self.theta = theta = env_dto['theta']
+        self.epsilon = env_dto['epsilon']
+
         self.npv = env_dto['npv']
         self.cmc = env_dto['cmc']
         self.asymmetric = env_dto['asymmetric']
@@ -154,6 +157,7 @@ class BaseEnv(object):
         self.max_nb_steps = int(self.max_length / step_size_mm)
         self.min_nb_steps = int(self.min_length / step_size_mm)
 
+        # Reward function and reward factors
         if self.compute_reward:
             peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
             target_reward = TargetReward(self.target_mask)
@@ -170,14 +174,27 @@ class BaseEnv(object):
                  self.oracle_weighting,
                  self.coverage_weighting])
 
+        # Stopping criteria
+        # TODO: Switch all criteria to classes like Angular error and mask
+        # Length criterion
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
                               max_nb_steps=self.max_nb_steps)
-
+        # Angle between segment (curvature criterion)
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=theta)
-
+        # Streamline loop criterion (not used, too slow)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_LOOP] = \
+        #     functools.partial(is_looping,
+        #                       loop_threshold=360)
+        # Angle between peaks and segments (angular error criterion)
+        self.stopping_criteria[
+            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+            self.epsilon,
+            self.peaks)
+        # Mask criterion (either binary or CMC)
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
                 self.include_mask.data,
@@ -193,12 +210,7 @@ class BaseEnv(object):
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
 
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=360)
-
-        # Convert neighborhood to voxel space
+        # Neighborhood used as part of the state
         self.add_neighborhood_vox = None
         if add_neighborhood_mm:
             self.add_neighborhood_vox = convert_length_mm2vox(

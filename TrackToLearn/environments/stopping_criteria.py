@@ -3,9 +3,11 @@ import numpy as np
 from enum import Enum
 
 from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
-
+from TrackToLearn.utils.utils import normalize_vectors
 
 # Flags enum
+
+
 class StoppingFlags(Enum):
     """ Predefined stopping flags to use when checking which streamlines
     should stop
@@ -15,6 +17,7 @@ class StoppingFlags(Enum):
     STOPPING_CURVATURE = int('00000100', 2)
     STOPPING_TARGET = int('00001000', 2)
     STOPPING_LOOP = int('00010000', 2)
+    STOPPING_ANGULAR_ERROR = int('00100000', 2)
 
 
 def is_flag_set(flags, ref_flag):
@@ -30,6 +33,100 @@ def count_flags(flags, ref_flag):
     if type(ref_flag) is StoppingFlags:
         ref_flag = ref_flag.value
     return is_flag_set(flags, ref_flag).sum()
+
+
+class AngularErrorCriterion(object):
+    """ Defines if tracking should stop based on the maximum angular
+    distance with the most aligned peak. This is to prevent streamlines
+    from looping, as looping requires forgoing local directions for a
+    while before tracking in "reverse".
+    """
+
+    def __init__(
+        self,
+        max_theta,
+        peaks,
+        asymmetric=False,
+    ):
+        """
+        Parameters
+        ----------
+        max_theta: float
+            Maximum angular distance between the streamline segment and
+            the most aligned peak.
+        peaks: 4D `numpy.ndarray`
+            Local peaks.
+        """
+
+        self.max_theta_rad = np.deg2rad(max_theta)
+        self.peaks = peaks.data
+        self.asymmetric = False
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+    ):
+        """ Checks if the last streamline segment has an angular error below or
+        above the limit.
+
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+        Returns
+        -------
+        angular_error_mask: 1D boolean `numpy.ndarray` of shape (n_streamlines)
+            Array telling whether a streamline's last segment's angular error
+            is above or below a threshold.
+        """
+
+        N, L, _ = streamlines.shape
+
+        if streamlines.shape[1] < 2:
+            # Not enough segments to compute curvature
+            return np.ones(len(streamlines), dtype=np.uint8)
+
+        X, Y, Z, P = self.peaks.shape
+        idx = streamlines[:, -2].astype(np.int32)
+
+        # Get peaks at streamline end
+        v = interpolate_volume_at_coordinates(
+            self.peaks, idx, mode='nearest', order=0)
+
+        # Presume 5 peaks (per hemisphere if asymmetric)
+        if self.asymmetric:
+            v = np.reshape(v, (N, 5 * 2, P // (5 * 2)))
+        else:
+            v = np.reshape(v, (N * 5, P // 5))
+
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # # Normalize peaks
+                v = normalize_vectors(v)
+
+            v = np.reshape(v, (N, 5, P // 5))
+            # Zero NaNs
+            v = np.nan_to_num(v)
+
+        # Get last streamline segments
+
+        dirs = np.diff(streamlines, axis=1)
+        u = dirs[:, -1]
+        # Normalize segments
+        with np.errstate(divide='ignore', invalid='ignore'):
+            u = normalize_vectors(u)
+
+        # Zero NaNs
+        u = np.nan_to_num(u)
+
+        # Get do product between all peaks and last streamline segments
+        dot = np.einsum('ijk,ik->ij', v, u)
+        if not self.asymmetric:
+            dot = np.abs(dot)
+        # Compute distance from cosine similarity
+        distance = np.arccos(dot)
+        # Get alignment with the most aligned peak
+        min_distance = np.amin(distance, axis=-1)
+        return min_distance > self.max_theta_rad
 
 
 class BinaryStoppingCriterion(object):

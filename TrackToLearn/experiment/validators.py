@@ -218,13 +218,15 @@ class OracleValidator(Validator):
         # set by the model ? TODO?
 
         resampled_streamlines = set_number_of_points(streamlines, 128)
-        # Compute streamline features as the directions between points
-        dirs = np.diff(resampled_streamlines, axis=1)
+        if len(streamlines) > 0:
+            # Compute streamline features as the directions between points
+            dirs = np.diff(resampled_streamlines, axis=1)
 
-        # Load the features as torch tensors and predict
-        with torch.no_grad():
-            data = torch.as_tensor(
-                dirs, dtype=torch.float, device=self.device)
-            predictions = self.model(data).cpu().numpy()
-
+            # Load the features as torch tensors and predict
+            with torch.no_grad():
+                data = torch.as_tensor(
+                    dirs, dtype=torch.float, device=self.device)
+                predictions = self.model(data).cpu().numpy()
+        else:
+            predictions = np.asarray([0.0])
         return {'Oracle': np.mean(predictions > 0.5)}

@@ -80,6 +80,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.add_neighborhood = hyperparams['add_neighborhood']
             self.voxel_size = float(hyperparams['voxel_size'])
             self.theta = hyperparams['max_angle']
+            self.epsilon = hyperparams.get(['max_angular_error'], 90)
             self.alignment_weighting = hyperparams['alignment_weighting']
             self.straightness_weighting = hyperparams['straightness_weighting']
             self.length_weighting = hyperparams['length_weighting']

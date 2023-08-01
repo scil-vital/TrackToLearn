@@ -58,7 +58,10 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.reference_file = train_dto['reference_file']
         self.rng_seed = train_dto['rng_seed']
         self.npv = train_dto['npv']
+
         self.theta = train_dto['theta']
+        self.epsilon = train_dto['epsilon']
+
         self.min_length = train_dto['min_length']
         self.max_length = train_dto['max_length']
         self.interface_seeding = train_dto['interface_seeding']
@@ -124,6 +127,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'subject_id': self.subject_id,
             'n_seeds_per_voxel': self.npv,
             'max_angle': self.theta,
+            'max_angular_error': self.epsilon,
             'min_length': self.min_length,
             'max_length': self.max_length,
             'cmc': self.cmc,

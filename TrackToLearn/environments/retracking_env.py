@@ -64,6 +64,8 @@ class RetrackingEnvironment(TrackingEnvironment):
         self.cmc = env_dto['cmc']
         self.asymmetric = env_dto['asymmetric']
 
+        self.action_type = env_dto['action_type']
+
         step_size_mm = env_dto['step_size']
         min_length_mm = env_dto['min_length']
         max_length_mm = env_dto['max_length']
@@ -213,7 +215,7 @@ class RetrackingEnvironment(TrackingEnvironment):
             Initial state for RL model
         """
 
-        super().reset()
+        # super().reset()
 
         # Half-streamlines
         self.initial_points = np.array([s[0] for s in half_streamlines])

@@ -24,19 +24,16 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-<<<<<<< Updated upstream
-lr=0.0001 # Learning rate
-=======
 lr=0.00005 # Learning rate
->>>>>>> Stashed changes
-gamma=0.75 # Gamma for reward discounting
+gamma=0.95 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=100 # Seed per voxel
+npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
+epsilon=30 # Maximum angle for angular error
 
 EXPERIMENT=SAC_Auto_FiberCupTrainOracle
 
@@ -65,14 +62,15 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
+    --epsilon=${epsilon} \
     --alignment_weighting=1.0 \
-    --oracle_weighting=10.0 \
-    --coverage_weighting=1.0 \
+    --oracle_weighting=0.0 \
+    --coverage_weighting=0.0 \
     --n_dirs=4 \
     --action_type='cartesian' \
-    --interface_seeding \
     --use_gpu \
     --use_comet \
+    --interface \
     --run_oracle='checkpoint.ckpt' \
     --run_tractometer=${SCORING_DATA}
 
