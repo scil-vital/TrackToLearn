@@ -28,7 +28,7 @@ def main():
                 "values": [1e-4, 5e-4, 5e-3, 1e-3]},
             "gamma": {
                 "type": "discrete",
-                "values": [0.75, 0.85, 0.90, 0.95, 0.99]},
+                "values": [0.5, 0.75, 0.85, 0.90, 0.95, 0.99]},
             "alpha": {
                 "type": "discrete",
                 "values": [0.2]},

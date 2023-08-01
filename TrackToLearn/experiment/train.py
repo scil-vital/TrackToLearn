@@ -12,8 +12,7 @@ from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 from TrackToLearn.experiment.experiment import add_reward_args
-from TrackToLearn.experiment.validators import (
-    OracleValidator)
+from TrackToLearn.experiment.oracle_validator import OracleValidator
 from TrackToLearn.experiment.tractometer_validator import (
     TractometerValidator)
 
