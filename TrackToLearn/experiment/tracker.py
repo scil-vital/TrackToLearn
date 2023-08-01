@@ -113,8 +113,9 @@ class Tracker(object):
                     streamline_length = len(item)
 
                     streamline = item.streamline
-                    streamline += 0.5
-                    streamline *= vox_size
+                    # Streamlines from environment are in RASMM now
+                    # streamline += 0.5
+                    # streamline *= vox_size
 
                     seed_dict = {}
                     if self.save_seeds:

@@ -369,7 +369,7 @@ class TractometerValidator(Validator):
 
         temp = tempfile.mkdtemp()
         args = args_mocker(
-            True, False, True, self.reference, False, temp, 2, False)
+            False, False, True, self.reference, False, temp, 2, False)
 
         # Segment VB, WPC, IB
         (vb_sft_list, wpc_sft_list, ib_sft_list, nc_sft,
@@ -387,10 +387,11 @@ class TractometerValidator(Validator):
             args, self.bundle_names, self.gt_masks, dimensions, ib_names)
 
         relevant_results = {'VC': final_results['VS_ratio'],
-                            'IC': final_results['IC_ratio'],
-                            'NC': final_results['NC_ratio'],
+                            'IC': final_results.get('IC_ratio', 0),
+                            'IS': final_results.get('IS_ratio', 0),
+                            'NC': final_results.get('NC_ratio', 0),
                             'mean_OL': final_results.get('mean_OL', 0),
                             'VB': final_results['VB'],
-                            'IB': final_results['IB']}
+                            'IB': final_results.get('IB', 0)}
 
         return relevant_results

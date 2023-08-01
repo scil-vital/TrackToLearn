@@ -18,7 +18,7 @@ from TrackToLearn.environments.local_reward import (
 from TrackToLearn.environments.oracle_reward import OracleReward
 
 from TrackToLearn.environments.stopping_criteria import (
-    is_flag_set,
+    AngularErrorCriterion,
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
     StoppingFlags)
@@ -59,8 +59,11 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
         self.theta = theta = env_dto['theta']
+        self.epsilon = env_dto['epsilon']
         self.cmc = env_dto['cmc']
         self.asymmetric = env_dto['asymmetric']
+
+        self.action_type = env_dto['action_type']
 
         step_size_mm = env_dto['step_size']
         min_length_mm = env_dto['min_length']
@@ -99,6 +102,7 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         self.max_nb_steps = int(self.max_length / step_size_mm)
         self.min_nb_steps = int(self.min_length / step_size_mm)
 
+        # Reward function and reward factors
         if self.compute_reward:
             peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
             target_reward = TargetReward(self.target_mask)
@@ -115,14 +119,27 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
                  self.oracle_weighting,
                  self.coverage_weighting])
 
+        # Stopping criteria
+        # TODO: Switch all criteria to classes like Angular error and mask
+        # Length criterion
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
                               max_nb_steps=self.max_nb_steps)
-
+        # Angle between segment (curvature criterion)
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=theta)
-
+        # Streamline loop criterion (not used, too slow)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_LOOP] = \
+        #     functools.partial(is_looping,
+        #                       loop_threshold=360)
+        # Angle between peaks and segments (angular error criterion)
+        self.stopping_criteria[
+            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+            self.epsilon,
+            self.peaks)
+        # Mask criterion (either binary or CMC)
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
                 self.include_mask.data,
@@ -134,14 +151,9 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         else:
             binary_criterion = BinaryStoppingCriterion(
                 mask_data,
-                0.5)
+                0.9)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
-
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=300)
 
         # Convert neighborhood to voxel space
         self.add_neighborhood_vox = None
@@ -219,6 +231,8 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         return self._format_state(self.streamlines[:, :self.length])
 
     def get_streamlines(self) -> StatefulTractogram:
+        """ Return streamlines in RASMM space
+        """
 
         tractogram = Tractogram()
         # Get both parts of the streamlines.
@@ -239,4 +253,5 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
                                  },
             affine_to_rasmm=self.affine_vox2rasmm)
 
+        tractogram.apply_affine(self.affine_vox2rasmm)
         return tractogram

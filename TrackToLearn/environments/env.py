@@ -6,6 +6,7 @@ import torch
 
 from dipy.core.geometry import cart2sphere
 from dipy.data import get_sphere
+
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from typing import Callable, Dict, Tuple
@@ -82,6 +83,8 @@ class BaseEnv(object):
             using CMC.
         """
 
+        self.reference = env_dto['reference']
+
         # Volumes and masks
         self.affine_vox2rasmm = input_volume.affine_vox2rasmm
         self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
@@ -98,8 +101,6 @@ class BaseEnv(object):
         self.obs_rms = None
 
         self._state_size = None  # to be calculated later
-
-        self.reference = env_dto['reference']
 
         # Tracking parameters
         self.n_signal = env_dto['n_signal']

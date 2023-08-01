@@ -249,7 +249,7 @@ class TrackingEnvironment(BaseEnv):
         return states, diff_continue_idx
 
     def get_streamlines(self) -> StatefulTractogram:
-        """ Obtain tracked streamlines fromm the environment.
+        """ Obtain tracked streamlines from the environment.
         The last point will be removed if it raised a curvature stopping
         criteria (i.e. the angle was too high). Otherwise, other last points
         are kept.
@@ -259,7 +259,7 @@ class TrackingEnvironment(BaseEnv):
         Returns
         -------
         tractogram: Tractogram
-            Tracked streamlines.
+            Tracked streamlines in RASMM space.
 
         """
 
@@ -286,4 +286,5 @@ class TrackingEnvironment(BaseEnv):
                                  },
             affine_to_rasmm=self.affine_vox2rasmm)
 
+        tractogram.apply_affine(self.affine_vox2rasmm)
         return tractogram
