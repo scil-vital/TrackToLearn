@@ -102,10 +102,6 @@ class SubjectData(object):
         states = None
         sft = None
         rewards = None
-        if 'streamlines' in hdf_subject:
-            sft = LazySFTData.init_from_hdf_info(
-                hdf_subject['streamlines'])
-            rewards = np.array(hdf_subject['streamlines']['rewards'])
 
         return cls(
             subject_id, input_dv=input_dv, wm=wm, gm=gm, csf=csf,

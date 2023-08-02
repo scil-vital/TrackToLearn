@@ -236,13 +236,13 @@ class CmcStoppingCriterion(object):
 
         include_result = interpolate_volume_at_coordinates(
             self.include_mask, streamlines[:, -1, :], mode='constant',
-            order=1)
+            order=3)
         if streamlines.shape[1] < self.min_nb_steps:
             include_result[:] = 0.
 
         exclude_result = interpolate_volume_at_coordinates(
             self.exclude_mask, streamlines[:, -1, :], mode='constant',
-            order=1, cval=1.0)
+            order=3, cval=1.0)
 
         # If streamlines are still in 100% WM, don't exit
         wm_points = include_result + exclude_result <= 0

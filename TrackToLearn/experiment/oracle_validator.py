@@ -44,6 +44,9 @@ class OracleValidator(Validator):
         sft.to_corner()
 
         streamlines = sft.streamlines
+        if len(streamlines) == 0:
+            return {}
+
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
 

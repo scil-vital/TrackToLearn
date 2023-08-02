@@ -361,6 +361,9 @@ class TractometerValidator(Validator):
         logging.info("Loading tractogram.")
         sft = load_tractogram(filename, self.reference,
                               bbox_valid_check=False)
+        if len(sft.streamlines) == 0:
+            return {}
+
         _, dimensions, _, _ = sft.space_attributes
 
         args_mocker = namedtuple('args', [
