@@ -176,7 +176,7 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         """
         return cls(env, env_dto)
 
-    def reset(self, streamlines: np.ndarray) -> np.ndarray:
+    def reset(self, half_tractogram: Tractogram) -> np.ndarray:
         """ Initialize tracking based on half-streamlines.
 
         Parameters
@@ -190,7 +190,10 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
             Initial state for RL model
         """
 
-        super().reset()
+        # super().reset()
+        half_tractogram.apply_affine(self.affine_rasmm2vox)
+        # Get half-streamlines
+        streamlines = half_tractogram.streamlines
 
         # Half-streamlines
         self.seeding_streamlines = [s[:] for s in streamlines]

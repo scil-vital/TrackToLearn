@@ -149,7 +149,9 @@ def interpolate_volume_at_coordinates(
         Values from volume.
     """
     # map_coordinates uses the center of the voxel as 0.0, code uses the corner
-    # coords = coords + 0.5
+    # so shift ? I think stuff is getting shifted somewhere else because results
+    # are worse if applying shift.
+    # coords = coords - 0.5
 
     if volume.ndim <= 2 or volume.ndim >= 5:
         raise ValueError("Volume must be 3D or 4D!")

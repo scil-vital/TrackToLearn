@@ -101,7 +101,7 @@ class Tracker(object):
                 batch_tractogram = self.env.get_streamlines()
 
                 if not self.interface_seeding:
-                    state = self.back_env.reset(batch_tractogram.streamlines)
+                    state = self.back_env.reset(batch_tractogram)
 
                     # Track backwards
                     self.alg.validation_episode(
@@ -175,7 +175,7 @@ class Tracker(object):
 
         if not self.interface_seeding:
             # Flip streamlines to initialize backwards tracking
-            state = self.back_env.reset(train_tractogram.streamlines)
+            state = self.back_env.reset(train_tractogram)
 
             # Track and train backwards
             back_reward, losses, length, reward_factors = \
@@ -239,7 +239,7 @@ class Tracker(object):
 
                 if not self.interface_seeding:
                     # Initialize backwards tracking
-                    state = self.back_env.reset(batch_tractogram.streamlines)
+                    state = self.back_env.reset(batch_tractogram)
 
                     # Track backwards
                     reward = self.alg.validation_episode(

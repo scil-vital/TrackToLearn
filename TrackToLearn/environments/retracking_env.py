@@ -2,6 +2,7 @@ import functools
 import numpy as np
 import torch
 
+from nibabel.streamlines import Tractogram
 from typing import Tuple
 
 from TrackToLearn.datasets.utils import (
@@ -212,13 +213,13 @@ class RetrackingEnvironment(TrackingEnvironment):
 
         return stopping, flags
 
-    def reset(self, half_streamlines: np.ndarray) -> np.ndarray:
+    def reset(self, half_tractogram: Tractogram) -> np.ndarray:
         """ Initialize tracking from half-streamlines.
 
         Parameters
         ----------
-        half_streamlines: np.ndarray
-            Half-streamlines to initialize environment
+        half_tractogram: Tractogram
+            Half-streamlines to initialize environment, in RASMM space.
 
         Returns
         -------
@@ -228,7 +229,11 @@ class RetrackingEnvironment(TrackingEnvironment):
 
         # super().reset()
 
-        # Half-streamlines
+        # Bring streamlines back into vox space
+        half_tractogram.apply_affine(self.affine_rasmm2vox)
+        # Get half-streamlines
+        half_streamlines = half_tractogram.streamlines
+
         self.initial_points = np.array([s[0] for s in half_streamlines])
 
         # Number if initialization steps for each streamline
