@@ -28,7 +28,7 @@ def main():
                 "values": [5e-4]},
             "gamma": {
                 "type": "discrete",
-                "values": [0.5, 0.75, 0.85]},
+                "values": [0.5, 0.75, 0.85, 0.9, 0.95, 0.99]},
             "alpha": {
                 "type": "discrete",
                 "values": [0.2]},
@@ -39,7 +39,7 @@ def main():
 
         # Declare what we will be optimizing, and how:
         "spec": {
-            "metric": "Reward",
+            "metric": "VC",
             "objective": "maximize",
             "seed": args.rng_seed,
             "retryAssignLimit": 3,

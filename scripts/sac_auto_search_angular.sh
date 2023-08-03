@@ -5,8 +5,8 @@ set -e  # exit if any command fails
 DATASET_FOLDER=${TRACK_TO_LEARN_DATA}/
 WORK_DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}/
 
-VALIDATION_SUBJECT_ID=fibercup
-SUBJECT_ID=fibercup
+VALIDATION_SUBJECT_ID=ismrm2015
+SUBJECT_ID=ismrm2015
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 SCORING_DATA=${DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID}/scoring_data
@@ -19,7 +19,7 @@ cp -rnv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/data
 
 dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/${VALIDATION_SUBJECT_ID}.hdf5
-reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VALIDATION_SUBJECT_ID}_wm.nii.gz
+reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/anat/${VALIDATION_SUBJECT_ID}_T1.nii.gz
 
 # RL params
 max_ep=1000 # Chosen empirically
@@ -29,11 +29,11 @@ log_interval=50 # Log at n episodes
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=100 # Seed per voxel
+npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 # n_dirs=0
 
-EXPERIMENT=SAC_Auto_FiberCupSearchAngular_interface
+EXPERIMENT=SAC_Auto_ISMRM2015SearchAngular_interface
 
 ID=$(date +"%F-%H_%M_%S")
 
@@ -41,7 +41,7 @@ rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-export COMET_OPTIMIZER_ID=a178b5d25b1a4c0884f2baf650e16c86
+export COMET_OPTIMIZER_ID=2a6e4d7654e54325bdb2b41381bb5371
 
 python TrackToLearn/searchers/sac_auto_searcher_angular.py \
   $DEST_FOLDER \
@@ -62,5 +62,5 @@ python TrackToLearn/searchers/sac_auto_searcher_angular.py \
   --interface \
   --use_gpu \
   --use_comet \
-  --run_oracle='epoch_49_fibercup_transformer.ckpt' \
+  --run_oracle='epoch_49_ismrm2015_transformer.ckpt' \
   --run_tractometer=${SCORING_DATA}
