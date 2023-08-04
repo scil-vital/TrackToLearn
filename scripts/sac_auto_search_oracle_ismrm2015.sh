@@ -41,6 +41,8 @@ rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
+export COMET_OPTIMIZER_ID=e065f3f93576479c929113a3a6943c6c
+
 python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   $DEST_FOLDER \
   "$EXPERIMENT" \
@@ -60,5 +62,5 @@ python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --interface_seeding \
   --use_gpu \
   --use_comet \
-  --run_oracle='checkpoint.ckpt' \
+  --run_oracle='epoch_49_ismrm2015_transformer.ckpt' \
   --run_tractometer=${SCORING_DATA}
