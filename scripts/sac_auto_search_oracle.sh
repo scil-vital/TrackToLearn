@@ -33,7 +33,7 @@ npv=100 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 # n_dirs=0
 
-EXPERIMENT=SAC_Auto_FiberCupSearchOracle
+EXPERIMENT=SAC_Auto_FiberCupSearchOracle_v2
 
 ID=$(date +"%F-%H_%M_%S")
 
@@ -41,7 +41,7 @@ rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-export COMET_OPTIMIZER_ID=88f67eec64a94f15b688d6dc553449ce
+export COMET_OPTIMIZER_ID=99dde0cbe9004e10a9f54f7d5c85eabc
 
 python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   $DEST_FOLDER \
@@ -62,5 +62,5 @@ python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --interface_seeding \
   --use_gpu \
   --use_comet \
-  --run_oracle='checkpoint.ckpt' \
+  --run_oracle='epoch_49_fibercup_transformer.ckpt' \
   --run_tractometer=${SCORING_DATA}
