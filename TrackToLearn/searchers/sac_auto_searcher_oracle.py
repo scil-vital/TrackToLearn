@@ -25,16 +25,16 @@ def main():
         "parameters": {
             "lr": {
                 "type": "discrete",
-                "values": [1e-4, 5e-4, 5e-3, 1e-3]},
+                "values": [5e-4, 5e-3, 1e-3]},
             "gamma": {
                 "type": "discrete",
-                "values": [0.5, 0.75, 0.85, 0.90, 0.95, 0.99]},
+                "values": [0.90, 0.95, 0.99]},
             "alpha": {
                 "type": "discrete",
                 "values": [0.2]},
             "coverage_weighting": {
                 "type": "discrete",
-                "values": [0.0, 0.5, 1]},
+                "values": [0.0]},
             "oracle_weighting": {
                 "type": "discrete",
                 "values": [0.0, 1., 5., 10.]},
