@@ -25,15 +25,15 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/anat/${VAL
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
-lr=0.00005 # Learning rate
-gamma=0.9 # Gamma for reward discounting
+lr=0.001 # Learning rate
+gamma=0.99 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=5 # Seed per voxel
-theta=20 # Maximum angle for streamline curvature
+npv=10 # Seed per voxel
+theta=30 # Maximum angle for streamline curvature
 
 EXPERIMENT=SAC_Auto_ISMRM2015TrainOracle
 
@@ -62,15 +62,13 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
-    --alignment_weighting=1.0 \
     --oracle_weighting=5.0 \
-    --coverage_weighting=0.0 \
     --n_dirs=100 \
     --action_type='cartesian' \
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --run_oracle='checkpoint.ckpt' \
+    --run_oracle='epoch_49_ismrm2015_transformer.ckpt' \
     --run_tractometer=${SCORING_DATA}
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
