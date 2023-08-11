@@ -68,13 +68,17 @@ class OracleReward(Reward):
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
         N, L, P = streamlines.shape
-        if L > 3:
+        # Ensure that streamlines are long enough to be resampled
+        # and that atleast one streamline is 'done' being tracked.
+        if L > 3 and sum(dones):
 
             array_seq = ArraySequence(streamlines)
 
             resampled_streamlines = set_number_of_points(array_seq, 128)
             # Compute streamline features as the directions between points
-            dirs = np.diff(resampled_streamlines, axis=1)
+            # Only compute reward for streamlines that are 'done'
+            # to save resources.
+            dirs = np.diff(resampled_streamlines[dones], axis=1)
 
             # Load the features as torch tensors and predict
             with torch.no_grad():
@@ -82,9 +86,11 @@ class OracleReward(Reward):
                     dirs, dtype=torch.float, device=self.device)
                 predictions = self.model(data).cpu().numpy()
 
-            scores = np.zeros_like(predictions)
-            scores[predictions > 0.5] = 1.
-            return scores * dones.astype(int)
+            scores = np.copy(dones).astype(int)
+            scores[dones] = predictions > 0.5
+            return scores
+
+            # return scores * dones.astype(int)
 
         return np.zeros((N))
 

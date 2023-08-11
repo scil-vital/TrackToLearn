@@ -41,7 +41,7 @@ rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-export COMET_OPTIMIZER_ID=99dde0cbe9004e10a9f54f7d5c85eabc
+export COMET_OPTIMIZER_ID=1dc20c2b8854402080e58a231cfd85b6
 
 python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   $DEST_FOLDER \

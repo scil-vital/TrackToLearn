@@ -132,6 +132,7 @@ class ReplayBuffer(object):
             if done[j]:
                 # Calculate the expected returns: the value function target
                 rew = self.reward[i, :self.ptr]
+                # See lower comment in sample about normalizing reward
                 # rew = (rew - rew.mean()) / (rew.std() + 1.e-8)
                 self.ret[i, :self.ptr] = \
                     self.discount_cumsum(
@@ -179,6 +180,8 @@ class ReplayBuffer(object):
     ]:
         """ Sample all transitions.
 
+        # TODO?: Not sample whole buffer ? Have M <= N*T ?
+
         Parameters:
         -----------
 
@@ -195,7 +198,6 @@ class ReplayBuffer(object):
         probs: torch.Tensor
             Sampled old action probabilities
         """
-        # TODO?: Not sample whole buffer ? Have M <= N*T ?
 
         # Generate indices
         row, col = zip(*((i, le)
@@ -210,6 +212,9 @@ class ReplayBuffer(object):
         # Normalize advantage. Needed ?
         # Trick used by OpenAI in their PPO impl
         # adv = (adv - adv.mean()) / (adv.std() + 1.e-8)
+
+        # Normalize *anything* ? I've seen the states, the actions, the
+        # rewards being batch-normalized. I don't know.
 
         shuf_ind = np.arange(s.shape[0])
 
@@ -274,7 +279,7 @@ class OffPolicyReplayBuffer(object):
     """
 
     def __init__(
-        self, state_dim: int, action_dim: int, max_size=int(1e6)
+        self, state_dim: int, action_dim: int, max_size=int(5e6)
     ):
         """
         Parameters:
