@@ -73,7 +73,7 @@ class RewardFunction():
 
         info = {}
         for i, f in enumerate(self.factors):
-            info[f.name] = torch.mean(rewards_factors[i])
+            info[f.name] = torch.mean(rewards_factors[i]).cpu().numpy()
 
         reward = torch.sum(rewards_factors, dim=0)
 
