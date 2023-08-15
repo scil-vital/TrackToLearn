@@ -168,7 +168,8 @@ class DDPG(RLAlgorithm):
         while not np.all(done):
 
             # Select action according to policy + noise for exploration
-            action = self.sample_action(state)
+            with torch.no_grad():
+                action = self.sample_action(state)
 
             self.t += action.shape[0]
             # Perform action
@@ -187,7 +188,8 @@ class DDPG(RLAlgorithm):
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state.cpu().numpy(), action, next_state.cpu().numpy(),
+                state.cpu().numpy(), action.cpu().numpy(),
+                next_state.cpu().numpy(),
                 reward[..., None], done_bool[..., None])
 
             running_reward += sum(reward)

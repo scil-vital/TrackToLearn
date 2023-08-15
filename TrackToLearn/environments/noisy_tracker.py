@@ -1,5 +1,5 @@
-import nibabel as nib
 import numpy as np
+import torch
 
 from typing import Tuple
 
@@ -7,7 +7,8 @@ from TrackToLearn.environments.backward_tracking_env import (
     BackwardTrackingEnvironment)
 from TrackToLearn.environments.retracking_env import RetrackingEnvironment
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
-from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
+from TrackToLearn.environments.interpolation import (
+    torch_trilinear_interpolation)
 
 
 class NoisyTrackingEnvironment(TrackingEnvironment):
@@ -44,12 +45,13 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
         self.prob = env_dto['prob']
         self.fa_map = None
         if env_dto['fa_map']:
-            self.fa_map = env_dto['fa_map'].data
+            self.fa_map = torch.from_numpy(env_dto['fa_map'].data).to(
+                env_dto['device'], dtype=torch.float32)
         self.max_action = 1.
 
     def step(
         self,
-        actions: np.ndarray,
+        actions: torch.Tensor,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions and grow streamlines for one step forward
@@ -76,17 +78,20 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[self.continue_idx,
-                                   self.length-1].astype(np.int32)
+                                   self.length-1]
 
             # Get peaks at streamline end
-            fa = interpolate_volume_at_coordinates(
-                self.fa_map, idx, mode='constant', order=3)
+            fa = torch_trilinear_interpolation(
+                self.fa_map, idx)
             noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.prob] * directions.shape[0])
+            noise = torch.full(
+                (directions.shape[0],), self.prob,
+                device=self.streamlines.device)
 
         directions = (
-            directions + self.rng.normal(np.zeros((3, 1)), noise).T)
+            directions + torch.normal(
+                torch.zeros((3, 1), device=self.device), noise).T)
         return super().step(directions)
 
 
@@ -111,7 +116,8 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
         self.prob = env_dto['prob']
         self.fa_map = None
         if env_dto['fa_map']:
-            self.fa_map = env_dto['fa_map'].data
+            self.fa_map = torch.from_numpy(env_dto['fa_map'].data).to(
+                env_dto['device'], dtype=torch.float32)
         self.max_action = 1.
 
     def step(
@@ -143,17 +149,20 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[self.continue_idx,
-                                   self.length-1].astype(np.int32)
+                                   self.length-1]
 
             # Get peaks at streamline end
-            fa = interpolate_volume_at_coordinates(
-                self.fa_map, idx, mode='constant', order=0)
+            fa = torch_trilinear_interpolation(
+                self.fa_map, idx)
             noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.prob] * len(directions))
+            noise = torch.full(
+                (directions.shape[0],), self.prob,
+                device=self.streamlines.device)
 
         directions = (
-            directions + self.rng.normal(np.zeros((3, 1)), noise).T)
+            directions + torch.normal(
+                torch.zeros((3, 1), device=self.device), noise).T)
         return super().step(directions)
 
 
@@ -178,7 +187,8 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
         self.prob = env_dto['prob']
         self.fa_map = None
         if env_dto['fa_map']:
-            self.fa_map = env_dto['fa_map'].data
+            self.fa_map = torch.from_numpy(env_dto['fa_map'].data).to(
+                env_dto['device'], dtype=torch.float32)
         self.max_action = 1.
 
     def step(
@@ -210,19 +220,19 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
         directions = self._format_actions(actions)
 
         if self.fa_map is not None and self.prob > 0.:
-            idx = self.streamlines[:, self.length-1].astype(np.int32)
-
-            # Use affine to map coordinates in mask space
-            indices_mask = nib.affines.apply_affine(
-                np.linalg.inv(self.affine_vox2mask), idx).astype(np.int32)
+            idx = self.streamlines[self.continue_idx,
+                                   self.length-1]
 
             # Get peaks at streamline end
-            fa = interpolate_volume_at_coordinates(
-                self.fa_map, indices_mask, mode='constant', order=0)
+            fa = torch_trilinear_interpolation(
+                self.fa_map, idx)
             noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.prob] * len(directions))
+            noise = torch.full(
+                (directions.shape[0],), self.prob,
+                device=self.streamlines.device)
 
         directions = (
-            directions + self.rng.normal(np.zeros((3, 1)), noise).T)
+            directions + torch.normal(
+                torch.zeros((3, 1), device=self.device), noise).T)
         return super().step(directions)

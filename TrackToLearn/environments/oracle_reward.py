@@ -45,6 +45,8 @@ class OracleReward(Reward):
             self.model = models[hyper_parameters[
                 'name']].load_from_checkpoint(self.checkpoint).to(device)
 
+            self.model.eval()
+
         self.min_nb_steps = min_nb_steps
         self.device = device
 
@@ -70,29 +72,29 @@ class OracleReward(Reward):
         N, L, P = streamlines.shape
         # Ensure that streamlines are long enough to be resampled
         # and that atleast one streamline is 'done' being tracked.
-        if L > 3 and sum(dones):
-
-            array_seq = ArraySequence(streamlines)
+        if L > 3 and torch.sum(dones) > 0:
+            array_seq = ArraySequence(streamlines.cpu().numpy())
 
             resampled_streamlines = set_number_of_points(array_seq, 128)
             # Compute streamline features as the directions between points
             # Only compute reward for streamlines that are 'done'
             # to save resources.
-            dirs = np.diff(resampled_streamlines[dones], axis=1)
+            dones_np = dones.cpu().numpy().astype(bool)
+            dirs = np.diff(resampled_streamlines[dones_np], axis=1)
 
             # Load the features as torch tensors and predict
             with torch.no_grad():
                 data = torch.as_tensor(
                     dirs, dtype=torch.float, device=self.device)
-                predictions = self.model(data).cpu().numpy()
+                predictions = self.model(data)
 
-            scores = np.copy(dones).astype(int)
-            scores[dones] = predictions > 0.5
+            scores = torch.clone(dones).to(torch.int)
+            scores[dones.to(torch.bool)] = (predictions > 0.5).to(torch.int)
             return scores
 
             # return scores * dones.astype(int)
 
-        return np.zeros((N))
+        return torch.zeros((N), device=streamlines.device)
 
     def render(self, streamlines, predictions=None):
 

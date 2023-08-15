@@ -1,4 +1,5 @@
-import numpy as np
+# import numpy as np
+import torch
 
 
 class Reward(object):
@@ -8,8 +9,8 @@ class Reward(object):
 
     def __call__(
         self,
-        streamlines: np.ndarray,
-        dones: np.ndarray
+        streamlines: torch.tensor,
+        dones: torch.tensor
     ):
         self.name = "Undefined"
 
@@ -57,14 +58,14 @@ class RewardFunction():
 
         Returns
         -------
-        rewards: np.ndarray of floats
+        rewards: torch.tensor of floats
             Reward components weighted by their coefficients as well
             as the penalites
         """
 
         N = len(streamlines)
 
-        rewards_factors = np.zeros((self.F, N))
+        rewards_factors = torch.zeros((self.F, N), device=streamlines.device)
 
         for i, (w, f) in enumerate(zip(self.weights, self.factors)):
             if w > 0:
@@ -72,9 +73,9 @@ class RewardFunction():
 
         info = {}
         for i, f in enumerate(self.factors):
-            info[f.name] = np.mean(rewards_factors[i])
+            info[f.name] = torch.mean(rewards_factors[i])
 
-        reward = np.sum(rewards_factors, axis=0)
+        reward = torch.sum(rewards_factors, dim=0)
 
         return reward, info
 

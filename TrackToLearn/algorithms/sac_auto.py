@@ -190,15 +190,15 @@ class SACAuto(SAC):
         critic_loss = loss_q1 + loss_q2
 
         losses = {
-            'actor_loss': actor_loss.item(),
-            'critic_loss': critic_loss.item(),
-            'alpha_loss': alpha_loss.item(),
-            'loss_q1': loss_q1.item(),
-            'loss_q2': loss_q2.item(),
-            'a': alpha.item(),
-            'Q1': current_Q1.mean().item(),
-            'Q2': current_Q2.mean().item(),
-            'backup': backup.mean().item(),
+            # 'actor_loss': actor_loss.item(),
+            # 'critic_loss': critic_loss.item(),
+            # 'alpha_loss': alpha_loss.item(),
+            # 'loss_q1': loss_q1.item(),
+            # 'loss_q2': loss_q2.item(),
+            # 'a': alpha.item(),
+            # 'Q1': current_Q1.mean().item(),
+            # 'Q2': current_Q2.mean().item(),
+            # 'backup': backup.mean().item(),
         }
 
         # Optimize the temperature

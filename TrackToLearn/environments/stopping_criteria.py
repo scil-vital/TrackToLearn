@@ -1,8 +1,11 @@
 import numpy as np
+import torch
 
 from enum import Enum
 
-from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
+from TrackToLearn.environments.interpolation import (
+    torch_nearest_interpolation,
+    torch_trilinear_interpolation)
 from TrackToLearn.utils.utils import normalize_vectors
 
 # Flags enum
@@ -35,6 +38,100 @@ def count_flags(flags, ref_flag):
     return is_flag_set(flags, ref_flag).sum()
 
 
+class CurvatureCriterion(object):
+    """ Defines if tracking should stop based on the streamline length
+    (in number of points).
+    """
+
+    def __init__(
+        self,
+        max_theta,
+    ):
+        """
+        Parameters
+        ----------
+        max_theta: float
+            Maximum angle between segments
+        """
+
+        self.max_theta_rad = np.deg2rad(max_theta)
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+    ):
+        """ Checks if the two last streamline segments have an angle too acute.
+
+        Parameters
+        ----------
+        streamlines : `torch.tensor` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+        Returns
+        -------
+        max_angle_mask: 1D boolean `torch.tensor` of shape (n_streamlines)
+            Array telling whether streamlines should stop.
+        """
+
+        N, L, _ = streamlines.shape
+
+        if streamlines.shape[1] < 3:
+            # Not enough segments to compute curvature
+            return torch.zeros(
+                streamlines.shape[0], dtype=torch.uint8,
+                device=streamlines.device)
+
+        # Compute vectors for the last and before last streamline segments
+        u = normalize_vectors(streamlines[:, -1] - streamlines[:, -2])
+        v = normalize_vectors(streamlines[:, -2] - streamlines[:, -3])
+
+        # Compute angles
+        angles = torch.arccos(torch.sum(u * v, dim=1).clip(-1., 1.))
+
+        return angles > self.max_theta_rad
+
+
+class LengthCriterion(object):
+    """ Defines if tracking should stop based on the streamline length
+    (in number of points).
+    """
+
+    def __init__(
+        self,
+        max_length,
+    ):
+        """
+        Parameters
+        ----------
+        max_length: int
+            Maximum number of streamline points.
+        """
+
+        self.max_length = max_length
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+    ):
+        """ Checks if the streamlie has too many points.
+
+        Parameters
+        ----------
+        streamlines : `torch.tensor` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+        Returns
+        -------
+        max_length_mask: 1D boolean `torch.tensor` of shape (n_streamlines)
+            Array telling whether streamlines are too long.
+        """
+
+        N, L, _ = streamlines.shape
+
+        return torch.full(
+            (streamlines.shape[0],),
+            int(streamlines.shape[1] >= self.max_length),
+            device=streamlines.device, dtype=torch.bool)
+
+
 class AngularErrorCriterion(object):
     """ Defines if tracking should stop based on the maximum angular
     distance with the most aligned peak. This is to prevent streamlines
@@ -59,7 +156,7 @@ class AngularErrorCriterion(object):
         """
 
         self.max_theta_rad = np.deg2rad(max_theta)
-        self.peaks = peaks.data
+        self.peaks = peaks
         self.asymmetric = False
 
     def __call__(
@@ -84,48 +181,45 @@ class AngularErrorCriterion(object):
 
         if streamlines.shape[1] < 2:
             # Not enough segments to compute curvature
-            return np.ones(len(streamlines), dtype=np.uint8)
+            return torch.ones(len(streamlines), dtype=np.uint8,
+                              device=streamlines.device)
 
         X, Y, Z, P = self.peaks.shape
-        idx = streamlines[:, -2].astype(np.int32)
+        idx = streamlines[:, -2].to(torch.int32)
 
         # Get peaks at streamline end
-        v = interpolate_volume_at_coordinates(
-            self.peaks, idx, mode='nearest', order=0)
+        v = torch_nearest_interpolation(self.peaks, idx)
 
         # Presume 5 peaks (per hemisphere if asymmetric)
         if self.asymmetric:
-            v = np.reshape(v, (N, 5 * 2, P // (5 * 2)))
+            v = torch.reshape(v, (N, 5 * 2, P // (5 * 2)))
         else:
-            v = np.reshape(v, (N * 5, P // 5))
+            v = torch.reshape(v, (N * 5, P // 5))
+            # # Normalize peaks
+            v = normalize_vectors(v)
 
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # # Normalize peaks
-                v = normalize_vectors(v)
-
-            v = np.reshape(v, (N, 5, P // 5))
+            v = torch.reshape(v, (N, 5, P // 5))
             # Zero NaNs
-            v = np.nan_to_num(v)
+            v = torch.nan_to_num(v)
 
         # Get last streamline segments
 
-        dirs = np.diff(streamlines, axis=1)
+        dirs = torch.diff(streamlines, dim=1)
         u = dirs[:, -1]
         # Normalize segments
-        with np.errstate(divide='ignore', invalid='ignore'):
-            u = normalize_vectors(u)
+        u = normalize_vectors(u)
 
         # Zero NaNs
-        u = np.nan_to_num(u)
+        u = torch.nan_to_num(u)
 
         # Get do product between all peaks and last streamline segments
-        dot = np.einsum('ijk,ik->ij', v, u)
+        dot = torch.einsum('ijk,ik->ij', v, u)
         if not self.asymmetric:
-            dot = np.abs(dot)
+            dot = torch.abs(dot)
         # Compute distance from cosine similarity
-        distance = np.arccos(dot)
+        distance = torch.acos(dot)
         # Get alignment with the most aligned peak
-        min_distance = np.amin(distance, axis=-1)
+        min_distance = torch.amin(distance, dim=-1)
         return min_distance > self.max_theta_rad
 
 
@@ -171,9 +265,8 @@ class BinaryStoppingCriterion(object):
         """
 
         # Get last streamlines coordinates
-        return interpolate_volume_at_coordinates(
-            self.mask, streamlines[:, -1, :], mode='constant',
-            order=3) < self.threshold
+        return torch_trilinear_interpolation(
+            self.mask, streamlines[:, -1, :]) < self.threshold
 
 
 class CmcStoppingCriterion(object):
@@ -234,15 +327,13 @@ class CmcStoppingCriterion(object):
             mask or not.
         """
 
-        include_result = interpolate_volume_at_coordinates(
-            self.include_mask, streamlines[:, -1, :], mode='constant',
-            order=3)
+        include_result = torch_trilinear_interpolation(
+            self.include_mask, streamlines[:, -1, :])
         if streamlines.shape[1] < self.min_nb_steps:
             include_result[:] = 0.
 
-        exclude_result = interpolate_volume_at_coordinates(
-            self.exclude_mask, streamlines[:, -1, :], mode='constant',
-            order=3, cval=1.0)
+        exclude_result = torch_trilinear_interpolation(
+            self.exclude_mask, streamlines[:, -1, :])
 
         # If streamlines are still in 100% WM, don't exit
         wm_points = include_result + exclude_result <= 0

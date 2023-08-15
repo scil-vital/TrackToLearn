@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from typing import Tuple
 
@@ -39,7 +40,7 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
         # step, flip it
         if self.length == 1:
             # Grow streamlines one step forward
-            streamlines = self.streamlines[self.continue_idx].copy()
+            streamlines = torch.clone(self.streamlines[self.continue_idx])
             streamlines[:, self.length, :] = \
                 self.streamlines[self.continue_idx,
                                  self.length-1, :] + directions
@@ -89,7 +90,7 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
             directions = self._format_actions(actions)
 
             # Grow streamlines one step forward
-            streamlines = self.streamlines[self.continue_idx].copy()
+            streamlines = torch.clone(self.streamlines[self.continue_idx])
             streamlines[:, self.length, :] = \
                 self.streamlines[self.continue_idx,
                                  self.length-1, :] + directions
