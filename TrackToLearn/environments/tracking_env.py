@@ -7,9 +7,9 @@ from dipy.io.stateful_tractogram import StatefulTractogram
 from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.environments.stopping_criteria import (
-    is_flag_set,
-    StoppingFlags)
+# from TrackToLearn.environments.stopping_criteria import (
+#     is_flag_set,
+#     StoppingFlags)
 
 
 class TrackingEnvironment(BaseEnv):
@@ -62,7 +62,7 @@ class TrackingEnvironment(BaseEnv):
         state: np.ndarray
             Continuing states.
         """
-        return state[idx]
+        return torch.index_select(state, 0, idx)
 
     def nreset(self, n_seeds: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will
@@ -96,13 +96,16 @@ class TrackingEnvironment(BaseEnv):
         # self.flags = np.zeros(n_seeds, dtype=int)
 
         self.lengths = torch.ones(
-            n_seeds, dtype=torch.int32, device=self.device)
+            n_seeds, dtype=torch.int32, device=self.device,
+            requires_grad=False)
 
         self.length = 1
 
         # Initialize rewards and done flags
-        self.dones = torch.full((n_seeds,), 0, device=self.device)
-        self.continue_idx = torch.arange(n_seeds, device=self.device)
+        self.dones = torch.full((n_seeds,), 0, device=self.device,
+                                requires_grad=False)
+        self.continue_idx = torch.arange(n_seeds, device=self.device,
+                                         requires_grad=False)
 
         # Setup input signal
         return self._format_state(
@@ -190,10 +193,10 @@ class TrackingEnvironment(BaseEnv):
             (self.continue_idx[~stopping],
              self.continue_idx[stopping])
 
-        mask_continue = torch.isin(
-            self.continue_idx, self.new_continue_idx, assume_unique=True)
-        diff_stopping_idx = torch.arange(
-            len(self.continue_idx), device=self.device)[~mask_continue]
+        # mask_continue = torch.isin(
+        #     self.continue_idx, self.new_continue_idx, assume_unique=True)
+        # diff_stopping_idx = torch.arange(
+        #     len(self.continue_idx), device=self.device)[~mask_continue]
 
         # self.flags[
         #     self.stopping_idx] = new_flags[diff_stopping_idx]
@@ -237,22 +240,22 @@ class TrackingEnvironment(BaseEnv):
             Indexes of trajectories that did not stop.
         """
 
-        # Register the length of the streamlines that have stopped.
-        self.lengths[self.stopping_idx] = self.length
-
+        self.lengths.index_fill_(0, self.stopping_idx, self.length)
         mask_continue = torch.isin(
             self.continue_idx, self.new_continue_idx, assume_unique=True)
-        # diff_continue_idx = torch.arange(
-        #     len(self.continue_idx), device=self.device)[mask_continue]
+
+        diff_continue_idx = torch.arange(
+            len(self.continue_idx), device=self.device, requires_grad=False
+        )[mask_continue]
         self.continue_idx = self.new_continue_idx
 
         # Keep only streamlines that should continue
         # Indexing is much faster with a boolean mask than an index list
         states = self._keep(
-            mask_continue,
+            diff_continue_idx,
             states)
 
-        return states, None
+        return states, diff_continue_idx
 
     def get_streamlines(self) -> StatefulTractogram:
         """ Obtain tracked streamlines from the environment.
@@ -271,10 +274,11 @@ class TrackingEnvironment(BaseEnv):
 
         tractogram = Tractogram()
         streamlines = self.streamlines.cpu().numpy()
+        lengths = self.lengths.cpu().numpy().astype(np.int32)
         # Harvest stopped streamlines and associated data
         # stopped_seeds = self.first_points[self.stopping_idx]
         # Exclude last point as it triggered a stopping criteria.
-        stopped_streamlines = [streamlines[i, :self.lengths[i], :]
+        stopped_streamlines = [streamlines[i, :lengths[i], :]
                                for i in range(len(streamlines))]
 
         # flags = is_flag_set(
