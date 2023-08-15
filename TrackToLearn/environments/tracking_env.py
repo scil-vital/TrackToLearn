@@ -242,17 +242,17 @@ class TrackingEnvironment(BaseEnv):
 
         mask_continue = torch.isin(
             self.continue_idx, self.new_continue_idx, assume_unique=True)
-        diff_continue_idx = torch.arange(
-            len(self.continue_idx), device=self.device)[mask_continue]
+        # diff_continue_idx = torch.arange(
+        #     len(self.continue_idx), device=self.device)[mask_continue]
         self.continue_idx = self.new_continue_idx
 
         # Keep only streamlines that should continue
         # Indexing is much faster with a boolean mask than an index list
         states = self._keep(
-            diff_continue_idx,
+            mask_continue,
             states)
 
-        return states, diff_continue_idx
+        return states, None
 
     def get_streamlines(self) -> StatefulTractogram:
         """ Obtain tracked streamlines from the environment.
