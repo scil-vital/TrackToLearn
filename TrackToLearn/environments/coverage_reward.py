@@ -1,11 +1,12 @@
 import numpy as np
-import torch
 
 from fury import window, actor
 from scipy.ndimage import binary_erosion
 
+from TrackToLearn.datasets.utils import MRIDataVolume
+
 from TrackToLearn.environments.interpolation import (
-    torch_trilinear_interpolation)
+    interpolate_volume_at_coordinates)
 from TrackToLearn.environments.reward import Reward
 
 
@@ -16,27 +17,25 @@ class CoverageReward(Reward):
 
     def __init__(
         self,
-        mask: torch.Tensor,
+        mask: MRIDataVolume,
     ):
         self.name = 'coverage_reward'
 
-        wm_density = np.zeros_like(mask.cpu().numpy(), dtype=int)
-        np_mask = mask.cpu().numpy()
+        mask = mask.data
 
-        while not np.all(np_mask == 0.):
-            # Binary erosion does not work with tensors
-            # TODO: Fix
-            eroded_mask = binary_erosion(np_mask).astype(int)
+        wm_density = np.zeros_like(mask, dtype=int)
+
+        while not np.all(mask == 0.):
+            eroded_mask = binary_erosion(mask).astype(int)
             wm_density += eroded_mask
-            np_mask = eroded_mask
+            mask = eroded_mask
         self.max_density = np.max(wm_density)
-        self.inv_density = self.max_density - torch.as_tensor(
-            wm_density, device=mask.device)
+        self.inv_density = self.max_density - wm_density
 
     def __call__(
         self,
-        streamlines: torch.Tensor,
-        dones: torch.Tensor
+        streamlines: np.ndarray,
+        dones: np.ndarray
     ):
         """
         Parameters
@@ -51,8 +50,8 @@ class CoverageReward(Reward):
         """
         N, L, P = streamlines.shape
         # Get last streamlines coordinates
-        density = torch_trilinear_interpolation(
-            self.inv_density, streamlines[:, -1, :])
+        density = interpolate_volume_at_coordinates(
+            self.inv_density, streamlines[:, -1, :], mode='constant', order=3)
         return density / self.max_density
 
     def reset(self):

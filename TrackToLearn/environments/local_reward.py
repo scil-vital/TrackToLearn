@@ -1,8 +1,8 @@
-# import numpy as np
-import torch
+import numpy as np
 
-from TrackToLearn.environments.interpolation import (
-    torch_nearest_interpolation, torch_trilinear_interpolation)
+from TrackToLearn.environments.utils import (
+    interpolate_volume_at_coordinates,
+    is_inside_mask)
 from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.environments.reward import Reward
 from TrackToLearn.utils.utils import normalize_vectors
@@ -21,13 +21,13 @@ class PeaksAlignmentReward(Reward):
     ):
         self.name = 'peaks_reward'
 
-        self.peaks = peaks
+        self.peaks = peaks.data
         self.asymmetric = asymmetric
 
     def __call__(
         self,
-        streamlines: torch.tensor,
-        dones: torch.tensor
+        streamlines: np.ndarray,
+        dones: np.ndarray
     ):
         """
         Parameters
@@ -44,49 +44,51 @@ class PeaksAlignmentReward(Reward):
 
         if streamlines.shape[1] < 2:
             # Not enough segments to compute curvature
-            return torch.ones(len(streamlines), dtype=torch.uint8)
+            return np.ones(len(streamlines), dtype=np.uint8)
 
         X, Y, Z, P = self.peaks.shape
-        idx = streamlines[:, -2]
+        idx = streamlines[:, -2].astype(np.int32)
 
         # Get peaks at streamline end
-        v = torch_nearest_interpolation(
-            self.peaks, idx)
+        v = interpolate_volume_at_coordinates(
+            self.peaks, idx, mode='nearest', order=0)
 
         # Presume 5 peaks (per hemisphere if asymmetric)
         if self.asymmetric:
-            v = torch.reshape(v, (N, 5 * 2, P // (5 * 2)))
+            v = np.reshape(v, (N, 5 * 2, P // (5 * 2)))
         else:
-            v = torch.reshape(v, (N * 5, P // 5))
+            v = np.reshape(v, (N * 5, P // 5))
 
-            # # Normalize peaks
-            v = normalize_vectors(v)
-            v = torch.reshape(v, (N, 5, P // 5))
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # # Normalize peaks
+                v = normalize_vectors(v)
 
+            v = np.reshape(v, (N, 5, P // 5))
             # Zero NaNs
-            v = torch.nan_to_num(v)
+            v = np.nan_to_num(v)
 
         # Get last streamline segments
 
-        dirs = torch.diff(streamlines, dim=1)
+        dirs = np.diff(streamlines, axis=1)
         u = dirs[:, -1]
         # Normalize segments
-        u = normalize_vectors(u)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            u = normalize_vectors(u)
 
         # Zero NaNs
-        u = torch.nan_to_num(u)
+        u = np.nan_to_num(u)
 
         # Get do product between all peaks and last streamline segments
-        dot = torch.einsum('ijk,ik->ij', v, u)
+        dot = np.einsum('ijk,ik->ij', v, u)
 
         if not self.asymmetric:
-            dot = torch.abs(dot)
+            dot = np.abs(dot)
 
         # Get alignment with the most aligned peak
-        rewards = torch.amax(dot, dim=-1)
+        rewards = np.amax(dot, axis=-1)
         # rewards = np.abs(dot)
 
-        factors = torch.ones((N), device=streamlines.device)
+        factors = np.ones((N))
 
         # Weight alignment with peaks with alignment to itself
         if streamlines.shape[1] >= 3:
@@ -94,13 +96,14 @@ class PeaksAlignmentReward(Reward):
             w = dirs[:, -2]
 
             # # Normalize segments
-            w = normalize_vectors(w)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                w = normalize_vectors(w)
 
             # # Zero NaNs
-            w = torch.nan_to_num(w)
+            w = np.nan_to_num(w)
 
             # Calculate alignment between two segments
-            factors = torch.einsum('ik,ik->i', u, w)
+            np.einsum('ik,ik->i', u, w, out=factors)
 
         # Penalize angle with last step
         rewards *= factors
@@ -130,8 +133,8 @@ class LengthReward(Reward):
 
     def __call__(
         self,
-        streamlines: torch.tensor,
-        dones: torch.tensor
+        streamlines: np.ndarray,
+        dones: np.ndarray
     ):
         """
         Parameters
@@ -143,13 +146,12 @@ class LengthReward(Reward):
 
         Returns
         -------
-        factor: torch.tensor of floats
+        factor: np.ndarray of floats
             Reward components unweighted
         """
         N, S, _ = streamlines.shape
 
-        factor = torch.full(
-            (N,), S / self.max_length, device=streamlines.device)
+        factor = np.asarray([S] * N) / self.max_length
 
         return factor
 
@@ -166,7 +168,7 @@ class TargetReward(Reward):
         """
         Parameters
         ----------
-        target: torch.tensor
+        target: np.ndarray
             Grey matter mask
         """
 
@@ -176,8 +178,8 @@ class TargetReward(Reward):
 
     def __call__(
         self,
-        streamlines: torch.tensor,
-        dones: torch.tensor
+        streamlines: np.ndarray,
+        dones: np.ndarray
     ):
         """
         Parameters
@@ -189,12 +191,12 @@ class TargetReward(Reward):
 
         Returns
         -------
-        reward: torch.tensor of floats
+        reward: np.ndarray of floats
             Reward components unweighted
         """
 
-        target_streamlines = torch_trilinear_interpolation(
-            streamlines, self.target, 0.9
+        target_streamlines = is_inside_mask(
+            streamlines, self.target, 0.5
         ).astype(int)
 
         factor = target_streamlines * dones * int(

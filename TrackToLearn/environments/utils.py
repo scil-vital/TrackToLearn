@@ -7,6 +7,7 @@ from multiprocessing import Pool
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_at_coordinates,
     torch_trilinear_interpolation)
+from TrackToLearn.utils.utils import normalize_vectors
 
 
 def get_sh(
@@ -21,8 +22,9 @@ def get_sh(
     """
 
     N, H, P = segments.shape
-    coords = torch.reshape(segments, (N * H, P))
+    flat_coords = np.reshape(segments, (N * H, P))
 
+    coords = torch.as_tensor(flat_coords).to(device)
     n_coords = coords.shape[0]
 
     if add_neighborhood_vox:
@@ -169,6 +171,56 @@ def is_outside_mask(
     # Get last streamlines coordinates
     return interpolate_volume_at_coordinates(
         mask, streamlines[:, -1, :], mode='constant', order=0) < threshold
+
+
+def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
+    """ Checks whether streamlines have exceeded the maximum number of steps
+
+    Parameters
+    ----------
+    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+        Streamline coordinates in voxel space
+    max_nb_steps : int
+        Maximum number of steps a streamline can have
+
+    Returns
+    -------
+    too_long : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+        Array telling whether a streamline is too long or not
+    """
+    return np.full(streamlines.shape[0], streamlines.shape[1] >= max_nb_steps)
+
+
+def is_too_curvy(streamlines: np.ndarray, max_theta: float):
+    """ Checks whether streamlines have exceeded the maximum angle between the
+    last 2 steps
+
+    Parameters
+    ----------
+    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+        Streamline coordinates in voxel space
+    max_theta : float
+        Maximum angle in degrees that two consecutive segments can have between
+        each other.
+
+    Returns
+    -------
+    too_curvy : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+        Array telling whether a streamline is too curvy or not
+    """
+    max_theta_rad = np.deg2rad(max_theta)  # Internally use radian
+    if streamlines.shape[1] < 3:
+        # Not enough segments to compute curvature
+        return np.zeros(streamlines.shape[0], dtype=np.uint8)
+
+    # Compute vectors for the last and before last streamline segments
+    u = normalize_vectors(streamlines[:, -1] - streamlines[:, -2])
+    v = normalize_vectors(streamlines[:, -2] - streamlines[:, -3])
+
+    # Compute angles
+    angles = np.arccos(np.sum(u * v, axis=1).clip(-1., 1.))
+
+    return angles > max_theta_rad
 
 
 def winding(nxyz: np.ndarray) -> np.ndarray:

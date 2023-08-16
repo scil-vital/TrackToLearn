@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 import torch
 
@@ -20,14 +21,14 @@ from TrackToLearn.environments.stopping_criteria import (
     AngularErrorCriterion,
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
-    CurvatureCriterion,
-    LengthCriterion,
     StoppingFlags)
 
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 
 from TrackToLearn.environments.utils import (
-    get_neighborhood_directions)
+    get_neighborhood_directions,
+    is_too_curvy,
+    is_too_long)
 
 
 class BackwardTrackingEnvironment(TrackingEnvironment):
@@ -119,13 +120,20 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
                  self.coverage_weighting])
 
         # Stopping criteria
+        # TODO: Switch all criteria to classes like Angular error and mask
+        # Length criterion
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            LengthCriterion(self.max_nb_steps)
-
+            functools.partial(is_too_long,
+                              max_nb_steps=self.max_nb_steps)
         # Angle between segment (curvature criterion)
         self.stopping_criteria[
-            StoppingFlags.STOPPING_CURVATURE] = CurvatureCriterion(theta)
-
+            StoppingFlags.STOPPING_CURVATURE] = \
+            functools.partial(is_too_curvy, max_theta=theta)
+        # Streamline loop criterion (not used, too slow)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_LOOP] = \
+        #     functools.partial(is_looping,
+        #                       loop_threshold=360)
         # Angle between peaks and segments (angular error criterion)
         self.stopping_criteria[
             StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(

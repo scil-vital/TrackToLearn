@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 
 from typing import Tuple
 
@@ -7,9 +6,9 @@ from dipy.io.stateful_tractogram import StatefulTractogram
 from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
-# from TrackToLearn.environments.stopping_criteria import (
-#     is_flag_set,
-#     StoppingFlags)
+from TrackToLearn.environments.stopping_criteria import (
+    is_flag_set,
+    StoppingFlags)
 
 
 class TrackingEnvironment(BaseEnv):
@@ -53,7 +52,7 @@ class TrackingEnvironment(BaseEnv):
         Parameters
         ----------
         idx : `np.ndarray`
-            Mask of streamlines/states to keep
+            Indices of the streamlines/states to keep
         state: np.ndarray
             Batch of states.
 
@@ -62,7 +61,9 @@ class TrackingEnvironment(BaseEnv):
         state: np.ndarray
             Continuing states.
         """
-        return torch.index_select(state, 0, idx)
+        state = state[idx]
+
+        return state
 
     def nreset(self, n_seeds: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will
@@ -87,25 +88,19 @@ class TrackingEnvironment(BaseEnv):
             np.arange(len(self.seeds)), size=n_seeds, replace=replace)
         self.initial_points = self.seeds[seeds]
 
-        self.streamlines = torch.zeros(
-            (n_seeds, self.max_nb_steps + 1, 3), dtype=torch.float32,
-            device=self.device, requires_grad=False)
-        self.streamlines[:, 0, :] = torch.as_tensor(
-            self.initial_points, device=self.device)
+        self.streamlines = np.zeros(
+            (n_seeds, self.max_nb_steps + 1, 3), dtype=np.float32)
+        self.streamlines[:, 0, :] = self.initial_points
 
-        # self.flags = np.zeros(n_seeds, dtype=int)
+        self.flags = np.zeros(n_seeds, dtype=int)
 
-        self.lengths = torch.ones(
-            n_seeds, dtype=torch.int32, device=self.device,
-            requires_grad=False)
+        self.lengths = np.ones(n_seeds, dtype=np.int32)
 
         self.length = 1
 
         # Initialize rewards and done flags
-        self.dones = torch.full((n_seeds,), 0, device=self.device,
-                                requires_grad=False)
-        self.continue_idx = torch.arange(n_seeds, device=self.device,
-                                         requires_grad=False)
+        self.dones = np.full(n_seeds, False)
+        self.continue_idx = np.arange(n_seeds)
 
         # Setup input signal
         return self._format_state(
@@ -134,20 +129,18 @@ class TrackingEnvironment(BaseEnv):
         self.initial_points = self.seeds[start:end]
         N = self.initial_points.shape[0]
 
-        self.streamlines = torch.zeros(
-            (N, self.max_nb_steps + 1, 3), dtype=torch.float32,
-            device=self.device, requires_grad=False)
+        self.streamlines = np.zeros(
+            (N, self.max_nb_steps + 1, 3),
+            dtype=np.float32)
+        self.streamlines[:, 0, :] = self.initial_points
+        self.flags = np.zeros(N, dtype=int)
 
-        self.streamlines[:, 0, :] = torch.as_tensor(
-            self.initial_points, device=self.device)
-        # self.flags = np.zeros(N, dtype=int)
-
-        self.lengths = torch.ones(N, dtype=torch.int32, device=self.device)
+        self.lengths = np.ones(N, dtype=np.int32)
         self.length = 1
 
         # Initialize rewards and done flags
-        self.dones = torch.full((N,), 0, device=self.device)
-        self.continue_idx = torch.arange(N, device=self.device)
+        self.dones = np.full(N, False)
+        self.continue_idx = np.arange(N)
 
         # Setup input signal
         return self._format_state(
@@ -193,13 +186,13 @@ class TrackingEnvironment(BaseEnv):
             (self.continue_idx[~stopping],
              self.continue_idx[stopping])
 
-        # mask_continue = torch.isin(
-        #     self.continue_idx, self.new_continue_idx, assume_unique=True)
-        # diff_stopping_idx = torch.arange(
-        #     len(self.continue_idx), device=self.device)[~mask_continue]
+        mask_continue = np.in1d(
+            self.continue_idx, self.new_continue_idx, assume_unique=True)
+        diff_stopping_idx = np.arange(
+            len(self.continue_idx))[~mask_continue]
 
-        # self.flags[
-        #     self.stopping_idx] = new_flags[diff_stopping_idx]
+        self.flags[
+            self.stopping_idx] = new_flags[diff_stopping_idx]
 
         self.dones[self.stopping_idx] = 1
 
@@ -207,7 +200,6 @@ class TrackingEnvironment(BaseEnv):
         reward_info = {}
         # Compute reward if wanted. At valid time, no need
         # to compute it and slow down the tracking process
-
         if self.compute_reward:
             reward, reward_info = self.reward_function(
                 self.streamlines[self.continue_idx, :self.length],
@@ -240,17 +232,16 @@ class TrackingEnvironment(BaseEnv):
             Indexes of trajectories that did not stop.
         """
 
-        self.lengths.index_fill_(0, self.stopping_idx, self.length)
-        mask_continue = torch.isin(
-            self.continue_idx, self.new_continue_idx, assume_unique=True)
+        # Register the length of the streamlines that have stopped.
+        self.lengths[self.stopping_idx] = self.length
 
-        diff_continue_idx = torch.arange(
-            len(self.continue_idx), device=self.device, requires_grad=False
-        )[mask_continue]
+        mask_continue = np.in1d(
+            self.continue_idx, self.new_continue_idx, assume_unique=True)
+        diff_continue_idx = np.arange(
+            len(self.continue_idx))[mask_continue]
         self.continue_idx = self.new_continue_idx
 
         # Keep only streamlines that should continue
-        # Indexing is much faster with a boolean mask than an index list
         states = self._keep(
             diff_continue_idx,
             states)
@@ -273,13 +264,11 @@ class TrackingEnvironment(BaseEnv):
         """
 
         tractogram = Tractogram()
-        streamlines = self.streamlines.cpu().numpy()
-        lengths = self.lengths.cpu().numpy().astype(np.int32)
         # Harvest stopped streamlines and associated data
         # stopped_seeds = self.first_points[self.stopping_idx]
         # Exclude last point as it triggered a stopping criteria.
-        stopped_streamlines = [streamlines[i, :lengths[i], :]
-                               for i in range(len(streamlines))]
+        stopped_streamlines = [self.streamlines[i, :self.lengths[i], :]
+                               for i in range(len(self.streamlines))]
 
         # flags = is_flag_set(
         #     self.flags, StoppingFlags.STOPPING_CURVATURE)

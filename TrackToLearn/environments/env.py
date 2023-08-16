@@ -1,9 +1,10 @@
+import functools
 import h5py
 import numpy as np
 import nibabel as nib
 import torch
 
-# from dipy.core.geometry import cart2sphere
+from dipy.core.geometry import cart2sphere
 from dipy.data import get_sphere
 
 from gymnasium.wrappers.normalize import RunningMeanStd
@@ -29,13 +30,14 @@ from TrackToLearn.environments.stopping_criteria import (
     AngularErrorCriterion,
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
-    CurvatureCriterion,
-    LengthCriterion,
     StoppingFlags)
 
 from TrackToLearn.environments.utils import (
     get_neighborhood_directions,
-    get_sh)
+    get_sh,
+    # is_looping,
+    is_too_curvy,
+    is_too_long)
 
 from TrackToLearn.utils.utils import (from_polar, from_sphere,
                                       normalize_vectors)
@@ -89,16 +91,11 @@ class BaseEnv(object):
 
         self.data_volume = torch.from_numpy(
             input_volume.data).to(env_dto['device'], dtype=torch.float32)
-        self.tracking_mask = torch.from_numpy(tracking_mask.data).to(
-            env_dto['device'], dtype=torch.float32)
-        self.target_mask = torch.from_numpy(target_mask.data).to(
-            env_dto['device'], dtype=torch.float32)
-        self.include_mask = torch.from_numpy(include_mask.data).to(
-            env_dto['device'], dtype=torch.float32)
-        self.exclude_mask = torch.from_numpy(exclude_mask.data).to(
-            env_dto['device'], dtype=torch.float32)
-        self.peaks = torch.from_numpy(peaks.data).to(
-            env_dto['device'], dtype=torch.float32)
+        self.tracking_mask = tracking_mask
+        self.target_mask = target_mask
+        self.include_mask = include_mask
+        self.exclude_mask = exclude_mask
+        self.peaks = peaks
 
         self.normalize_obs = False  # env_dto['normalize']
         self.obs_rms = None
@@ -147,6 +144,7 @@ class BaseEnv(object):
         # Stopping criteria is a dictionary that maps `StoppingFlags`
         # to functions that indicate whether streamlines should stop or not
         self.stopping_criteria = {}
+        mask_data = tracking_mask.data.astype(np.uint8)
 
         self.seeding_data = seeding_mask.data.astype(np.uint8)
 
@@ -178,11 +176,15 @@ class BaseEnv(object):
                  self.coverage_weighting])
 
         # Stopping criteria
+        # TODO: Switch all criteria to classes like Angular error and mask
+        # Length criterion
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            LengthCriterion(self.max_nb_steps)
+            functools.partial(is_too_long,
+                              max_nb_steps=self.max_nb_steps)
         # Angle between segment (curvature criterion)
         self.stopping_criteria[
-            StoppingFlags.STOPPING_CURVATURE] = CurvatureCriterion(theta)
+            StoppingFlags.STOPPING_CURVATURE] = \
+            functools.partial(is_too_curvy, max_theta=theta)
         # Streamline loop criterion (not used, too slow)
         # self.stopping_criteria[
         #     StoppingFlags.STOPPING_LOOP] = \
@@ -196,15 +198,15 @@ class BaseEnv(object):
         # Mask criterion (either binary or CMC)
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
-                self.include_mask,
-                self.exclude_mask,
+                self.include_mask.data,
+                self.exclude_mask.data,
                 self.affine_vox2rasmm,
                 self.step_size,
                 self.min_nb_steps)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
         else:
             binary_criterion = BinaryStoppingCriterion(
-                self.tracking_mask,
+                mask_data,
                 0.9)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
@@ -440,37 +442,18 @@ class BaseEnv(object):
                  self.oracle_weighting,
                  self.coverage_weighting])
 
-        # Stopping criteria
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            LengthCriterion(self.max_nb_steps)
-        # Angle between segment (curvature criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_CURVATURE] = CurvatureCriterion(self.theta)
-        # Streamline loop criterion (not used, too slow)
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=360)
-        # Angle between peaks and segments (angular error criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-            self.epsilon,
-            self.peaks)
-        # Mask criterion (either binary or CMC)
+            functools.partial(is_too_long,
+                              max_nb_steps=self.max_nb_steps)
+
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
-                self.include_mask,
-                self.exclude_mask,
+                self.include_mask.data,
+                self.exclude_mask.data,
                 self.affine_vox2rasmm,
                 self.step_size,
                 self.min_nb_steps)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-        else:
-            binary_criterion = BinaryStoppingCriterion(
-                self.tracking_mask,
-                0.9)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-                binary_criterion
 
     def _normalize(self, obs):
         """Normalises the observation using the running mean and variance of
@@ -564,33 +547,28 @@ class BaseEnv(object):
 
         N, S = signal.shape
 
-        inputs = torch.zeros(
-            (N, S + (self.n_dirs * P)), device=self.device,
-            requires_grad=False)
+        inputs = torch.zeros((N, S + (self.n_dirs * P)), device=self.device)
 
         inputs[:, :S] = signal
 
-        previous_dirs = torch.zeros(
-            (N, self.n_dirs, P), device=self.device, requires_grad=False)
+        previous_dirs = np.zeros((N, self.n_dirs, P), dtype=np.float32)
         if L > 1:
-            dirs = torch.diff(streamlines, dim=1)
+            dirs = np.diff(streamlines, axis=1)
 
-            # if self.action_type == 'polar':
-            #     X, Y, Z = (dirs[..., 0],
-            #                dirs[..., 1],
-            #                dirs[..., 2])
-            #     r, theta, phi = cart2sphere(X, Y, Z)
+            if self.action_type == 'polar':
+                X, Y, Z = (dirs[..., 0],
+                           dirs[..., 1],
+                           dirs[..., 2])
+                r, theta, phi = cart2sphere(X, Y, Z)
 
-            #     dirs = np.stack((theta, phi), axis=-1)
+                dirs = np.stack((theta, phi), axis=-1)
 
-            for i in range(min(dirs.shape[1], self.n_dirs)):
-                previous_dirs[:, i, :] = dirs[:, -i, :]
-
-            # previous_dirs[:, :min(dirs.shape[1], self.n_dirs), :] = \
-            #     dirs[:, :-(self.n_dirs+1):-1, :]
+            previous_dirs[:, :min(dirs.shape[1], self.n_dirs), :] = \
+                dirs[:, :-(self.n_dirs+1):-1, :]
 
         dir_inputs = torch.reshape(
-            previous_dirs, (N, self.n_dirs * P))
+            torch.from_numpy(previous_dirs).to(self.device),
+            (N, self.n_dirs * P))
 
         inputs[:, S:] = dir_inputs
 
@@ -623,14 +601,15 @@ class BaseEnv(object):
             `StoppingFlags` that triggered stopping for each stopping
             streamline
         """
-        should_stop = np.zeros(len(streamlines), dtype=np.bool_)
-        flags = np.zeros(len(streamlines), dtype=int)
+        idx = np.arange(len(streamlines))
+
+        should_stop = np.zeros(len(idx), dtype=np.bool_)
+        flags = np.zeros(len(idx), dtype=int)
 
         # For each possible flag, determine which streamline should stop and
         # keep track of the triggered flag
         for flag, stopping_criterion in stopping_criteria.items():
-            stopped_by_criterion = stopping_criterion(
-                streamlines).cpu().numpy()
+            stopped_by_criterion = stopping_criterion(streamlines)
             flags[stopped_by_criterion] |= flag.value
             should_stop[stopped_by_criterion] = True
 

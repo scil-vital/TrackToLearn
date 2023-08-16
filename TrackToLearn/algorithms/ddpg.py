@@ -159,17 +159,16 @@ class DDPG(RLAlgorithm):
 
         running_reward = 0
         state = initial_state
-        done = torch.zeros((state.shape[0]), device=state.device)
+        done = False
         running_losses = defaultdict(list)
         running_reward_factors = defaultdict(list)
 
         episode_length = 0
 
-        while not torch.all(done):
+        while not np.all(done):
 
             # Select action according to policy + noise for exploration
-            with torch.no_grad():
-                action = self.sample_action(state)
+            action = self.sample_action(state)
 
             self.t += action.shape[0]
             # Perform action
@@ -188,10 +187,8 @@ class DDPG(RLAlgorithm):
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state.cpu().numpy(), action.cpu().numpy(),
-                next_state.cpu().numpy(),
-                reward[..., None].cpu().numpy(),
-                done_bool[..., None].cpu().numpy())
+                state.cpu().numpy(), action, next_state.cpu().numpy(),
+                reward[..., None], done_bool[..., None])
 
             running_reward += sum(reward)
 
@@ -209,7 +206,7 @@ class DDPG(RLAlgorithm):
             # Keeping track of episode length
             episode_length += 1
         return (
-            running_reward.cpu().numpy(),
+            running_reward,
             running_losses,
             episode_length,
             running_reward_factors)

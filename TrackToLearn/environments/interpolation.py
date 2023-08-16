@@ -22,52 +22,6 @@ idx = np.asarray([[0, 0, 0],
                   [1, 1, 1]])
 
 
-def torch_nearest_interpolation(
-    volume: torch.Tensor,
-    coords: torch.Tensor,
-) -> torch.Tensor:
-    """Evaluates the data volume at given coordinates using nearest-neighbor
-    on a torch tensor.
-
-    Interpolation is done using the device on which the volume is stored.
-
-    Parameters
-    ----------
-    volume : torch.Tensor with 3D or 4D shape
-        The input volume to interpolate from
-    coords : torch.Tensor with shape (N,3)
-        The coordinates where to interpolate
-
-    Returns
-    -------
-    output : torch.Tensor with shape (N, #modalities)
-        The list of interpolated values
-
-    """
-    # Get device, and make sure volume and coords are using the same one
-    assert volume.device == coords.device, "volume on device: {}; " \
-                                           "coords on device: {}".format(
-                                               volume.device,
-                                               coords.device)
-    unclipped_coords = coords.type(torch.int32)
-    volume = volume.type(torch.float32)
-
-    device = volume.device
-
-    if volume.dim() <= 2 or volume.dim() >= 5:
-        raise ValueError("Volume must be 3D or 4D!")
-
-    lower = torch.as_tensor([0, 0, 0]).to(device)
-    upper = (torch.as_tensor(volume.shape[:3]) - 1).to(device)
-    indices = torch.min(torch.max(unclipped_coords, lower), upper)
-
-    # Fetch volume data at indices
-    output = volume[
-        indices[:, 0], indices[:, 1], indices[:, 2], :
-    ]
-    return output.type(torch.float32)
-
-
 def torch_trilinear_interpolation(
     volume: torch.Tensor,
     coords: torch.Tensor,
