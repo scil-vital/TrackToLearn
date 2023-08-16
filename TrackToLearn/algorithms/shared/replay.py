@@ -292,34 +292,38 @@ class OffPolicyReplayBuffer(object):
         self.size = 0
 
         # Buffers "filled with zeros"
-        self.state = np.zeros((self.max_size, state_dim), dtype=np.float32)
-        self.action = np.zeros((self.max_size, action_dim), dtype=np.float32)
-        self.next_state = np.zeros(
-            (self.max_size, state_dim), dtype=np.float32)
-        self.reward = np.zeros((self.max_size, 1), dtype=np.float32)
-        self.not_done = np.zeros((self.max_size, 1), dtype=np.float32)
+        self.state = torch.zeros(
+            (self.max_size, state_dim), dtype=torch.float32).pin_memory()
+        self.action = torch.zeros(
+            (self.max_size, action_dim), dtype=torch.float32).pin_memory()
+        self.next_state = torch.zeros(
+            (self.max_size, state_dim), dtype=torch.float32).pin_memory()
+        self.reward = torch.zeros(
+            (self.max_size, 1), dtype=torch.float32).pin_memory()
+        self.not_done = torch.zeros(
+            (self.max_size, 1), dtype=torch.float32).pin_memory()
 
     def add(
         self,
-        state: np.ndarray,
-        action: np.ndarray,
-        next_state: np.ndarray,
-        reward: np.ndarray,
-        done: np.ndarray
+        state: torch.Tensor,
+        action: torch.Tensor,
+        next_state: torch.Tensor,
+        reward: torch.Tensor,
+        done: torch.Tensor
     ):
         """ Add new transitions to buffer in a "ring buffer" way
 
         Parameters:
         -----------
-        state: np.ndarray
+        state: torch.Tensor
             Batch of states to be added to buffer
-        action: np.ndarray
+        action: torch.Tensor
             Batch of actions to be added to buffer
-        next_state: np.ndarray
+        next_state: torch.Tensor
             Batch of next-states to be added to buffer
-        reward: np.ndarray
+        reward: torch.Tensor
             Batch of rewards obtained for this transition
-        done: np.ndarray
+        done: torch.Tensor
             Batch of "done" flags for this batch of transitions
         """
 
@@ -368,19 +372,11 @@ class OffPolicyReplayBuffer(object):
 
         ind = np.random.randint(0, self.size, size=int(batch_size))
 
-        s = torch.as_tensor(
-            self.state[ind], dtype=torch.float32, device=self.device)
-        a = torch.as_tensor(
-            self.action[ind], dtype=torch.float32, device=self.device)
-        ns = \
-            torch.as_tensor(
-                self.next_state[ind], dtype=torch.float32, device=self.device)
-        r = torch.as_tensor(
-            self.reward[ind], dtype=torch.float32, device=self.device
-        ).squeeze(-1)
-        d = torch.as_tensor(
-            self.not_done[ind], dtype=torch.float32, device=self.device
-        ).squeeze(-1)
+        s = self.state[ind].to(device=self.device)
+        a = self.action[ind].to(device=self.device)
+        ns = self.next_state[ind].to(device=self.device)
+        r = self.reward[ind].squeeze(-1).to(device=self.device)
+        d = self.not_done[ind].squeeze(-1).to(device=self.device)
 
         return s, a, ns, r, d
 

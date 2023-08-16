@@ -167,12 +167,14 @@ class DDPG(RLAlgorithm):
 
         while not np.all(done):
 
-            # Select action according to policy + noise for exploration
-            action = self.sample_action(state)
+            with torch.no_grad():
+                # Select action according to policy + noise for exploration
+                action = self.sample_action(state)
+                a = action.to(device='cpu')
 
             self.t += action.shape[0]
             # Perform action
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, info = env.step(a.numpy())
             done_bool = done
 
             running_reward_factors = add_item_to_means(
@@ -187,8 +189,11 @@ class DDPG(RLAlgorithm):
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state.cpu().numpy(), action, next_state.cpu().numpy(),
-                reward[..., None], done_bool[..., None])
+                state.to(device='cpu', non_blocking=True),
+                a,
+                next_state.to(device='cpu', non_blocking=True),
+                torch.from_numpy(reward[..., None]).to(dtype=torch.float32),
+                torch.from_numpy(done_bool[..., None]).to(dtype=torch.int))
 
             running_reward += sum(reward)
 
