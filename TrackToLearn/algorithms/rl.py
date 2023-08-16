@@ -87,13 +87,9 @@ class RLAlgorithm(object):
         while not np.all(done):
             # Select action according to policy + noise to make tracking
             # probabilistic
-            with torch.no_grad():
-                action = self.agent.select_action(state)
-
-            a = action.to(device='cpu', non_blocking=True)
-
+            action = self.agent.select_action(state)
             # Perform action
-            next_state, reward, done, *_ = env.step(a.numpy())
+            next_state, reward, done, *_ = env.step(action)
 
             # Keep track of reward
             running_reward += sum(reward)
