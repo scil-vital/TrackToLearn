@@ -211,14 +211,14 @@ def is_too_curvy(streamlines: np.ndarray, max_theta: float):
     max_theta_rad = np.deg2rad(max_theta)  # Internally use radian
     if streamlines.shape[1] < 3:
         # Not enough segments to compute curvature
-        return np.zeros(streamlines.shape[0], dtype=np.uint8)
+        return np.zeros(streamlines.shape[0], dtype=bool)
 
     # Compute vectors for the last and before last streamline segments
     u = normalize_vectors(streamlines[:, -1] - streamlines[:, -2])
     v = normalize_vectors(streamlines[:, -2] - streamlines[:, -3])
 
     # Compute angles
-    angles = np.arccos(np.sum(u * v, axis=1).clip(-1., 1.))
+    angles = np.arccos(np.einsum('ij,ij->i', u, v))
 
     return angles > max_theta_rad
 

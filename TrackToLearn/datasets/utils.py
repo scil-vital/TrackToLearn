@@ -2,7 +2,6 @@ import numpy as np
 
 from dipy.data import get_sphere
 from dipy.reconst.csdeconv import sph_harm_ind_list
-from dwi_ml.data.dataset.streamline_containers import LazySFTData
 from scilpy.reconst.utils import get_sh_order_and_fullness
 from scilpy.reconst.multi_processes import convert_sh_basis
 
@@ -14,12 +13,10 @@ class MRIDataVolume(object):
     """
 
     def __init__(
-        self, data=None, affine_vox2rasmm=None, subject_id=None, filename=None
+        self, data=None, affine_vox2rasmm=None
     ):
         self._data = data
         self.affine_vox2rasmm = affine_vox2rasmm
-        self.subject_id = subject_id
-        self.filename = filename
 
     @classmethod
     def from_hdf_group(cls, hdf, group, default=None):

@@ -100,6 +100,8 @@ class DDPG(RLAlgorithm):
         self.total_it = 0
         self.tau = 0.005
 
+        self.batch_size = 4096
+
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
             input_size, action_size)
@@ -167,12 +169,17 @@ class DDPG(RLAlgorithm):
 
         while not np.all(done):
 
-            # Select action according to policy + noise for exploration
-            action = self.sample_action(state)
+            # Train agent after collecting sufficient data
+            if self.t >= self.start_timesteps:
+                batch = self.replay_buffer.sample(self.batch_size)
 
-            self.t += action.shape[0]
+            # Select action according to policy + noise for exploration
+            with torch.no_grad():
+                action = self.sample_action(state)
+
             # Perform action
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, info = env.step(
+                action.to(device='cpu', copy=True).numpy())
             done_bool = done
 
             running_reward_factors = add_item_to_means(
@@ -187,16 +194,21 @@ class DDPG(RLAlgorithm):
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state.cpu().numpy(), action, next_state.cpu().numpy(),
-                reward[..., None], done_bool[..., None])
+                state.to('cpu', copy=True),
+                action.to('cpu', copy=True),
+                next_state.to('cpu', copy=True),
+                torch.as_tensor(reward[..., None], dtype=torch.float32),
+                torch.as_tensor(done_bool[..., None], dtype=torch.float32))
 
             running_reward += sum(reward)
 
             # Train agent after collecting sufficient data
             if self.t >= self.start_timesteps:
                 losses = self.update(
-                    self.replay_buffer)
+                    batch)
                 running_losses = add_item_to_means(running_losses, losses)
+
+            self.t += action.shape[0]
 
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
@@ -213,8 +225,7 @@ class DDPG(RLAlgorithm):
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 4096
+        batch,
     ) -> Tuple[float, float]:
         """
 
@@ -241,7 +252,7 @@ class DDPG(RLAlgorithm):
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+            batch
 
         with torch.no_grad():
             # Select action according to policy and add noise

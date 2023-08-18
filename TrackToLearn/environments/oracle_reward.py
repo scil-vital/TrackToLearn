@@ -45,6 +45,7 @@ class OracleReward(Reward):
             self.model = models[hyper_parameters[
                 'name']].load_from_checkpoint(self.checkpoint).to(device)
 
+        self.model.eval()
         self.min_nb_steps = min_nb_steps
         self.device = device
 
@@ -77,14 +78,14 @@ class OracleReward(Reward):
             dirs = np.diff(resampled_streamlines, axis=1)
 
             # Load the features as torch tensors and predict
-            with torch.no_grad():
+            with torch.cuda.amp.autocast():
                 data = torch.as_tensor(
                     dirs, dtype=torch.float, device=self.device)
-                predictions = self.model(data).cpu().numpy()
+                predictions = self.model(data)
 
-            scores = np.zeros_like(predictions)
+            scores = torch.zeros_like(predictions, device=self.device)
             scores[predictions > 0.5] = 1.
-            return scores * dones.astype(int)
+            return scores.cpu().numpy() * dones.astype(int)
 
         return np.zeros((N))
 

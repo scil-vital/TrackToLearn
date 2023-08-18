@@ -7,7 +7,7 @@ import torch
 from os.path import join as pjoin
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
-from TrackToLearn.algorithms.shared.utils import mean_losses
+from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
@@ -269,7 +269,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             i_episode += 1
 
             if self.use_comet and self.comet_experiment is not None:
-                mean_ep_reward_factors = mean_losses(reward_factors)
+                mean_ep_reward_factors = mean_rewards(reward_factors)
                 self.comet_monitor.log_losses(
                     mean_ep_reward_factors, i_episode)
 

@@ -94,7 +94,7 @@ class SACAuto(SAC):
             (1,), starting_temperature, requires_grad=True, device=device)
 
         self.alpha_optimizer = torch.optim.Adam(
-          [self.log_alpha], lr=lr)
+            [self.log_alpha], lr=lr)
 
         # Initialize target policy to provide baseline
         self.target = copy.deepcopy(self.agent)
@@ -118,6 +118,9 @@ class SACAuto(SAC):
         self.start_timesteps = 80000
         self.total_it = 0
         self.tau = 0.005
+        self.agent_freq = 5
+
+        self.batch_size = 2**12
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
@@ -127,8 +130,7 @@ class SACAuto(SAC):
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**12
+        batch,
     ) -> Tuple[float, float]:
         """
 
@@ -154,18 +156,8 @@ class SACAuto(SAC):
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
-
-        pi, logp_pi = self.agent.act(state)
-        alpha_loss = -(self.log_alpha * (
-            logp_pi + self.target_entropy).detach()).mean()
+            batch
         alpha = self.log_alpha.exp()
-
-        q1, q2 = self.agent.critic(state, pi)
-        q_pi = torch.min(q1, q2)
-
-        # Entropy-regularized policy loss
-        actor_loss = (alpha * logp_pi - q_pi).mean()
 
         with torch.no_grad():
             # Target actions come from *current* policy
@@ -190,46 +182,67 @@ class SACAuto(SAC):
         critic_loss = loss_q1 + loss_q2
 
         losses = {
-            'actor_loss': actor_loss.item(),
-            'critic_loss': critic_loss.item(),
-            'alpha_loss': alpha_loss.item(),
-            'loss_q1': loss_q1.item(),
-            'loss_q2': loss_q2.item(),
-            'a': alpha.item(),
-            'Q1': current_Q1.mean().item(),
-            'Q2': current_Q2.mean().item(),
-            'backup': backup.mean().item(),
+            'actor_loss': torch.as_tensor(0.,).to(
+                device=critic_loss.device, non_blocking=True),
+            'alpha_loss': torch.as_tensor(0.,).to(
+                device=critic_loss.device, non_blocking=True),
+            'critic_loss': critic_loss.detach(),
+            'loss_q1': loss_q1.detach(),
+            'loss_q2': loss_q2.detach(),
+            'a': alpha.detach(),
+            'Q1': current_Q1.mean().detach(),
+            'Q2': current_Q2.mean().detach(),
+            'backup': backup.mean().detach(),
         }
-
-        # Optimize the temperature
-        self.alpha_optimizer.zero_grad()
-        alpha_loss.backward()
-        self.alpha_optimizer.step()
-
-        # Optimize the actor
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        # Update the frozen target models
-        for param, target_param in zip(
-            self.agent.critic.parameters(),
-            self.target.critic.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data)
+        # Delayed policy updates
+        if self.total_it % self.agent_freq == 0:
 
-        for param, target_param in zip(
-            self.agent.actor.parameters(),
-            self.target.actor.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data
-            )
+            pi, logp_pi = self.agent.act(state)
+
+            q1, q2 = self.agent.critic(state, pi)
+            q_pi = torch.min(q1, q2)
+
+            alpha_loss = -(self.log_alpha * (
+                logp_pi + self.target_entropy).detach()).mean()
+
+            # Entropy-regularized policy loss
+            actor_loss = (alpha * logp_pi - q_pi).mean()
+
+            losses.update(
+                {'actor_loss': actor_loss.detach(),
+                 'alpha_loss': alpha_loss.detach(),
+                 })
+
+            # Optimize the temperature
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
+
+            # Optimize the actor
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+
+            # Update the frozen target models
+            for param, target_param in zip(
+                self.agent.critic.parameters(),
+                self.target.critic.parameters()
+            ):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data)
+
+            for param, target_param in zip(
+                self.agent.actor.parameters(),
+                self.target.actor.parameters()
+            ):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data
+                )
 
         return losses

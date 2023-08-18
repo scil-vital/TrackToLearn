@@ -107,7 +107,7 @@ class MaxEntropyActor(Actor):
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
         std = torch.exp(log_std)
 
-        pi_distribution = Normal(mu, std)
+        pi_distribution = Normal(mu, std, validate_args=False)
 
         if stochastic:
             pi_action = pi_distribution.rsample()
@@ -288,8 +288,7 @@ class ActorCritic(object):
         # if state is not batched, expand it to "batch of 1"
         if len(state.shape) < 2:
             state = state[None, :]
-        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
-        action = self.act(state).cpu().data.numpy()
+        action = self.act(state)
 
         return action
 
@@ -453,7 +452,6 @@ class SACActorCritic(ActorCritic):
         if len(state.shape) < 2:
             state = state[None, :]
 
-        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
         action, _ = self.act(state, stochastic)
 
-        return action.cpu().data.numpy()
+        return action

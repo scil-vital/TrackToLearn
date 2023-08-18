@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from torch import nn
 
@@ -12,6 +13,12 @@ def add_to_means(means, dic):
 
 
 def mean_losses(dic):
+    new_dict = {k: np.mean(torch.stack(dic[k]).cpu().numpy(), axis=0)
+                for k in dic.keys()}
+    return new_dict
+
+
+def mean_rewards(dic):
     return {k: np.mean(np.asarray(dic[k]), axis=0) for k in dic.keys()}
 
 

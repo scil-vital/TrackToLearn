@@ -56,16 +56,15 @@ class OracleValidator(Validator):
         dirs = np.diff(resampled_streamlines, axis=1)
 
         batch_size = 4096
-        predictions = []
+        predictions = torch.zeros((dirs.shape[0]), device=self.device)
         for i in range(0, len(dirs), batch_size):
             j = i + batch_size
             # Load the features as torch tensors and predict
             with torch.no_grad():
                 data = torch.as_tensor(
                     dirs[i:j], dtype=torch.float, device='cuda')
-                pred_batch = self.model(data).cpu().numpy().tolist()
-                predictions.extend(pred_batch)
+                pred_batch = self.model(data)
+                predictions[i:j] = pred_batch
 
-        predictions = np.asarray(predictions)
-
-        return {'Oracle': np.mean(predictions > 0.5)}
+        accuracy = (predictions > 0.5).to(torch.float32)
+        return {'Oracle': torch.mean(accuracy).cpu().numpy()}

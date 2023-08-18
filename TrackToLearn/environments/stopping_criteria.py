@@ -1,8 +1,11 @@
 import numpy as np
 
 from enum import Enum
+from scipy.ndimage import spline_filter, map_coordinates
 
-from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
+from TrackToLearn.environments.interpolation import (
+    interpolate_volume_at_coordinates,
+    nearest_neighbor_interpolation)
 from TrackToLearn.utils.utils import normalize_vectors
 
 # Flags enum
@@ -59,7 +62,7 @@ class AngularErrorCriterion(object):
         """
 
         self.max_theta_rad = np.deg2rad(max_theta)
-        self.peaks = peaks.data
+        self.peaks = np.ascontiguousarray(peaks.data)
         self.asymmetric = False
 
     def __call__(
@@ -90,8 +93,8 @@ class AngularErrorCriterion(object):
         idx = streamlines[:, -2].astype(np.int32)
 
         # Get peaks at streamline end
-        v = interpolate_volume_at_coordinates(
-            self.peaks, idx, mode='nearest', order=0)
+        v = nearest_neighbor_interpolation(
+            self.peaks, idx)
 
         # Presume 5 peaks (per hemisphere if asymmetric)
         if self.asymmetric:
@@ -149,7 +152,7 @@ class BinaryStoppingCriterion(object):
             Voxels with a value higher or equal than this threshold are
             considered as part of the interior of the mask.
         """
-        self.mask = mask
+        self.mask = spline_filter(np.ascontiguousarray(mask), order=3)
         self.threshold = threshold
 
     def __call__(
@@ -169,11 +172,13 @@ class BinaryStoppingCriterion(object):
             Array telling whether a streamline's last coordinate is outside the
             mask or not.
         """
-
-        # Get last streamlines coordinates
-        return interpolate_volume_at_coordinates(
-            self.mask, streamlines[:, -1, :], mode='constant',
-            order=3) < self.threshold
+        return map_coordinates(
+            self.mask, streamlines[:, -1, :].T, prefilter=False
+        ) < self.threshold
+        # # Get last streamlines coordinates
+        # return interpolate_volume_at_coordinates(
+        #     self.mask, streamlines[:, -1, :], mode='constant',
+        #     order=3, filter=) < self.threshold
 
 
 class CmcStoppingCriterion(object):

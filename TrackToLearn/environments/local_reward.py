@@ -1,7 +1,8 @@
 import numpy as np
 
+from TrackToLearn.environments.interpolation import (
+    nearest_neighbor_interpolation)
 from TrackToLearn.environments.utils import (
-    interpolate_volume_at_coordinates,
     is_inside_mask)
 from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.environments.reward import Reward
@@ -50,8 +51,7 @@ class PeaksAlignmentReward(Reward):
         idx = streamlines[:, -2].astype(np.int32)
 
         # Get peaks at streamline end
-        v = interpolate_volume_at_coordinates(
-            self.peaks, idx, mode='nearest', order=0)
+        v = nearest_neighbor_interpolation(self.peaks, idx)
 
         # Presume 5 peaks (per hemisphere if asymmetric)
         if self.asymmetric:
