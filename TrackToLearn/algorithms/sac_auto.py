@@ -43,6 +43,8 @@ class SACAuto(SAC):
         gamma: float = 0.99,
         alpha: float = 0.2,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -118,13 +120,14 @@ class SACAuto(SAC):
         self.start_timesteps = 80000
         self.total_it = 0
         self.tau = 0.005
-        self.agent_freq = 5
+        self.agent_freq = 1
 
-        self.batch_size = 2**12
+        self.batch_size = batch_size
+        self.replay_size = replay_size
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=self.replay_size)
 
         self.rng = rng
 

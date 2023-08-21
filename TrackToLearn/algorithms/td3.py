@@ -36,6 +36,8 @@ class TD3(DDPG):
         lr: float = 3e-4,
         gamma: float = 0.99,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -96,10 +98,12 @@ class TD3(DDPG):
         self.start_timesteps = 1000
         self.total_it = 0
         self.tau = 0.005
+        self.batch_size = batch_size
+        self.replay_size = replay_size
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=replay_size)
 
         self.t = 1
         self.rng = rng
@@ -125,8 +129,7 @@ class TD3(DDPG):
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**12
+        batch,
     ) -> Tuple[float, float]:
         """
         TD3 improves upon DDPG with three additions:
@@ -153,7 +156,7 @@ class TD3(DDPG):
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+            batch
 
         with torch.no_grad():
             # Select next action according to policy and add clipped noise

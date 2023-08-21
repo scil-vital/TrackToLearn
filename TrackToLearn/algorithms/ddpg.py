@@ -40,6 +40,8 @@ class DDPG(RLAlgorithm):
         lr: float = 3e-4,
         gamma: float = 0.99,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -100,11 +102,12 @@ class DDPG(RLAlgorithm):
         self.total_it = 0
         self.tau = 0.005
 
-        self.batch_size = 4096
+        self.batch_size = batch_size
+        self.replay_size = replay_size
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=replay_size)
 
         self.t = 1
         self.rng = rng

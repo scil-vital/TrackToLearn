@@ -38,6 +38,8 @@ class SAC(DDPG):
         gamma: float = 0.99,
         alpha: float = 0.2,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -104,9 +106,12 @@ class SAC(DDPG):
         self.total_it = 0
         self.tau = 0.005
 
+        self.batch_size = batch_size
+        self.replay_size = replay_size
+
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=replay_size)
 
         self.rng = rng
 
@@ -124,8 +129,7 @@ class SAC(DDPG):
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**12
+        batch,
     ) -> Tuple[float, float]:
         """
 
@@ -151,7 +155,7 @@ class SAC(DDPG):
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+            batch
 
         pi, logp_pi = self.agent.act(state)
         alpha = self.alpha

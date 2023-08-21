@@ -47,6 +47,8 @@ class DDPGTrackToLearnTraining(TrackToLearnTraining):
 
         # DDPG-specific parameters
         self.action_std = ddpg_train_dto['action_std']
+        self.batch_size = ddpg_train_dto['batch_size']
+        self.replay_size = ddpg_train_dto['replay_size']
 
     def save_hyperparameters(self):
         """ Add DDPG-specific hyperparameters to self.hyperparameters
@@ -55,7 +57,9 @@ class DDPGTrackToLearnTraining(TrackToLearnTraining):
 
         self.hyperparameters.update(
             {'algorithm': 'DDPG',
-             'action_std': self.action_std})
+             'action_std': self.action_std,
+             'batch_size': self.batch_size,
+             'replay_size': self.replay_size})
 
         super().save_hyperparameters()
 
@@ -68,6 +72,8 @@ class DDPGTrackToLearnTraining(TrackToLearnTraining):
             self.lr,
             self.gamma,
             self.n_actor,
+            self.batch_size,
+            self.replay_size,
             self.rng,
             device)
         return alg
@@ -76,6 +82,11 @@ class DDPGTrackToLearnTraining(TrackToLearnTraining):
 def add_ddpg_args(parser):
     parser.add_argument('--action_std', default=0.3, type=float,
                         help='Action STD')
+    parser.add_argument('--batch_size', default=2**12, type=int,
+                        help='How many tuples to sample from the replay '
+                             'buffer.')
+    parser.add_argument('--replay_size', default=1e6, type=int,
+                        help='How many tuples to store in the replay buffer.')
 
 
 def parse_args():

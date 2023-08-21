@@ -49,6 +49,8 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 
         # SACAuto-specific parameters
         self.alpha = sac_auto_train_dto['alpha']
+        self.batch_size = sac_auto_train_dto['batch_size']
+        self.replay_size = sac_auto_train_dto['replay_size']
 
     def save_hyperparameters(self):
         """ Add SACAuto-specific hyperparameters to self.hyperparameters
@@ -57,7 +59,9 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 
         self.hyperparameters.update(
             {'algorithm': 'SACAuto',
-             'alpha': self.alpha})
+             'alpha': self.alpha,
+             'batch_size': self.batch_size,
+             'replay_size': self.replay_size})
 
         super().save_hyperparameters()
 
@@ -70,6 +74,8 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
             self.gamma,
             self.alpha,
             self.n_actor,
+            self.batch_size,
+            self.replay_size,
             self.rng,
             device)
         return alg
@@ -78,6 +84,11 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 def add_sac_auto_args(parser):
     parser.add_argument('--alpha', default=0.2, type=float,
                         help='Temperature parameter')
+    parser.add_argument('--batch_size', default=2**12, type=int,
+                        help='How many tuples to sample from the replay '
+                             'buffer.')
+    parser.add_argument('--replay_size', default=1e6, type=int,
+                        help='How many tuples to store in the replay buffer.')
 
 
 def parse_args():

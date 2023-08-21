@@ -47,6 +47,8 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
 
         # TD3-specific parameters
         self.action_std = td3_train_dto['action_std']
+        self.batch_size = td3_train_dto['batch_size']
+        self.replay_size = td3_train_dto['replay_size']
 
     def save_hyperparameters(self):
         """ Add TD3-specific hyperparameters to self.hyperparameters
@@ -55,7 +57,9 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
 
         self.hyperparameters.update(
             {'algorithm': 'TD3',
-             'action_std': self.action_std})
+             'action_std': self.action_std,
+             'batch_size': self.batch_size,
+             'replay_size': self.replay_size})
 
         super().save_hyperparameters()
 
@@ -68,6 +72,8 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
             self.lr,
             self.gamma,
             self.n_actor,
+            self.batch_size,
+            self.replay_size,
             self.rng,
             device)
         return alg
@@ -76,6 +82,11 @@ class TD3TrackToLearnTraining(TrackToLearnTraining):
 def add_td3_args(parser):
     parser.add_argument('--action_std', default=0.3, type=float,
                         help='Action STD')
+    parser.add_argument('--batch_size', default=2**12, type=int,
+                        help='How many tuples to sample from the replay '
+                             'buffer.')
+    parser.add_argument('--replay_size', default=1e6, type=int,
+                        help='How many tuples to store in the replay buffer.')
 
 
 def parse_args():
