@@ -41,9 +41,7 @@ rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-export COMET_OPTIMIZER_ID=53a8a242440d41faad77b2d910695d9d
-
-python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
+python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   $DEST_FOLDER \
   "$EXPERIMENT" \
   "$ID" \
@@ -59,8 +57,8 @@ python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --theta=${theta} \
   --n_dirs=100 \
   --hidden_dims='2048-2048-2048' \
-  --replay_size=5000000 \
-  --batch_size=65536 \
+  --replay_size=1000000 \
+  --batch_size=32768 \
   --action_type='cartesian' \
   --interface_seeding \
   --use_gpu \

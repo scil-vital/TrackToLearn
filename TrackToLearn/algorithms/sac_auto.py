@@ -160,6 +160,7 @@ class SACAuto(SAC):
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
             batch
+
         alpha = self.log_alpha.exp()
 
         with torch.no_grad():

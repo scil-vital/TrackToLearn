@@ -369,19 +369,17 @@ class OffPolicyReplayBuffer(object):
         d: torch.Tensor
             Sampled 1-done flags
         """
+        ind = torch.randperm(self.size, dtype=torch.long)[
+            :min(self.size, batch_size)]
 
-        ind = np.random.randint(0, self.size, size=int(batch_size))
+        s = self.state.index_select(0, ind).pin_memory()
+        a = self.action.index_select(0, ind).pin_memory()
+        ns = self.next_state.index_select(0, ind).pin_memory()
+        r = self.reward.index_select(0, ind).squeeze(-1).pin_memory()
+        d = self.not_done.index_select(0, ind).to(
+            dtype=torch.float32).squeeze(-1).pin_memory()
 
-        s = self.state[ind].to(device=self.device, non_blocking=True)
-        a = self.action[ind].to(device=self.device, non_blocking=True)
-        ns = self.next_state[ind].to(device=self.device, non_blocking=True)
-        r = self.reward[ind].to(device=self.device,
-                                non_blocking=True).squeeze(-1)
-        d = self.not_done[ind].to(
-            device=self.device, non_blocking=True,
-            dtype=torch.float32).squeeze(-1)
-
-        return s, a, ns, r, d
+        return s.to(device=self.device, non_blocking=True), a.to(device=self.device, non_blocking=True), ns.to(device=self.device, non_blocking=True), r.to(device=self.device, non_blocking=True), d.to(device=self.device, non_blocking=True)
 
     def clear_memory(self):
         """ Reset the buffer

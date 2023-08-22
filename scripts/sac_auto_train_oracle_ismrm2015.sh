@@ -25,7 +25,7 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/anat/${VAL
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
-lr=0.001 # Learning rate
+lr=0.0005 # Learning rate
 gamma=0.99 # Gamma for reward discounting
 
 # Model params
@@ -39,14 +39,14 @@ EXPERIMENT=SAC_Auto_ISMRM2015TrainOracle
 
 ID=$(date +"%F-%H_%M_%S")
 
-seeds=(1111 2222 3333 4444 5555)
+seeds=(2222 3333 4444 5555)
 
 for rng_seed in "${seeds[@]}"
 do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python TrackToLearn/trainers/sac_auto_train.py \
+  python -O TrackToLearn/trainers/sac_auto_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -62,7 +62,8 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
-    --oracle_weighting=5.0 \
+    --oracle_weighting=0.0 \
+    --hidden_dims='1024-1024-1024' \
     --n_dirs=100 \
     --action_type='cartesian' \
     --interface_seeding \

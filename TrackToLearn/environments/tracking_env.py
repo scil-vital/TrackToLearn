@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 
 from typing import Tuple
 
@@ -210,12 +209,11 @@ class TrackingEnvironment(BaseEnv):
                 self.streamlines[self.continue_idx, :self.length],
                 self.dones[self.continue_idx])
 
-        idx = torch.as_tensor(self.continue_idx, device=self.state.device)
-        self.state[idx] = self._format_state(
+        self.state[self.continue_idx] = self._format_state(
             self.streamlines[self.continue_idx, :self.length])
 
         return (
-            self.state[idx],
+            self.state[self.continue_idx],
             reward, self.dones[self.continue_idx],
             {'continue_idx': self.continue_idx,
              'reward_info': reward_info})
@@ -244,8 +242,7 @@ class TrackingEnvironment(BaseEnv):
         self.lengths[self.stopping_idx] = self.length
 
         self.continue_idx = self.new_continue_idx
-        idx = torch.as_tensor(self.continue_idx, device=self.state.device)
-        return self.state.index_select(0, idx), self.not_stopping
+        return self.state[self.continue_idx], self.not_stopping
 
     def get_streamlines(self) -> StatefulTractogram:
         """ Obtain tracked streamlines from the environment.

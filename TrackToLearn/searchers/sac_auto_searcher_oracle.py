@@ -42,17 +42,18 @@ def main():
 
         # Declare what we will be optimizing, and how:
         "spec": {
-            "metric": "Reward",
+            "metric": "VC",
             "objective": "maximize",
             "seed": args.rng_seed,
+            "retryLimit": 3,
             "retryAssignLimit": 3,
         },
     }
 
     # Next, create an optimizer, passing in the config:
-    opt = Optimizer(config, project_name=args.experiment)
+    opt = Optimizer(config)
 
-    for experiment in opt.get_experiments():
+    for experiment in opt.get_experiments(project_name=args.experiment):
         experiment.auto_metric_logging = False
         experiment.workspace = args.workspace
         experiment.parse_args = False
