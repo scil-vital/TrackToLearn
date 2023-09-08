@@ -67,4 +67,4 @@ class OracleValidator(Validator):
                 predictions[i:j] = pred_batch
 
         accuracy = (predictions > 0.5).to(torch.float32)
-        return {'Oracle': torch.mean(accuracy).cpu().numpy()}
+        return {'Oracle': float(torch.mean(accuracy).cpu().numpy())}

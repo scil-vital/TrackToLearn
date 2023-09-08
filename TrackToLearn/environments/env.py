@@ -164,7 +164,10 @@ class BaseEnv(object):
             target_reward = TargetReward(self.target_mask)
             length_reward = LengthReward(self.max_nb_steps)
             oracle_reward = OracleReward(self.checkpoint,
-                                         self.min_nb_steps, self.device)
+                                         self.min_nb_steps,
+                                         self.reference,
+                                         self.affine_vox2rasmm,
+                                         self.device)
             cover_reward = CoverageReward(self.tracking_mask)
             self.reward_function = RewardFunction(
                 [peaks_reward, target_reward,

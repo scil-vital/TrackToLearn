@@ -172,10 +172,6 @@ class DDPG(RLAlgorithm):
 
         while not np.all(done):
 
-            # Train agent after collecting sufficient data
-            if self.t >= self.start_timesteps:
-                batch = self.replay_buffer.sample(self.batch_size)
-
             # Select action according to policy + noise for exploration
             with torch.no_grad():
                 action = self.sample_action(state)
@@ -207,6 +203,8 @@ class DDPG(RLAlgorithm):
 
             # Train agent after collecting sufficient data
             if self.t >= self.start_timesteps:
+
+                batch = self.replay_buffer.sample(self.batch_size)
                 losses = self.update(
                     batch)
                 running_losses = add_item_to_means(running_losses, losses)

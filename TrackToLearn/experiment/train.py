@@ -235,6 +235,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Display the results of the untrained network
         self.log(
             valid_tractogram, env, valid_reward, i_episode)
+        print(scores)
         self.comet_monitor.log_losses(scores, i_episode)
 
         # Main training loop
@@ -288,6 +289,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                     valid_tracker.track_and_validate()
                 filename = self.save_vox_tractogram(valid_tractogram)
                 scores = self.score_tractogram(filename)
+                print(scores)
 
                 # Display what the network is capable-of "now"
                 self.log(
@@ -299,6 +301,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
         filename = self.save_vox_tractogram(valid_tractogram)
         scores = self.score_tractogram(filename)
+        print(scores)
 
         # Display what the network is capable-of "now"
         self.log(

@@ -304,7 +304,6 @@ def compute_masks_from_bundles(gt_files, reference, inverse_mask=False):
                 # Cheating ref because it may send a lot of warning if loading
                 # many trk with ref (reference was maybe added only for some
                 # of these files)
-                print(gt_bundle, reference)
                 if ext == '.trk':
                     reference = 'same'
                 else:

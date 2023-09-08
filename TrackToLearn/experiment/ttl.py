@@ -91,7 +91,7 @@ class TrackToLearnExperiment(Experiment):
         self.comet_monitor = CometMonitor(
             self.comet_experiment, self.name, self.experiment_path,
             prefix, self.render)
-
+        print(self.hyperparameters)
         self.comet_monitor.log_parameters(self.hyperparameters)
 
     def _get_env_dict_and_dto(
