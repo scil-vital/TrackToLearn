@@ -34,12 +34,13 @@ prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 # Env parameters
 npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
+n_actor=10000
 
 EXPERIMENT=SAC_Auto_ISMRM2015TrainOracle
 
 ID=$(date +"%F-%H_%M_%S")
 
-seeds=(2222 3333 4444 5555)
+seeds=(1111 2222 3333 4444 5555)
 
 for rng_seed in "${seeds[@]}"
 do
@@ -62,14 +63,16 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
+    --alignment_weighting=1.0 \
     --oracle_weighting=0.0 \
     --hidden_dims='1024-1024-1024' \
     --n_dirs=100 \
+    --n_actor=${n_actor} \
     --action_type='cartesian' \
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --run_oracle='epoch_49_ismrm2015_transformer.ckpt' \
+    --run_oracle='feedforward_epoch99_ismrm2015.ckpt' \
     --run_tractometer=${SCORING_DATA}
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"

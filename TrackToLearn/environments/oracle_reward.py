@@ -53,56 +53,6 @@ class OracleReward(Reward):
         self.min_nb_steps = min_nb_steps
         self.device = device
 
-    def __call__(
-        self,
-        streamlines: np.ndarray,
-        dones: np.ndarray
-    ):
-        """
-        Parameters
-        ----------
-        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-            Streamline coordinates in voxel space
-
-        Returns
-        -------
-        rewards: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-            Array containing the reward
-        """
-
-        # Resample streamlines to a fixed number of points. This should be
-        # set by the model ? TODO?
-        N, L, P = streamlines.shape
-        if L > 3:
-
-            # TODO: What the actual fuck
-            tractogram = Tractogram(
-                streamlines=streamlines.copy())
-            tractogram.apply_affine(self.diff_affine)
-
-            sft = StatefulTractogram(
-                streamlines=tractogram.streamlines,
-                reference=self.reference,
-                space=Space.RASMM)
-
-            sft.to_vox()
-            sft.to_corner()
-
-            resampled_streamlines = set_number_of_points(sft.streamlines, 128)
-            # Compute streamline features as the directions between points
-            dirs = np.diff(resampled_streamlines, axis=1)
-
-            # Load the features as torch tensors and predict
-            with torch.no_grad():
-                with torch.cuda.amp.autocast():
-                    data = torch.as_tensor(
-                        dirs, dtype=torch.float, device=self.device)
-                    predictions = self.model(data)
-
-            return predictions.cpu().numpy()
-
-        return np.zeros((N))
-
     # def __call__(
     #     self,
     #     streamlines: np.ndarray,
@@ -127,7 +77,7 @@ class OracleReward(Reward):
 
     #         # TODO: What the actual fuck
     #         tractogram = Tractogram(
-    #             streamlines=streamlines)
+    #             streamlines=streamlines.copy())
     #         tractogram.apply_affine(self.diff_affine)
 
     #         sft = StatefulTractogram(
@@ -143,16 +93,66 @@ class OracleReward(Reward):
     #         dirs = np.diff(resampled_streamlines, axis=1)
 
     #         # Load the features as torch tensors and predict
-    #         with torch.cuda.amp.autocast():
-    #             data = torch.as_tensor(
-    #                 dirs, dtype=torch.float, device=self.device)
-    #             predictions = self.model(data)
+    #         with torch.no_grad():
+    #             with torch.cuda.amp.autocast():
+    #                 data = torch.as_tensor(
+    #                     dirs, dtype=torch.float, device=self.device)
+    #                 predictions = self.model(data)
 
-    #         scores = torch.zeros_like(predictions, device=self.device)
-    #         scores[predictions > 0.5] = 1.
-    #         return scores.cpu().numpy() * dones.astype(int)
+    #         return predictions.cpu().numpy()
 
     #     return np.zeros((N))
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+        dones: np.ndarray
+    ):
+        """
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+
+        Returns
+        -------
+        rewards: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array containing the reward
+        """
+
+        # Resample streamlines to a fixed number of points. This should be
+        # set by the model ? TODO?
+        N, L, P = streamlines.shape
+        if L > 3:
+
+            # TODO: What the actual fuck
+            tractogram = Tractogram(
+                streamlines=streamlines)
+            tractogram.apply_affine(self.diff_affine)
+
+            sft = StatefulTractogram(
+                streamlines=tractogram.streamlines,
+                reference=self.reference,
+                space=Space.RASMM)
+
+            sft.to_vox()
+            sft.to_corner()
+
+            resampled_streamlines = set_number_of_points(sft.streamlines, 128)
+            # Compute streamline features as the directions between points
+            dirs = np.diff(resampled_streamlines, axis=1)
+
+            # Load the features as torch tensors and predict
+            with torch.cuda.amp.autocast():
+                data = torch.as_tensor(
+                    dirs, dtype=torch.float, device=self.device)
+                predictions = self.model(data)
+
+            scores = torch.zeros_like(predictions, device=self.device)
+            scores[predictions > 0.5] = 1.
+            return scores.cpu().numpy() * dones.astype(int)
+
+        return np.zeros((N))
 
     def render(self, streamlines, predictions=None):
 

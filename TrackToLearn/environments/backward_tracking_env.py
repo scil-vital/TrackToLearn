@@ -151,7 +151,7 @@ class BackwardTrackingEnvironment(TrackingEnvironment):
         else:
             binary_criterion = BinaryStoppingCriterion(
                 mask_data,
-                0.9)
+                0.1)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
 

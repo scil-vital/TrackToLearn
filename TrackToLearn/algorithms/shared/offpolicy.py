@@ -180,6 +180,7 @@ class DoubleCritic(Critic):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
+        critic_size_factor=2,
     ):
         """
         Parameters:
@@ -195,7 +196,8 @@ class DoubleCritic(Critic):
         super(DoubleCritic, self).__init__(
             state_dim, action_dim, hidden_dims)
 
-        self.hidden_layers = format_widths(hidden_dims)
+        self.hidden_layers = format_widths(
+            hidden_dims) * critic_size_factor
 
         self.q1 = make_fc_network(
             self.hidden_layers, state_dim + action_dim, 1)

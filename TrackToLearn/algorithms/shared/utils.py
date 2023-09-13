@@ -35,7 +35,7 @@ def stack_states(full, single):
 
 
 def format_widths(widths_str):
-    return [int(i) for i in widths_str.split('-')]
+    return np.ndarray([int(i) for i in widths_str.split('-')])
 
 
 def make_fc_network(

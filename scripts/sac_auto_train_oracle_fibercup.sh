@@ -24,7 +24,7 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.00005 # Learning rate
+lr=0.0001 # Learning rate
 gamma=0.95 # Gamma for reward discounting
 
 # Model params
@@ -66,12 +66,12 @@ do
     --alignment_weighting=1.0 \
     --oracle_weighting=10.0 \
     --coverage_weighting=0.0 \
-    --n_dirs=4 \
+    --n_dirs=100 \
     --action_type='cartesian' \
     --use_gpu \
     --use_comet \
     --interface \
-    --run_oracle='checkpoint.ckpt' \
+    --run_oracle='feedforward_epoch99_fibercup.ckpt' \
     --run_tractometer=${SCORING_DATA}
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
