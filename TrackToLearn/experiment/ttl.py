@@ -269,14 +269,14 @@ class TrackToLearnExperiment(Experiment):
 
         return all_scores
 
-    def save_vox_tractogram(
+    def save_rasmm_tractogram(
         self,
         tractogram,
+        i: int = None
     ) -> str:
         """
         Saves a non-stateful tractogram from the training/validation
-        trackers. Despite what the name of the function says, the
-        tractogram coming from trackers are actually in RASMM.
+        trackers.
 
         Parameters
         ----------
@@ -291,9 +291,14 @@ class TrackToLearnExperiment(Experiment):
 
         # Save tractogram so it can be looked at, used by the tractometer
         # and more
-        filename = pjoin(
-            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                self.experiment, self.name, self.valid_subject_id))
+        if i is not None:
+            filename = pjoin(
+                self.experiment_path, "tractogram_{}_{}_{}_{}.trk".format(
+                    self.experiment, self.name, self.valid_subject_id, i))
+        else:
+            filename = pjoin(
+                self.experiment_path, "tractogram_{}_{}_{}.trk".format(
+                    self.experiment, self.name, self.valid_subject_id))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.

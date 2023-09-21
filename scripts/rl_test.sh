@@ -11,7 +11,7 @@ SCORING_DATA=${DATASET_FOLDER}/datasets/${SUBJECT_ID}/scoring_data
 
 # Data params
 dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
-reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
+reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_t1.nii.gz
 
 n_actor=50000
 npv=33
@@ -21,8 +21,8 @@ max_length=200
 EXPERIMENT=$1
 ID=$2
 
-validstds=(0.0 0.1 0.2 0.3)
-subjectids=(fibercup)
+validstds=(0.0 0.1 0.2)
+subjectids=(ismrm2015)
 seeds=(1111 2222 3333 4444 5555)
 
 for SEED in "${seeds[@]}"
@@ -46,7 +46,6 @@ do
         "${dataset_file}" \
         "${SUBJECT_ID}" \
         "${reference_file}" \
-        "${SCORING_DATA}" \
         $DEST_FOLDER/model \
         $DEST_FOLDER/model/hyperparameters.json \
         --prob="${prob}" \
@@ -56,7 +55,7 @@ do
         --max_length="$max_length" \
         --use_gpu \
         --fa_map="$DATASET_FOLDER"/datasets/${SUBJECT_ID}/dti/"${SUBJECT_ID}"_fa.nii.gz \
-        --remove_invalid_streamlines
+        --run_tractometer="${SCORING_DATA}"
 
       validation_folder=$DEST_FOLDER/scoring_"${prob}"_"${SUBJECT_ID}"_${npv}_wtf
 

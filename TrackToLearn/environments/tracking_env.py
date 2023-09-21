@@ -2,7 +2,7 @@ import numpy as np
 
 from typing import Tuple
 
-from dipy.io.stateful_tractogram import StatefulTractogram
+from dipy.io.stateful_tractogram import Space, StatefulTractogram
 from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
@@ -244,7 +244,7 @@ class TrackingEnvironment(BaseEnv):
         self.continue_idx = self.new_continue_idx
         return self.state[self.continue_idx], self.not_stopping
 
-    def get_streamlines(self) -> StatefulTractogram:
+    def get_streamlines(self, space=Space.RASMM) -> StatefulTractogram:
         """ Obtain tracked streamlines from the environment.
         The last point will be removed if it raised a curvature stopping
         criteria (i.e. the angle was too high). Otherwise, other last points

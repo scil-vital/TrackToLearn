@@ -9,8 +9,6 @@ import torch
 from argparse import RawTextHelpFormatter
 from os.path import join as pjoin
 
-from dipy.tracking.metrics import length as slength
-from dipy.io.stateful_tractogram import Space, StatefulTractogram
 from dipy.io.utils import get_reference_info, create_tractogram_header
 
 from TrackToLearn.algorithms.a2c import A2C
@@ -27,6 +25,7 @@ from TrackToLearn.experiment.experiment import (
     add_environment_args,
     add_experiment_args,
     add_model_args,
+    add_reward_args,
     add_tracking_args,
     add_validator_args)
 from TrackToLearn.experiment.tracker import Tracker
@@ -63,6 +62,16 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.npv = valid_dto['npv']
         self.min_length = valid_dto['min_length']
         self.max_length = valid_dto['max_length']
+
+        self.alignment_weighting = valid_dto['alignment_weighting']
+        self.straightness_weighting = valid_dto['straightness_weighting']
+        self.length_weighting = valid_dto['length_weighting']
+        self.target_bonus_factor = valid_dto['target_bonus_factor']
+        self.exclude_penalty_factor = valid_dto['exclude_penalty_factor']
+        self.angle_penalty_factor = valid_dto['angle_penalty_factor']
+        self.oracle_weighting = valid_dto['oracle_weighting']
+        self.coverage_weighting = valid_dto['coverage_weighting']
+
         self.compute_reward = True
 
         self.fa_map = None
@@ -80,16 +89,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.add_neighborhood = hyperparams['add_neighborhood']
             self.voxel_size = float(hyperparams['voxel_size'])
             self.theta = hyperparams['max_angle']
-            self.epsilon = hyperparams.get(['max_angular_error'], 90)
-            self.alignment_weighting = hyperparams['alignment_weighting']
-            self.straightness_weighting = hyperparams['straightness_weighting']
-            self.length_weighting = hyperparams['length_weighting']
-            self.target_bonus_factor = hyperparams['target_bonus_factor']
-            self.exclude_penalty_factor = hyperparams['exclude_penalty_factor']
-            self.angle_penalty_factor = hyperparams['angle_penalty_factor']
-            self.oracle_weighting = hyperparams.get('oracle_weighting', 0.0)
-            self.coverage_weighting = hyperparams.get(
-                'coverage_weighting', 0.0)
+            self.epsilon = hyperparams.get('max_angular_error', 90)
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
@@ -101,8 +101,6 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.action_size = hyperparams.get("action_size", 3)
 
         self.comet_experiment = None
-        self.remove_invalid_streamlines = valid_dto[
-            'remove_invalid_streamlines']
 
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() and not valid_dto['cpu']
@@ -113,68 +111,6 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         np.random.seed(self.random_seed)
         self.rng = np.random.RandomState(seed=self.random_seed)
         random.seed(self.random_seed)
-
-    def clean_tractogram(self, tractogram, affine_vox2mask):
-        """
-        Remove potential "non-connections" by filtering according to
-        curvature, length and mask
-
-        Parameters:
-        -----------
-        tractogram: Tractogram
-            Full tractogram
-
-        Returns:
-        --------
-        tractogram: Tractogram
-            Filtered tractogram
-        """
-        print('Cleaning tractogram ... ', end='', flush=True)
-        tractogram = tractogram.to_world()
-
-        streamlines = tractogram.streamlines
-        lengths = [slength(s) for s in streamlines]
-        # # Filter by curvature
-        # dirty_mask = is_flag_set(
-        #     stopping_flags, StoppingFlags.STOPPING_CURVATURE)
-        dirty_mask = np.zeros(len(streamlines))
-
-        # Filter by length unless the streamline ends in GM
-        # Example case: Bundle 3 of fibercup tends to be shorter than 35
-
-        short_lengths = np.asarray(
-            [lgt <= self.min_length for lgt in lengths])
-
-        dirty_mask = np.logical_or(short_lengths, dirty_mask)
-
-        long_lengths = np.asarray(
-            [lgt > self.max_length for lgt in lengths])
-
-        dirty_mask = np.logical_or(long_lengths, dirty_mask)
-
-        # Filter by loops
-        # For example: A streamline ending and starting in the same roi
-        # looping_mask = np.array([winding(s) for s in streamlines]) > 330
-        # dirty_mask = np.logical_or(
-        #     dirty_mask,
-        #     looping_mask)
-
-        # Only keep valid streamlines
-        valid_indices = np.nonzero(np.logical_not(dirty_mask))
-        clean_streamlines = streamlines[valid_indices]
-        clean_dps = tractogram.data_per_streamline[valid_indices]
-        print('Done !')
-
-        print('Kept {}/{} streamlines'.format(len(valid_indices[0]),
-                                              len(streamlines)))
-        sft = StatefulTractogram(
-            clean_streamlines,
-            self.reference_file,
-            space=Space.RASMM,
-            data_per_streamline=clean_dps)
-        # Rest of the code presumes vox space
-        sft.to_vox()
-        return sft
 
     def run(self):
         """
@@ -235,19 +171,22 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         # Initialize Tracker, which will handle streamline generation
         tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, compress=0.0)
+            self.no_retrack, compress=0.0,
+            min_length=self.min_length, max_length=self.max_length)
 
         # Run tracking
         tractogram = tracker.track()
 
-        tractogram.affine_to_rasmm = env.affine_vox2rasmm
+        reference = get_reference_info(self.reference_file)
+
+        tractogram.affine_to_rasmm = reference[0]
 
         filename = pjoin(
             self.experiment_path, "tractogram_{}_{}_{}.trk".format(
                 self.experiment, self.id, self.valid_subject_id))
 
         filetype = nib.streamlines.detect_format(filename)
-        reference = get_reference_info(self.reference_file)
+
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly
@@ -266,7 +205,6 @@ def add_valid_args(parser):
     parser.add_argument('hyperparameters',
                         help='File containing the hyperparameters for the '
                              'experiment')
-    parser.add_argument('--remove_invalid_streamlines', action='store_true')
     parser.add_argument('--fa_map', type=str, default=None,
                         help='FA map to influence STD for probabilistic' +
                         'tracking')
@@ -284,6 +222,7 @@ def parse_args():
 
     add_experiment_args(parser)
     add_model_args(parser)
+    add_reward_args(parser)
     add_valid_args(parser)
     add_validator_args(parser)
     add_environment_args(parser)

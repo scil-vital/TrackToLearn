@@ -101,4 +101,6 @@ class RLAlgorithm(object):
             # state
             state, _ = env.harvest(next_state)
 
+        # env.render()
+
         return running_reward

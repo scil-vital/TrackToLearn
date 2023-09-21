@@ -4,7 +4,8 @@ from collections import defaultdict
 from tqdm import tqdm
 from typing import Tuple
 
-from dipy.tracking.streamlinespeed import compress_streamlines
+from dipy.io.stateful_tractogram import Space
+from dipy.tracking.streamlinespeed import compress_streamlines, length
 from nibabel.streamlines import Tractogram
 from nibabel.streamlines.tractogram import LazyTractogram
 from nibabel.streamlines.tractogram import TractogramItem
@@ -29,6 +30,8 @@ class Tracker(object):
         interface_seeding: bool,
         no_retrack: bool,
         compress: float = 0.0,
+        min_length: float = 20,
+        max_length: float = 200,
         save_seeds: bool = False
     ):
         """
@@ -53,6 +56,8 @@ class Tracker(object):
         self.interface_seeding = interface_seeding
         self.no_retrack = no_retrack
         self.compress = compress
+        self.min_length = min_length
+        self.max_length = max_length
         self.save_seeds = save_seeds
 
     def track(
@@ -98,7 +103,7 @@ class Tracker(object):
                 # Track forward
                 self.alg.validation_episode(
                     state, self.env)
-                batch_tractogram = self.env.get_streamlines()
+                batch_tractogram = self.env.get_streamlines(space=Space.VOX)
 
                 if not self.interface_seeding:
                     state = self.back_env.reset(batch_tractogram)
@@ -106,16 +111,16 @@ class Tracker(object):
                     # Track backwards
                     self.alg.validation_episode(
                         state, self.back_env)
-                    batch_tractogram = self.back_env.get_streamlines()
+                    batch_tractogram = self.back_env.get_streamlines(
+                        space=Space.VOX)
 
                 for item in batch_tractogram:
 
-                    streamline_length = len(item)
-
                     streamline = item.streamline
-                    # Streamlines from environment are in RASMM now
                     # streamline += 0.5
-                    # streamline *= vox_size
+                    streamline *= vox_size
+
+                    streamline_length = length(item.streamline)
 
                     seed_dict = {}
                     if self.save_seeds:
@@ -126,8 +131,9 @@ class Tracker(object):
                         streamline = compress_streamlines(
                             streamline, compress_th_vox)
 
-                    if (self.env.min_nb_steps < streamline_length <
-                            self.env.max_nb_steps):
+                    if (self.min_length < streamline_length <
+                            self.env.max_length):
+
                         yield TractogramItem(
                             streamline, seed_dict, {})
 

@@ -5,10 +5,15 @@ import nibabel as nib
 import torch
 
 from dipy.core.geometry import cart2sphere
+from dipy.core.sphere import HemiSphere
 from dipy.data import get_sphere
+from dipy.direction.peaks import reshape_peaks_for_visualization
+# from dipy.io.utils import get_reference_info
 
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
+from scilpy.reconst.utils import (find_order_from_nb_coeff,
+                                  get_b_matrix, get_maximas)
 from typing import Callable, Dict, Tuple
 
 from TrackToLearn.datasets.utils import (
@@ -30,6 +35,7 @@ from TrackToLearn.environments.stopping_criteria import (
     AngularErrorCriterion,
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
+    OracleStoppingCriterion,
     StoppingFlags)
 
 from TrackToLearn.environments.utils import (
@@ -96,6 +102,8 @@ class BaseEnv(object):
         self.include_mask = include_mask
         self.exclude_mask = exclude_mask
         self.peaks = peaks
+        if self.peaks is None:
+            self.peaks
 
         self.normalize_obs = False  # env_dto['normalize']
         self.obs_rms = None
@@ -194,10 +202,19 @@ class BaseEnv(object):
         #     functools.partial(is_looping,
         #                       loop_threshold=360)
         # Angle between peaks and segments (angular error criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-            self.epsilon,
-            self.peaks)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+        #     self.epsilon,
+        #     self.peaks)
+
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
+        #     self.checkpoint,
+        #     self.min_nb_steps,
+        #     self.reference,
+        #     self.affine_vox2rasmm,
+        #     self.device)
+
         # Mask criterion (either binary or CMC)
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
@@ -272,19 +289,20 @@ class BaseEnv(object):
         in_mask = env_dto['in_mask']
         sh_basis = env_dto['sh_basis']
 
-        input_volume, tracking_mask, seeding_mask = BaseEnv._load_files(
-            in_odf,
-            wm_file,
-            in_seed,
-            in_mask,
-            sh_basis)
+        input_volume, peaks_volume, tracking_mask, seeding_mask = \
+            BaseEnv._load_files(
+                in_odf,
+                wm_file,
+                in_seed,
+                in_mask,
+                sh_basis)
 
         return cls(
             input_volume,
             tracking_mask,
             None,
             seeding_mask,
-            None,
+            peaks_volume,
             env_dto)
 
     @classmethod
@@ -356,6 +374,37 @@ class BaseEnv(object):
                                   target_order=6,
                                   target_basis='descoteaux07')
 
+        # Compute peaks from signal
+        # Does not work if signal is not fODFs
+        npeaks = 5
+        odf_shape_3d = data.shape[:-1]
+        peak_dirs = np.zeros((odf_shape_3d + (npeaks, 3)))
+        peak_values = np.zeros((odf_shape_3d + (npeaks, )))
+
+        sphere = HemiSphere.from_sphere(get_sphere("repulsion724")
+                                        ).subdivide(0)
+
+        b_matrix = get_b_matrix(
+            find_order_from_nb_coeff(data), sphere, "descoteaux07")
+
+        for idx in np.argwhere(np.sum(data, axis=-1)):
+            idx = tuple(idx)
+            directions, values, indices = get_maximas(data[idx],
+                                                      sphere, b_matrix,
+                                                      0.1, 0)
+            if values.shape[0] != 0:
+                n = min(npeaks, values.shape[0])
+                peak_dirs[idx][:n] = directions[:n]
+                peak_values[idx][:n] = values[:n]
+
+        X, Y, Z, N, P = peak_dirs.shape
+        peak_values = np.divide(peak_values, peak_values[..., 0, None],
+                                out=np.zeros_like(peak_values),
+                                where=peak_values[..., 0, None] != 0)
+        peak_dirs[...] *= peak_values[..., :, None]
+        peak_dirs = reshape_peaks_for_visualization(peak_dirs)
+
+        # Load rest of volumes
         seeding = nib.load(in_seed)
         tracking = nib.load(in_mask)
         wm = nib.load(wm_file)
@@ -365,16 +414,18 @@ class BaseEnv(object):
 
         signal_data = np.concatenate(
             [data, wm_data], axis=-1)
-
         signal_volume = MRIDataVolume(
-            signal_data, signal.affine, filename=signal_file)
+            signal_data, signal.affine)
+
+        peaks_volume = MRIDataVolume(
+            peak_dirs, signal.affine)
 
         seeding_volume = MRIDataVolume(
-            seeding.get_fdata(), seeding.affine, filename=in_seed)
+            seeding.get_fdata(), seeding.affine)
         tracking_volume = MRIDataVolume(
-            tracking.get_fdata(), tracking.affine, filename=in_mask)
+            tracking.get_fdata(), tracking.affine)
 
-        return (signal_volume, tracking_volume, seeding_volume)
+        return (signal_volume, peaks_volume, tracking_volume, seeding_volume)
 
     def get_state_size(self):
         example_state = self.reset(0, 1)
@@ -432,8 +483,10 @@ class BaseEnv(object):
             target_reward = TargetReward(self.target_mask)
             length_reward = LengthReward(self.max_nb_steps)
             oracle_reward = OracleReward(self.checkpoint,
-                                         self.min_nb_steps, self.device)
-
+                                         self.min_nb_steps,
+                                         self.reference,
+                                         self.affine_vox2rasmm,
+                                         self.device)
             cover_reward = CoverageReward(self.tracking_mask)
             self.reward_function = RewardFunction(
                 [peaks_reward, target_reward,
@@ -654,14 +707,12 @@ class BaseEnv(object):
             If set, save the image at the specified location instead
             of displaying directly
         """
+
         from fury import window, actor
         # Might be rendering from outside the environment
         if tractogram is None:
-            tractogram = Tractogram(
-                streamlines=self.streamlines[:, :self.length],
-                data_per_streamline={
-                    'seeds': self.starting_points
-                })
+
+            tractogram = self.get_streamlines()
 
         # Reshape peaks for displaying
         X, Y, Z, M = self.peaks.data.shape
@@ -675,13 +726,8 @@ class BaseEnv(object):
                                        np.ones((X, Y, Z, M)),
                                        colors=(0.2, 0.2, 1.),
                                        opacity=0.5)
-        dot_actor = actor.dots(tractogram.data_per_streamline['seeds'],
-                               color=(1, 1, 1),
-                               opacity=1,
-                               dot_size=2.5)
         scene.add(stream_actor)
         scene.add(peak_actor)
-        scene.add(dot_actor)
         scene.reset_camera_tight(0.95)
 
         # Save or display scene

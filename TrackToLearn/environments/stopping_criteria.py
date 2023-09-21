@@ -1,12 +1,16 @@
 import numpy as np
 
+from dipy.io.stateful_tractogram import StatefulTractogram, Space, Tractogram
 from enum import Enum
 from scipy.ndimage import spline_filter, map_coordinates
 
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_at_coordinates,
     nearest_neighbor_interpolation)
+
+from TrackToLearn.oracles.oracle import OracleSingleton
 from TrackToLearn.utils.utils import normalize_vectors
+
 
 # Flags enum
 
@@ -82,7 +86,6 @@ class AngularErrorCriterion(object):
             Array telling whether a streamline's last segment's angular error
             is above or below a threshold.
         """
-
         N, L, _ = streamlines.shape
 
         if streamlines.shape[1] < 2:
@@ -269,3 +272,76 @@ class CmcStoppingCriterion(object):
         not_continue_points[stop_include] = True
 
         return not_continue_points
+
+
+class OracleStoppingCriterion(object):
+    """
+    Defines if a streamline should stop according to the oracle.
+    """
+
+    def __init__(
+        self,
+        checkpoint: str,
+        min_nb_steps: int,
+        reference: str,
+        affine_vox2rasmm: np.ndarray,
+        device: str
+    ):
+
+        self.name = 'oracle_reward'
+
+        if checkpoint:
+            self.checkpoint = checkpoint
+            self.model = OracleSingleton(checkpoint, device)
+        else:
+            self.checkpoint = None
+
+        self.affine_vox2rasmm = affine_vox2rasmm
+        self.reference = reference
+        self.min_nb_steps = min_nb_steps
+        self.device = device
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+    ):
+        """
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+
+        Returns
+        -------
+        dones: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array indicating if streamlines are done.
+        """
+        if not self.checkpoint:
+            return None
+
+        # Resample streamlines to a fixed number of points. This should be
+        # set by the model ? TODO?
+        N, L, P = streamlines.shape
+        if L > self.min_nb_steps:
+
+            # TODO: What the actual fuck
+            tractogram = Tractogram(
+                streamlines=streamlines.copy())
+
+            tractogram.apply_affine(self.affine_vox2rasmm)
+
+            sft = StatefulTractogram(
+                streamlines=tractogram.streamlines,
+                reference=self.reference,
+                space=Space.RASMM)
+
+            sft.to_vox()
+            sft.to_corner()
+
+            predictions = self.model.predict(sft.streamlines)
+
+            scores = np.zeros_like(predictions)
+            scores[predictions <= 0.5] = 1.0
+            return scores.astype(bool)
+
+        return np.array([False] * N)

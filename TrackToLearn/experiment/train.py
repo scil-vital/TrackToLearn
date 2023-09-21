@@ -228,7 +228,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
-        filename = self.save_vox_tractogram(valid_tractogram)
+        filename = self.save_rasmm_tractogram(valid_tractogram)
         scores = self.score_tractogram(filename)
         self.save_model(alg)
 
@@ -287,7 +287,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 # Validation run
                 valid_tractogram, valid_reward = \
                     valid_tracker.track_and_validate()
-                filename = self.save_vox_tractogram(valid_tractogram)
+                filename = self.save_rasmm_tractogram(valid_tractogram, i_episode)
                 scores = self.score_tractogram(filename)
                 print(scores)
 
@@ -299,7 +299,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Validation run
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
-        filename = self.save_vox_tractogram(valid_tractogram)
+        filename = self.save_rasmm_tractogram(valid_tractogram, i_episode)
         scores = self.score_tractogram(filename)
         print(scores)
 

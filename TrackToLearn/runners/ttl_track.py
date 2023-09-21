@@ -66,6 +66,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.out_tractogram = track_dto['out_tractogram']
 
         self.prob = track_dto['prob']
+
         self.n_actor = track_dto['n_actor']
         self.npv = track_dto['npv']
         self.min_length = track_dto['min_length']
@@ -76,8 +77,8 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.save_seeds = track_dto['save_seeds']
 
         self.run_tractometer = False
+        self.run_oracle = False
         self.compute_reward = False
-        self.run_tractometer = None
         self.render = False
 
         if not track_dto['cpu'] and not torch.cuda.is_available():
@@ -105,23 +106,25 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             self.add_neighborhood = hyperparams['add_neighborhood']
             self.voxel_size = float(hyperparams['voxel_size'])
             self.theta = hyperparams['max_angle']
-            self.alignment_weighting = hyperparams['alignment_weighting']
-            self.straightness_weighting = hyperparams['straightness_weighting']
-            self.length_weighting = hyperparams['length_weighting']
-            self.target_bonus_factor = hyperparams['target_bonus_factor']
-            self.exclude_penalty_factor = hyperparams['exclude_penalty_factor']
-            self.angle_penalty_factor = hyperparams['angle_penalty_factor']
-            self.oracle_weighting = hyperparams['oracle_weighting']
-            self.coverage_weighting = hyperparams['coverage_weighting']
+            self.epsilon = hyperparams.get('max_angular_error', 90)
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
-            self.interface_seeding = track_dto['interface'] or \
-                hyperparams['interface_seeding']
+            self.interface_seeding = hyperparams['interface_seeding']
+            self.cmc = hyperparams.get('cmc', False)
+            self.asymmetric = hyperparams.get('asymmetric', False)
             self.no_retrack = hyperparams.get('no_retrack', False)
+            self.action_type = hyperparams.get("action_type", "cartesian")
+            self.action_size = hyperparams.get("action_size", 3)
 
-            self.cmc = hyperparams['cmc']
-            self.asymmetric = hyperparams['asymmetric']
+        self.alignment_weighting = 0.0
+        self.straightness_weighting = 0.0
+        self.length_weighting = 0.0
+        self.target_bonus_factor = 0.0
+        self.exclude_penalty_factor = 0.0
+        self.angle_penalty_factor = 0.0
+        self.oracle_weighting = 0.0
+        self.coverage_weighting = 0.0
 
         self.random_seed = track_dto['rng_seed']
         torch.manual_seed(self.random_seed)
@@ -191,12 +194,17 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
             self.no_retrack, compress=self.compress,
+            min_length=self.min_length, max_length=self.max_length,
             save_seeds=self.save_seeds)
 
         # Run tracking
         tractogram = tracker.track()
 
-        tractogram.affine_to_rasmm = env.affine_vox2rasmm
+        reference = get_reference_info(self.reference_file)
+
+        tractogram.affine_to_rasmm = reference[0]
+
+        tractogram.apply_affine(tractogram.affine_to_rasmm)
 
         filetype = nib.streamlines.detect_format(self.out_tractogram)
         reference = get_reference_info(self.wm_file)
