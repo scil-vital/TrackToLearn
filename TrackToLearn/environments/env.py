@@ -207,13 +207,13 @@ class BaseEnv(object):
         #     self.epsilon,
         #     self.peaks)
 
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
-        #     self.checkpoint,
-        #     self.min_nb_steps,
-        #     self.reference,
-        #     self.affine_vox2rasmm,
-        #     self.device)
+        self.stopping_criteria[
+            StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
+            self.checkpoint,
+            self.min_nb_steps,
+            self.reference,
+            self.affine_vox2rasmm,
+            self.device)
 
         # Mask criterion (either binary or CMC)
         if self.cmc:

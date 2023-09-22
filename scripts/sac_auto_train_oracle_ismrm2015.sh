@@ -36,52 +36,56 @@ npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 n_actor=4096
 
-EXPERIMENT=SAC_Auto_ISMRM2015TrainOracle
-
-ID=oracle_stopping_criterion_$(date +"%F-%H_%M_%S")
+EXPERIMENT=SAC_Auto_ISMRM2015TractOracle_data
 
 seeds=(1111)
 discounts=(0.5 0.75 0.95 0.99)
+oracle_weights=(0.0 1.0)
 
 for gamma in "${discounts[@]}"
 do
   for rng_seed in "${seeds[@]}"
   do
+    for oracle_weighting in "${oracle_weights[@]}"
+    do
 
-    DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
+      ID=tractoracle_data_${gamma}_${oracle_weighting}_$(date +"%F-%H_%M_%S")
 
-    python -O TrackToLearn/trainers/sac_auto_train.py \
-      $DEST_FOLDER \
-      "$EXPERIMENT" \
-      "$ID" \
-      "${dataset_file}" \
-      "${SUBJECT_ID}" \
-      "${validation_dataset_file}" \
-      "${VALIDATION_SUBJECT_ID}" \
-      "${reference_file}" \
-      --max_ep=${max_ep} \
-      --log_interval=${log_interval} \
-      --lr=${lr} \
-      --gamma=${gamma} \
-      --rng_seed=${rng_seed} \
-      --npv=${npv} \
-      --theta=${theta} \
-      --alignment_weighting=1.0 \
-      --oracle_weighting=0.0 \
-      --hidden_dims='1024-1024-1024' \
-      --n_dirs=100 \
-      --n_actor=${n_actor} \
-      --action_type='cartesian' \
-      --interface_seeding \
-      --use_gpu \
-      --use_comet \
-      --run_oracle='epoch_49_dense.ckpt' \
-      --run_tractometer=${SCORING_DATA}
+      DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-    mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
-    mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
-    mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"/
-    cp -f -r $DEST_FOLDER "$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/
+      python -O TrackToLearn/trainers/sac_auto_train.py \
+        $DEST_FOLDER \
+        "$EXPERIMENT" \
+        "$ID" \
+        "${dataset_file}" \
+        "${SUBJECT_ID}" \
+        "${validation_dataset_file}" \
+        "${VALIDATION_SUBJECT_ID}" \
+        "${reference_file}" \
+        --max_ep=${max_ep} \
+        --log_interval=${log_interval} \
+        --lr=${lr} \
+        --gamma=${gamma} \
+        --rng_seed=${rng_seed} \
+        --npv=${npv} \
+        --theta=${theta} \
+        --alignment_weighting=1.0 \
+        --oracle_weighting=${oracle_weighting} \
+        --hidden_dims='1024-1024-1024' \
+        --n_dirs=100 \
+        --n_actor=${n_actor} \
+        --action_type='cartesian' \
+        --interface_seeding \
+        --use_gpu \
+        --use_comet \
+        --run_oracle='epoch_49_dense.ckpt' \
+        --run_tractometer=${SCORING_DATA}
 
+      mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
+      mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
+      mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"/
+      cp -f -r $DEST_FOLDER "$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/
+
+    done
   done
 done
