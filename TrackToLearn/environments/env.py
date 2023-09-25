@@ -208,9 +208,9 @@ class BaseEnv(object):
         #     self.peaks)
 
         self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
+            StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
             self.checkpoint,
-            self.min_nb_steps,
+            self.min_nb_steps * 2,
             self.reference,
             self.affine_vox2rasmm,
             self.device)
@@ -501,6 +501,14 @@ class BaseEnv(object):
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
                               max_nb_steps=self.max_nb_steps)
+
+        self.stopping_criteria[
+            StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
+            self.checkpoint,
+            self.min_nb_steps * 2,
+            self.reference,
+            self.affine_vox2rasmm,
+            self.device)
 
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(

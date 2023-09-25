@@ -55,11 +55,10 @@ class OracleReward(Reward):
         N, L, P = streamlines.shape
         if L > 3:
 
-            rasmm_streamlines = streamlines * self.affine_vox2rasmm[0][0]
-
             # TODO: What the actual fuck
             tractogram = Tractogram(
-                streamlines=rasmm_streamlines)
+                streamlines=streamlines.copy())
+            tractogram.apply_affine(self.affine_vox2rasmm)
 
             sft = StatefulTractogram(
                 streamlines=tractogram.streamlines,
@@ -93,13 +92,13 @@ class OracleReward(Reward):
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
         N, L, P = streamlines.shape
-        if L > 3:
+        if L > 3 and sum(dones.astype(int)) > 0:
 
             # rasmm_streamlines = streamlines * self.affine_vox2rasmm[0][0]
 
             # TODO: What the actual fuck
             tractogram = Tractogram(
-                streamlines=streamlines)
+                streamlines=streamlines.copy()[dones])
             tractogram.apply_affine(self.affine_vox2rasmm)
 
             sft = StatefulTractogram(
@@ -111,9 +110,10 @@ class OracleReward(Reward):
             sft.to_corner()
 
             scores = self.model.predict(sft.streamlines)
-            reward = np.zeros_like(scores)
-            reward[scores > 0.5] = 1.0
-            return reward * dones.astype(int)
+            reward = np.zeros((N))
+            idx = np.arange(N)[dones][scores > 0.5]
+            reward[idx] = 1.0
+            return reward
 
         return np.zeros((N))
 
@@ -122,7 +122,7 @@ class OracleReward(Reward):
         streamlines: np.ndarray,
         dones: np.ndarray
     ):
-        return self.dense_reward(streamlines, dones)
+        return self.sparse_reward(streamlines, dones)
 
     def render(self, streamlines, predictions=None):
 

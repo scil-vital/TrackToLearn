@@ -25,6 +25,7 @@ class StoppingFlags(Enum):
     STOPPING_TARGET = int('00001000', 2)
     STOPPING_LOOP = int('00010000', 2)
     STOPPING_ANGULAR_ERROR = int('00100000', 2)
+    STOPPING_ORACLE = int('01000000', 2)
 
 
 def is_flag_set(flags, ref_flag):
@@ -277,6 +278,14 @@ class CmcStoppingCriterion(object):
 class OracleStoppingCriterion(object):
     """
     Defines if a streamline should stop according to the oracle.
+
+
+    TODO: Will cause Oracle overestimation, as the last point is removed
+    when getting streamlines. Therefore, while the streamline was considered
+    bad by the oracle at the last point, it was considered good just before.
+
+    Solution ?: consider the last n segments before stopping, and/or don't
+    remove the points if stopped by the oracle.
     """
 
     def __init__(

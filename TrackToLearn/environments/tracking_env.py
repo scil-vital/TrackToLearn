@@ -7,8 +7,7 @@ from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.environments.stopping_criteria import (
-    is_flag_set,
-    StoppingFlags)
+    is_flag_set, StoppingFlags)
 
 
 class TrackingEnvironment(BaseEnv):
@@ -262,16 +261,16 @@ class TrackingEnvironment(BaseEnv):
         tractogram = Tractogram()
         # Harvest stopped streamlines and associated data
         # stopped_seeds = self.first_points[self.stopping_idx]
-        # Exclude last point as it triggered a stopping criteria.
         stopped_streamlines = [self.streamlines[i, :self.lengths[i], :]
                                for i in range(len(self.streamlines))]
 
-        # flags = is_flag_set(
-        #     self.flags, StoppingFlags.STOPPING_CURVATURE)
+        flags = is_flag_set(
+            self.flags, StoppingFlags.STOPPING_CURVATURE)
 
-        # Last point triggered a stop, we remove it
+        # If the last point triggered a stopping criterion based on 
+        # angle, remove it.
         stopped_streamlines = [
-            s[:-1] for s in stopped_streamlines]
+            s[:-1] if f else s for s, f in zip(stopped_streamlines, flags)]
 
         stopped_seeds = self.initial_points
 
@@ -279,6 +278,7 @@ class TrackingEnvironment(BaseEnv):
         tractogram = Tractogram(
             streamlines=stopped_streamlines,
             data_per_streamline={"seeds": stopped_seeds,
+                                 "flags": self.flags,
                                  },
             affine_to_rasmm=self.affine_vox2rasmm)
 

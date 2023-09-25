@@ -20,6 +20,8 @@ from TrackToLearn.environments.noisy_tracker import (
     NoisyRetrackingEnvironment,
     NoisyTrackingEnvironment)
 from TrackToLearn.environments.retracking_env import RetrackingEnvironment
+from TrackToLearn.environments.stopping_criteria import (
+    is_flag_set, StoppingFlags)
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
 from TrackToLearn.experiment.experiment import Experiment
 from TrackToLearn.utils.utils import LossHistory
@@ -257,10 +259,21 @@ class TrackToLearnExperiment(Experiment):
 
         return back_env, env
 
+    def stopping_stats(self, tractogram):
+        """ TODO
+        """
+        # TODO: Add comments
+        flags = tractogram.data_per_streamline['flags']
+        stats = {}
+        for f in StoppingFlags:
+            set_pct = np.mean(is_flag_set(flags, f))
+            stats.update({f.name: set_pct})
+        return stats
+
     def score_tractogram(self, filename):
         """ TODO:
         """
-
+        # TODO: Add comments
         all_scores = {}
         for scorer in self.validators:
             scores = scorer(filename)
