@@ -10,29 +10,38 @@ from TrackToLearn.oracles.oracle import OracleSingleton
 
 class OracleReward(Reward):
 
-    """ Reward streamlines based on their alignment with local peaks
-    and their past direction.
+    """ Reward streamlines based on the predicted scores of an "Oracle".
+    In the "dense" version, a reward if given at each point by the oracle.
+    In the "sparse" version, a binary reward is given by the oracle at the
+    end of tracking.
     """
 
     def __init__(
         self,
         checkpoint: str,
-        min_nb_steps: int,
+        dense: bool,
         reference: str,
         affine_vox2rasmm: np.ndarray,
         device: str
     ):
+        # Name for stats
         self.name = 'oracle_reward'
-
+        # If the reward is dense or not
+        self.dense = dense
+        # Checkpoint of the oracle, which contains weights and hyperparams.
         if checkpoint:
             self.checkpoint = checkpoint
+            # The oracle is declared as a singleton to prevent loading the
+            # weights in memory multiple times.
             self.model = OracleSingleton(checkpoint, device)
         else:
             self.checkpoint = None
 
+        # Affine from vox to world diff space.
         self.affine_vox2rasmm = affine_vox2rasmm
+        # Reference anat
         self.reference = reference
-        self.min_nb_steps = min_nb_steps
+        # Device to load the oracle.
         self.device = device
 
     def dense_reward(self, streamlines, dones):
@@ -55,19 +64,23 @@ class OracleReward(Reward):
         N, L, P = streamlines.shape
         if L > 3:
 
-            # TODO: What the actual fuck
+            # Change ref of streamlines. This is weird on the ISMRM2015
+            # dataset as the diff and anat are not in the same space,
+            # but it should be fine on other datasets.
             tractogram = Tractogram(
                 streamlines=streamlines.copy())
+            # It is unclear whether I should apply the affine or just
+            # multiply by the voxel size.
             tractogram.apply_affine(self.affine_vox2rasmm)
-
             sft = StatefulTractogram(
                 streamlines=tractogram.streamlines,
                 reference=self.reference,
                 space=Space.RASMM)
-
             sft.to_vox()
             sft.to_corner()
 
+            # In the "dense" version, the reward per point is simply
+            # the direct score.
             scores = self.model.predict(sft.streamlines)
 
             return scores
@@ -94,24 +107,27 @@ class OracleReward(Reward):
         N, L, P = streamlines.shape
         if L > 3 and sum(dones.astype(int)) > 0:
 
-            # rasmm_streamlines = streamlines * self.affine_vox2rasmm[0][0]
-
-            # TODO: What the actual fuck
+            # Change ref of streamlines. This is weird on the ISMRM2015
+            # dataset as the diff and anat are not in the same space,
+            # but it should be fine on other datasets.
             tractogram = Tractogram(
                 streamlines=streamlines.copy()[dones])
             tractogram.apply_affine(self.affine_vox2rasmm)
-
             sft = StatefulTractogram(
                 streamlines=tractogram.streamlines,
                 reference=self.reference,
                 space=Space.RASMM)
-
             sft.to_vox()
             sft.to_corner()
 
+            # Get scores from the oracle
             scores = self.model.predict(sft.streamlines)
             reward = np.zeros((N))
+            # Double indexing to get the indexes. Don't forget you
+            # can't assign using double indexes as the first indexing
+            # will return a copy of the array.
             idx = np.arange(N)[dones][scores > 0.5]
+            # Assign the reward using the precomputed double indexes.
             reward[idx] = 1.0
             return reward
 
@@ -122,6 +138,8 @@ class OracleReward(Reward):
         streamlines: np.ndarray,
         dones: np.ndarray
     ):
+        if self.dense:
+            return self.dense_reward(streamlines, dones)
         return self.sparse_reward(streamlines, dones)
 
     def render(self, streamlines, predictions=None):

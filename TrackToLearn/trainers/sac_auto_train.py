@@ -8,15 +8,8 @@ from argparse import RawTextHelpFormatter
 from comet_ml import Experiment as CometExperiment
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.experiment.experiment import (
-    add_data_args,
-    add_environment_args,
-    add_experiment_args,
-    add_model_args,
-    add_tracking_args,
-    add_validator_args)
 from TrackToLearn.experiment.train import (
-    add_rl_args,
+    add_training_args,
     TrackToLearnTraining)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,15 +89,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=parse_args.__doc__,
         formatter_class=RawTextHelpFormatter)
-
-    add_experiment_args(parser)
-    add_data_args(parser)
-
-    add_environment_args(parser)
-    add_model_args(parser)
-    add_rl_args(parser)
-    add_tracking_args(parser)
-    add_validator_args(parser)
+    add_training_args(parser)
     add_sac_auto_args(parser)
 
     arguments = parser.parse_args()

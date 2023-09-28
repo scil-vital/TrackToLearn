@@ -58,7 +58,7 @@ class TrackToLearnExperiment(Experiment):
 
         # Tractometer monitors
         # TODO: Infer the number of bundles from the GT
-        if self.run_tractometer:
+        if self.tractometer_validator:
             self.vc_monitor = LossHistory(
                 "Valid Connections", "vc", self.experiment_path)
             self.ic_monitor = LossHistory(
@@ -120,8 +120,6 @@ class TrackToLearnExperiment(Experiment):
             'prob': self.prob,
             'npv': self.npv,
             'rng': self.rng,
-            'scoring_data': self.run_tractometer,
-            'oracle_checkpoint': self.run_oracle,
             'reference': self.reference_file,
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
@@ -129,8 +127,15 @@ class TrackToLearnExperiment(Experiment):
             'target_bonus_factor': self.target_bonus_factor,
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
-            'oracle_weighting': self.oracle_weighting,
             'coverage_weighting': self.coverage_weighting,
+            'dense_oracle_weighting': self.dense_oracle_weighting,
+            'sparse_oracle_weighting': self.sparse_oracle_weighting,
+            'oracle_validator': self.oracle_validator,
+            'oracle_stopping_criterion': self.oracle_stopping_criterion,
+            'oracle_checkpoint': self.oracle_checkpoint,
+            'scoring_data': self.scoring_data,
+            'tractometer_validator': self.tractometer_validator,
+            'binary_stopping_threshold': self.binary_stopping_threshold,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
             'device': self.device

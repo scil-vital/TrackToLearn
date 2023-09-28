@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from typing import Tuple
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
@@ -86,7 +87,7 @@ class Experiment(object):
         pass
 
 
-def add_experiment_args(parser):
+def add_experiment_args(parser: ArgumentParser):
     parser.add_argument('path', type=str,
                         help='Path to experiment')
     parser.add_argument('experiment',
@@ -106,16 +107,7 @@ def add_experiment_args(parser):
                         'Preferably disabled on non-graphical environments')
 
 
-def add_validator_args(parser):
-    parser.add_argument('--run_tractometer', type=str, default=None,
-                        help='Run tractometer during validation to monitor' +
-                        ' how the training is doing w.r.t. ground truth.')
-    parser.add_argument('--run_oracle', type=str, default=None,
-                        help='Run a TractOracle model during validation to '
-                        'monitor how the training is doing.')
-
-
-def add_data_args(parser):
+def add_data_args(parser: ArgumentParser):
     parser.add_argument('dataset_file',
                         help='Path to preprocessed dataset file (.hdf5)')
     parser.add_argument('subject_id',
@@ -128,16 +120,23 @@ def add_data_args(parser):
                         help='Path to reference anatomy (.nii.gz).')
 
 
-def add_environment_args(parser):
+def add_environment_args(parser: ArgumentParser):
     parser.add_argument('--n_signal', default=1, type=int,
                         help='Signal at the last n positions')
     parser.add_argument('--n_dirs', default=4, type=int,
                         help='Last n steps taken')
     parser.add_argument('--add_neighborhood', default=0.75, type=float,
                         help='Add neighborhood to model input')
-    parser.add_argument('--cmc', action='store_true',
-                        help='If set, use Continuous Mask Criteria to stop'
-                        'tracking.')
+
+    tracking_mask_group = parser.add_mutually_exclusive_group()
+    tracking_mask_group.add_argument(
+        '--cmc', action='store_true',
+        help='If set, use Continuous Mask Criteria to stop tracking.')
+    tracking_mask_group.add_argument(
+        '--binary_stopping_threshold',
+        type=float, default=0.1,
+        help='Lower limit for interpolation of tracking mask value.\n'
+             'Tracking will stop below this threshold.')
     parser.add_argument('--asymmetric', action='store_true',
                         help='If set, presume asymmetric fODFs when '
                         'computing reward.')
@@ -157,7 +156,7 @@ def add_environment_args(parser):
                              '3D directions.')
 
 
-def add_reward_args(parser):
+def add_reward_args(parser: ArgumentParser):
     parser.add_argument('--alignment_weighting', default=1, type=float,
                         help='Alignment weighting for reward')
     parser.add_argument('--straightness_weighting', default=0, type=float,
@@ -171,13 +170,11 @@ def add_reward_args(parser):
                         'mask')
     parser.add_argument('--angle_penalty_factor', default=0, type=float,
                         help='Penalty for looping or too-curvy streamlines')
-    parser.add_argument('--oracle_weighting', default=0, type=float,
-                        help='Oracle weighting for reward.')
     parser.add_argument('--coverage_weighting', default=0.0, type=float,
                         help='Coverage weighting for reward.')
 
 
-def add_model_args(parser):
+def add_model_args(parser: ArgumentParser):
     parser.add_argument('--n_actor', default=4096, type=int,
                         help='Number of learners')
     parser.add_argument('--hidden_dims', default='1024-1024-1024', type=str,
@@ -186,12 +183,12 @@ def add_model_args(parser):
                         help='Path to pretrained model')
 
 
-def add_tracking_args(parser):
+def add_tracking_args(parser: ArgumentParser):
     parser.add_argument('--npv', default=2, type=int,
                         help='Number of random seeds per seeding mask voxel.')
     parser.add_argument('--theta', default=30, type=int,
                         help='Max angle between segments for tracking.')
-    parser.add_argument('--epsilon', default=30, type=int,
+    parser.add_argument('--epsilon', default=90, type=int,
                         help='Max angle between peaks and segment'
                              ' (angular error).')
     parser.add_argument('--min_length', type=float, default=20.,
@@ -213,3 +210,30 @@ def add_tracking_args(parser):
                         help='If set, don\'t track "backwards"')
     parser.add_argument('--no_retrack', action='store_true',
                         help='If set, don\'t retrack backwards')
+
+
+def add_tractometer_args(parser: ArgumentParser):
+    tractom = parser.add_argument_group('Tractometer')
+    tractom.add_argument('--scoring_data', type=str,
+                         help='Location of the tractometer scoring data.')
+    tractom.add_argument('--tractometer_validator', action='store_true',
+                         help='Run tractometer during validation to monitor' +
+                         ' how the training is doing w.r.t. ground truth.')
+
+
+def add_oracle_args(parser: ArgumentParser):
+    oracle = parser.add_argument_group('Oracle')
+    oracle.add_argument('--oracle_checkpoint', type=str,
+                        help='Checkpoint file (.ckpt) of the Oracle')
+    oracle.add_argument('--oracle_validator', action='store_true',
+                        help='Run a TractOracle model during validation to '
+                        'monitor how the training is doing.')
+    oracle.add_argument('--oracle_stopping_criterion', action='store_true',
+                        help='Stop streamlines according to the Oracle.')
+    oracle.add_argument('--oracle_filter', action='store_true',
+                        help='Filter streamlines according to the Oracle.')
+    rew_oracle = oracle.add_mutually_exclusive_group()
+    rew_oracle.add_argument('--dense_oracle_weighting', default=0, type=float,
+                            help='Dense oracle weighting for reward.')
+    rew_oracle.add_argument('--sparse_oracle_weighting', default=0, type=float,
+                            help='Sparse oracle weighting for reward.')

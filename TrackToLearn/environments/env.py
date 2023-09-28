@@ -32,7 +32,7 @@ from TrackToLearn.environments.local_reward import (
 from TrackToLearn.environments.oracle_reward import OracleReward
 
 from TrackToLearn.environments.stopping_criteria import (
-    AngularErrorCriterion,
+    # AngularErrorCriterion,
     BinaryStoppingCriterion,
     CmcStoppingCriterion,
     OracleStoppingCriterion,
@@ -118,6 +118,7 @@ class BaseEnv(object):
 
         self.npv = env_dto['npv']
         self.cmc = env_dto['cmc']
+        self.binary_stopping_threshold = env_dto['binary_stopping_threshold']
         self.asymmetric = env_dto['asymmetric']
 
         self.action_type = env_dto['action_type']
@@ -139,12 +140,18 @@ class BaseEnv(object):
         self.target_bonus_factor = env_dto['target_bonus_factor']
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.oracle_weighting = env_dto['oracle_weighting']
         self.coverage_weighting = env_dto['coverage_weighting']
         self.compute_reward = env_dto['compute_reward']
         self.scoring_data = env_dto['scoring_data']
 
-        self.checkpoint = env_dto['oracle_checkpoint']
+        # Oracle parameters
+        self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
+        if self.dense_oracle:
+            self.oracle_weighting = env_dto['dense_oracle_weighting']
+        else:
+            self.oracle_weighting = env_dto['sparse_oracle_weighting']
+        self.oracle_checkpoint = env_dto['oracle_checkpoint']
+        self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -168,15 +175,26 @@ class BaseEnv(object):
 
         # Reward function and reward factors
         if self.compute_reward:
+            # Reward streamline according to alignment with local peaks
             peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
+            # Reward streamlines if they reach a specific mask
+            # (i.e. grey matter)
             target_reward = TargetReward(self.target_mask)
+            # Reward streamlines for their length
             length_reward = LengthReward(self.max_nb_steps)
-            oracle_reward = OracleReward(self.checkpoint,
-                                         self.min_nb_steps,
+            # Reward streamlines according to an oracle
+            oracle_reward = OracleReward(self.oracle_checkpoint,
+                                         self.dense_oracle,
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)
+            # Reward streamlines according to coverage of the WM mask.
             cover_reward = CoverageReward(self.tracking_mask)
+            # Combine all reward factors into the reward function
+            # TODO: There has to be a better way of declaring the reward
+            # function as now the resp. of not crashing if some stuff is
+            # missing (i.e. the target mask) is on the reward factors.
+            # They should just not be initialized instead.
             self.reward_function = RewardFunction(
                 [peaks_reward, target_reward,
                  length_reward, oracle_reward, cover_reward],
@@ -196,24 +214,29 @@ class BaseEnv(object):
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=theta)
+
         # Streamline loop criterion (not used, too slow)
         # self.stopping_criteria[
         #     StoppingFlags.STOPPING_LOOP] = \
         #     functools.partial(is_looping,
         #                       loop_threshold=360)
+
         # Angle between peaks and segments (angular error criterion)
+        # Not used at it constraints tracking too much.
         # self.stopping_criteria[
         #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
         #     self.epsilon,
         #     self.peaks)
 
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
-            self.checkpoint,
-            self.min_nb_steps * 2,
-            self.reference,
-            self.affine_vox2rasmm,
-            self.device)
+        # Stopping criterion according to an oracle
+        if self.oracle_checkpoint and self.oracle_stopping_criterion:
+            self.stopping_criteria[
+                StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
+                self.checkpoint,
+                self.min_nb_steps * 2,
+                self.reference,
+                self.affine_vox2rasmm,
+                self.device)
 
         # Mask criterion (either binary or CMC)
         if self.cmc:
@@ -227,7 +250,7 @@ class BaseEnv(object):
         else:
             binary_criterion = BinaryStoppingCriterion(
                 mask_data,
-                0.1)
+                self.binary_stopping_threshold)
             self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
                 binary_criterion
 
@@ -483,7 +506,6 @@ class BaseEnv(object):
             target_reward = TargetReward(self.target_mask)
             length_reward = LengthReward(self.max_nb_steps)
             oracle_reward = OracleReward(self.checkpoint,
-                                         self.min_nb_steps,
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)

@@ -11,7 +11,15 @@ from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
-from TrackToLearn.experiment.experiment import add_reward_args
+from TrackToLearn.experiment.experiment import (
+    add_data_args,
+    add_environment_args,
+    add_experiment_args,
+    add_model_args,
+    add_reward_args,
+    add_tracking_args,
+    add_oracle_args,
+    add_tractometer_args)
 from TrackToLearn.experiment.oracle_validator import OracleValidator
 from TrackToLearn.experiment.tractometer_validator import (
     TractometerValidator)
@@ -65,6 +73,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.max_length = train_dto['max_length']
         self.interface_seeding = train_dto['interface_seeding']
         self.cmc = train_dto['cmc']
+        self.binary_stopping_threshold = train_dto['binary_stopping_threshold']
         self.asymmetric = train_dto['asymmetric']
         self.sphere = train_dto['sphere']
         self.action_type = train_dto['action_type']
@@ -76,20 +85,32 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.target_bonus_factor = train_dto['target_bonus_factor']
         self.exclude_penalty_factor = train_dto['exclude_penalty_factor']
         self.angle_penalty_factor = train_dto['angle_penalty_factor']
-        self.oracle_weighting = train_dto['oracle_weighting']
         self.coverage_weighting = train_dto['coverage_weighting']
 
         # Model parameters
         self.hidden_dims = train_dto['hidden_dims']
         self.load_agent = train_dto['load_agent']
+
+        # Various parameters
         self.comet_experiment = comet_experiment
         self.render = train_dto['render']
-        self.run_tractometer = train_dto['run_tractometer']
-        self.run_oracle = train_dto['run_oracle']
         self.last_episode = 0
+
+        # Environment parameters
         self.n_actor = train_dto['n_actor']
         self.n_signal = train_dto['n_signal']
         self.n_dirs = train_dto['n_dirs']
+
+        # Oracle parameters
+        self.oracle_checkpoint = train_dto['oracle_checkpoint']
+        self.dense_oracle_weighting = train_dto['dense_oracle_weighting']
+        self.sparse_oracle_weighting = train_dto['sparse_oracle_weighting']
+        self.oracle_validator = train_dto['oracle_validator']
+        self.oracle_stopping_criterion = train_dto['oracle_stopping_criterion']
+
+        # Tractometer parameters
+        self.tractometer_validator = train_dto['tractometer_validator']
+        self.scoring_data = train_dto['scoring_data']
 
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
@@ -129,6 +150,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'max_angular_error': self.epsilon,
             'min_length': self.min_length,
             'max_length': self.max_length,
+            'binary_stopping_threshold': self.binary_stopping_threshold,
             'cmc': self.cmc,
             'asymmetric': self.asymmetric,
             'sphere': self.sphere,
@@ -150,7 +172,10 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
             'coverage_weighting': self.coverage_weighting,
-            'oracle_weighting': self.oracle_weighting,
+            'dense_oracle_weighting': self.dense_oracle_weighting,
+            'sparse_oracle_weighting': self.sparse_oracle_weighting,
+            'oracle_checkpoint': self.oracle_checkpoint,
+            'oracle_stopping_criterion': self.oracle_stopping_criterion,
         }
 
     def save_hyperparameters(self):
@@ -219,12 +244,12 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         self.validators = []
 
-        if self.run_tractometer:
+        if self.tractometer_validator:
             self.validators.append(TractometerValidator(
-                self.run_tractometer, self.reference_file))
-        if self.run_oracle:
+                self.scoring_data, self.reference_file))
+        if self.oracle_validator:
             self.validators.append(OracleValidator(
-                self.run_oracle, self.reference_file, self.device))
+                self.oracle_checkpoint, self.reference_file, self.device))
 
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
@@ -367,6 +392,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
 
 def add_rl_args(parser):
+    # Add RL training arguments.
     parser.add_argument('--max_ep', default=200000, type=int,
                         help='Number of episodes to run the training '
                         'algorithm')
@@ -379,3 +405,17 @@ def add_rl_args(parser):
                         help='Gamma param for reward discounting')
 
     add_reward_args(parser)
+
+
+def add_training_args(parser):
+    # Add all training arguments here. Less prone to error than
+    # in every training script.
+
+    add_experiment_args(parser)
+    add_data_args(parser)
+    add_environment_args(parser)
+    add_model_args(parser)
+    add_rl_args(parser)
+    add_tracking_args(parser)
+    add_oracle_args(parser)
+    add_tractometer_args(parser)

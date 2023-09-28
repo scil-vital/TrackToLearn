@@ -13,6 +13,11 @@ class PeaksAlignmentReward(Reward):
 
     """ Reward streamlines based on their alignment with local peaks
     and their past direction.
+
+    Initially proposed in
+        Théberge, A., Desrosiers, C., Descoteaux, M., & Jodoin, P. M. (2021).
+        Track-to-learn: A general framework for tractography with deep
+        reinforcement learning. Medical Image Analysis, 72, 102093.
     """
 
     def __init__(
@@ -114,6 +119,12 @@ class PeaksAlignmentReward(Reward):
 class LengthReward(Reward):
 
     """ Reward streamlines based on their maximum and current length.
+
+    Initially proposed in
+        Théberge, A., Desrosiers, C., Descoteaux, M., & Jodoin, P. M. (2021).
+        Track-to-learn: A general framework for tractography with deep
+        reinforcement learning. Medical Image Analysis, 72, 102093.
+
     """
 
     def __init__(
@@ -159,6 +170,12 @@ class LengthReward(Reward):
 class TargetReward(Reward):
 
     """ Reward streamlines if they enter a "target mask" (GM).
+
+    Initially proposed in
+        Théberge, A., Desrosiers, C., Descoteaux, M., & Jodoin, P. M. (2021).
+        Track-to-learn: A general framework for tractography with deep
+        reinforcement learning. Medical Image Analysis, 72, 102093.
+
     """
 
     def __init__(

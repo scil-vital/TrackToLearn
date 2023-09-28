@@ -26,7 +26,7 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.95 # Gamma for reward discounting
+gamma=0.75 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -64,7 +64,6 @@ do
     --npv=${npv} \
     --theta=${theta} \
     --alignment_weighting=1.0 \
-    --oracle_weighting=10.0 \
     --hidden_dims='1024-1024-1024' \
     --n_dirs=100 \
     --n_actor=${n_actor} \
@@ -72,8 +71,14 @@ do
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --run_oracle='epoch_49_dense.ckpt' \
-    --run_tractometer=${SCORING_DATA}
+    --binary_stopping_threshold=0.9 \
+    --tractometer_validator \
+    --scoring_data=${SCORING_DATA}
+
+    # --oracle_stopping \
+    # --oracle_validator \
+    # --oracle_weighting=10.0 \
+    # --oracle_checkpoint='epoch_49_dense.ckpt' \
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

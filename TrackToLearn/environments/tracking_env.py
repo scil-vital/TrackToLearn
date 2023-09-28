@@ -41,29 +41,6 @@ class TrackingEnvironment(BaseEnv):
                 streamlines, self.stopping_criteria)
         return stopping, flags
 
-    def _keep(
-        self,
-        idx: np.ndarray,
-        state: np.ndarray,
-    ) -> np.ndarray:
-        """ Keep only states that correspond to continuing streamlines.
-
-        Parameters
-        ----------
-        idx : `np.ndarray`
-            Indices of the streamlines/states to keep
-        state: np.ndarray
-            Batch of states.
-
-        Returns:
-        --------
-        state: np.ndarray
-            Continuing states.
-        """
-        state = state[idx]
-
-        return state
-
     def nreset(self, n_seeds: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will
         chose N random seeds among all seeds.
@@ -179,24 +156,23 @@ class TrackingEnvironment(BaseEnv):
             self.streamlines[self.continue_idx, self.length-1, :] + directions
         self.length += 1
 
-        # Get stopping and keeping indexes
+        # Get stopping and keeping indexes.
         stopping, new_flags = \
             self._is_stopping(
                 self.streamlines[self.continue_idx, :self.length])
 
+        # See which trajectory is stopping or continuing.
+        # TODO: `investigate the use of `not_stopping`.
         self.not_stopping = np.logical_not(stopping)
         self.new_continue_idx, self.stopping_idx = \
             (self.continue_idx[~stopping],
              self.continue_idx[stopping])
 
-        # mask_continue = np.in1d(
-        #     self.continue_idx, self.new_continue_idx, assume_unique=True)
-        # diff_stopping_idx = np.arange(
-        #     len(self.continue_idx))[~mask_continue]
-
+        # Keep the reason why tracking stopped
         self.flags[
             self.stopping_idx] = new_flags[stopping]
 
+        # Keep which trajectory is over
         self.dones[self.stopping_idx] = 1
 
         reward = np.zeros(self.streamlines.shape[0])
@@ -208,6 +184,7 @@ class TrackingEnvironment(BaseEnv):
                 self.streamlines[self.continue_idx, :self.length],
                 self.dones[self.continue_idx])
 
+        # Compute the state
         self.state[self.continue_idx] = self._format_state(
             self.streamlines[self.continue_idx, :self.length])
 
@@ -219,15 +196,9 @@ class TrackingEnvironment(BaseEnv):
 
     def harvest(
         self,
-        states: np.ndarray,
     ) -> Tuple[StatefulTractogram, np.ndarray]:
-        """Internally keep only the streamlines and corresponding env. states
-        that haven't stopped yet, and return the states that continue.
-
-        Parameters
-        ----------
-        states: torch.Tensor
-            States before "pruning" or "harvesting".
+        """Internally keep track of which trajectories are still going
+        and which aren't. Return the states accordingly.
 
         Returns
         -------
@@ -239,8 +210,12 @@ class TrackingEnvironment(BaseEnv):
 
         # Register the length of the streamlines that have stopped.
         self.lengths[self.stopping_idx] = self.length
-
+        # Set new "continue idx" based on the old idxes. This is to keep
+        # the idxes "global".
         self.continue_idx = self.new_continue_idx
+        # Return the state corresponding to streamlines that are actually
+        # still being tracked.
+        # TODO: investigate why `not_stopping` is returned.
         return self.state[self.continue_idx], self.not_stopping
 
     def get_streamlines(self, space=Space.RASMM) -> StatefulTractogram:
@@ -249,26 +224,27 @@ class TrackingEnvironment(BaseEnv):
         criteria (i.e. the angle was too high). Otherwise, other last points
         are kept.
 
-        TODO: remove them also ?
-
         Returns
         -------
         tractogram: Tractogram
             Tracked streamlines in RASMM space.
 
         """
-
-        tractogram = Tractogram()
         # Harvest stopped streamlines and associated data
         # stopped_seeds = self.first_points[self.stopping_idx]
         stopped_streamlines = [self.streamlines[i, :self.lengths[i], :]
                                for i in range(len(self.streamlines))]
 
+        # If the last point triggered a stopping criterion based on
+        # angle, remove it so as not to produce ugly kinked streamlines.
         flags = is_flag_set(
             self.flags, StoppingFlags.STOPPING_CURVATURE)
 
-        # If the last point triggered a stopping criterion based on 
-        # angle, remove it.
+        # IMPORTANT: The Tractometer seems to give better scores if the
+        # last point is included. Moreover, the oracle will wildly
+        # overestimate the tractogram if the last point is not included
+        # since the last point (and segment) is what made it stop tracking.
+        # **Therefore** the last point should be included as much as possible.
         stopped_streamlines = [
             s[:-1] if f else s for s, f in zip(stopped_streamlines, flags)]
 

@@ -99,7 +99,7 @@ class RLAlgorithm(object):
             # "Harvesting" here means removing "done" trajectories
             # from state. This line also set the next_state as the
             # state
-            state, _ = env.harvest(next_state)
+            state, _ = env.harvest()
 
         # env.render()
 

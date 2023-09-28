@@ -194,6 +194,11 @@ class CmcStoppingCriterion(object):
         biases.
         Neuroimage, 98, 266-278.
 
+    This was included in the abstract
+        Theberge, A., Poirier, C., Petit, L., Jodoin, P.-M., Descoteaux, M., (2022)
+        Incorporating Anatomical Priors into Track-to-Learn. ISMRM Diffusion
+        Workshop: from Research to Clinic.
+
     This is only in the partial-spirit of CMC. A good improvement (#TODO)
     would be to include or exclude streamlines from the resulting
     tractogram as well. Let me know if you need help in adding this
@@ -279,13 +284,6 @@ class OracleStoppingCriterion(object):
     """
     Defines if a streamline should stop according to the oracle.
 
-
-    TODO: Will cause Oracle overestimation, as the last point is removed
-    when getting streamlines. Therefore, while the streamline was considered
-    bad by the oracle at the last point, it was considered good just before.
-
-    Solution ?: consider the last n segments before stopping, and/or don't
-    remove the points if stopped by the oracle.
     """
 
     def __init__(
