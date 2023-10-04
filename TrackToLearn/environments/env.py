@@ -1,52 +1,38 @@
 import functools
-import h5py
-import numpy as np
-import nibabel as nib
-import torch
+from typing import Callable, Dict, Tuple
 
+import h5py
+import nibabel as nib
+import numpy as np
+import torch
 from dipy.core.geometry import cart2sphere
 from dipy.core.sphere import HemiSphere
 from dipy.data import get_sphere
 from dipy.direction.peaks import reshape_peaks_for_visualization
-# from dipy.io.utils import get_reference_info
-
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
-from scilpy.reconst.utils import (find_order_from_nb_coeff,
-                                  get_b_matrix, get_maximas)
-from typing import Callable, Dict, Tuple
+from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
+                                  get_maximas)
 
-from TrackToLearn.datasets.utils import (
-    convert_length_mm2vox,
-    MRIDataVolume,
-    SubjectData,
-    set_sh_order_basis
-)
-
-from TrackToLearn.environments.reward import RewardFunction
+from TrackToLearn.datasets.utils import (MRIDataVolume, SubjectData,
+                                         convert_length_mm2vox,
+                                         set_sh_order_basis)
 from TrackToLearn.environments.coverage_reward import CoverageReward
-from TrackToLearn.environments.local_reward import (
-    PeaksAlignmentReward,
-    TargetReward,
-    LengthReward)
+from TrackToLearn.environments.filters import (CMCFilter, Filters,
+                                               MinLengthFilter, OracleFilter)
+from TrackToLearn.environments.local_reward import (LengthReward,
+                                                    PeaksAlignmentReward,
+                                                    TargetReward)
 from TrackToLearn.environments.oracle_reward import OracleReward
-
+from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    # AngularErrorCriterion,
-    BinaryStoppingCriterion,
-    CmcStoppingCriterion,
-    OracleStoppingCriterion,
+    BinaryStoppingCriterion, CmcStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
+from TrackToLearn.environments.utils import (  # is_looping,
+    get_neighborhood_directions, get_sh, is_too_curvy, is_too_long)
+from TrackToLearn.utils.utils import from_polar, from_sphere, normalize_vectors
 
-from TrackToLearn.environments.utils import (
-    get_neighborhood_directions,
-    get_sh,
-    # is_looping,
-    is_too_curvy,
-    is_too_long)
-
-from TrackToLearn.utils.utils import (from_polar, from_sphere,
-                                      normalize_vectors)
+# from dipy.io.utils import get_reference_info
 
 
 class BaseEnv(object):
@@ -88,6 +74,9 @@ class BaseEnv(object):
             Mask representing the tracking no-go zones. Only useful if
             using CMC.
         """
+
+        # TODO: Split this into several functions, which can
+        # be reused in `set_step_size`
 
         self.reference = env_dto['reference']
 
@@ -133,32 +122,12 @@ class BaseEnv(object):
         max_length_mm = env_dto['max_length']
         add_neighborhood_mm = env_dto['add_neighborhood']
 
-        # Reward parameters
-        self.alignment_weighting = env_dto['alignment_weighting']
-        self.straightness_weighting = env_dto['straightness_weighting']
-        self.length_weighting = env_dto['length_weighting']
-        self.target_bonus_factor = env_dto['target_bonus_factor']
-        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.coverage_weighting = env_dto['coverage_weighting']
-        self.compute_reward = env_dto['compute_reward']
-        self.scoring_data = env_dto['scoring_data']
-
-        # Oracle parameters
-        self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
-        if self.dense_oracle:
-            self.oracle_weighting = env_dto['dense_oracle_weighting']
-        else:
-            self.oracle_weighting = env_dto['sparse_oracle_weighting']
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
 
-        # Stopping criteria is a dictionary that maps `StoppingFlags`
-        # to functions that indicate whether streamlines should stop or not
-        self.stopping_criteria = {}
         mask_data = tracking_mask.data.astype(np.uint8)
 
         self.seeding_data = seeding_mask.data.astype(np.uint8)
@@ -172,6 +141,104 @@ class BaseEnv(object):
         # Compute maximum length
         self.max_nb_steps = int(self.max_length / step_size_mm)
         self.min_nb_steps = int(self.min_length / step_size_mm)
+
+        # Neighborhood used as part of the state
+        self.add_neighborhood_vox = None
+        if add_neighborhood_mm:
+            self.add_neighborhood_vox = convert_length_mm2vox(
+                add_neighborhood_mm,
+                self.affine_vox2rasmm)
+            self.neighborhood_directions = torch.tensor(
+                get_neighborhood_directions(
+                    radius=self.add_neighborhood_vox),
+                dtype=torch.float16).to(self.device)
+
+        # Tracking seeds
+        self.seeds = self._get_tracking_seeds_from_mask(
+            self.seeding_data,
+            self.npv,
+            self.rng)
+        print(
+            '{} has {} seeds.'.format(self.__class__.__name__,
+                                      len(self.seeds)))
+
+        # ===========================================
+        # Stopping criteria
+        # ===========================================
+
+        # Stopping criteria is a dictionary that maps `StoppingFlags`
+        # to functions that indicate whether streamlines should stop or not
+        self.stopping_criteria = {}
+
+        # Length criterion
+        self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
+            functools.partial(is_too_long,
+                              max_nb_steps=self.max_nb_steps)
+        # Angle between segment (curvature criterion)
+        self.stopping_criteria[
+            StoppingFlags.STOPPING_CURVATURE] = \
+            functools.partial(is_too_curvy, max_theta=theta)
+
+        # Streamline loop criterion (not used, too slow)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_LOOP] = \
+        #     functools.partial(is_looping,
+        #                       loop_threshold=360)
+
+        # Angle between peaks and segments (angular error criterion)
+        # Not used a it constrains tracking too much.
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+        #     self.epsilon,
+        #     self.peaks)
+
+        # Stopping criterion according to an oracle
+        if self.oracle_checkpoint and self.oracle_stopping_criterion:
+            self.stopping_criteria[
+                StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
+                self.oracle_checkpoint,
+                self.min_nb_steps * 2,
+                self.reference,
+                self.affine_vox2rasmm,
+                self.device)
+
+        # Mask criterion (either binary or CMC)
+        if self.cmc:
+            cmc_criterion = CmcStoppingCriterion(
+                self.include_mask.data,
+                self.exclude_mask.data,
+                self.affine_vox2rasmm,
+                self.step_size,
+                self.min_nb_steps)
+            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
+        else:
+            binary_criterion = BinaryStoppingCriterion(
+                mask_data,
+                self.binary_stopping_threshold)
+            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
+                binary_criterion
+
+        # ==========================================
+        # Reward function
+        # =========================================
+
+        # Reward parameters
+        self.compute_reward = env_dto['compute_reward']
+        # "Local" reward parameters
+        self.alignment_weighting = env_dto['alignment_weighting']
+        self.straightness_weighting = env_dto['straightness_weighting']
+        self.length_weighting = env_dto['length_weighting']
+        self.target_bonus_factor = env_dto['target_bonus_factor']
+        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
+        self.angle_penalty_factor = env_dto['angle_penalty_factor']
+        self.coverage_weighting = env_dto['coverage_weighting']
+
+        # Oracle reward parameters
+        self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
+        if self.dense_oracle:
+            self.oracle_weighting = env_dto['dense_oracle_weighting']
+        else:
+            self.oracle_weighting = env_dto['sparse_oracle_weighting']
 
         # Reward function and reward factors
         if self.compute_reward:
@@ -204,75 +271,29 @@ class BaseEnv(object):
                  self.oracle_weighting,
                  self.coverage_weighting])
 
-        # Stopping criteria
-        # TODO: Switch all criteria to classes like Angular error and mask
-        # Length criterion
-        self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            functools.partial(is_too_long,
-                              max_nb_steps=self.max_nb_steps)
-        # Angle between segment (curvature criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_CURVATURE] = \
-            functools.partial(is_too_curvy, max_theta=theta)
+        # ==========================================
+        # Filters
+        # =========================================
+        # Filters are applied when calling env.get_streamlines()
 
-        # Streamline loop criterion (not used, too slow)
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=360)
+        self.filters = {}
+        # Filter out streamlines below the length threshold
+        # self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
 
-        # Angle between peaks and segments (angular error criterion)
-        # Not used at it constraints tracking too much.
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-        #     self.epsilon,
-        #     self.peaks)
+        # Filter out streamlines according to the oracle
+        # self.filters[Filters.ORACLE] = OracleFilter(self.oracle_checkpoint,
+        #                                             self.min_nb_steps,
+        #                                             self.reference,
+        #                                             self.affine_vox2rasmm,
+        #                                             self.device)
 
-        # Stopping criterion according to an oracle
-        if self.oracle_checkpoint and self.oracle_stopping_criterion:
-            self.stopping_criteria[
-                StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
-                self.checkpoint,
-                self.min_nb_steps * 2,
-                self.reference,
-                self.affine_vox2rasmm,
-                self.device)
-
-        # Mask criterion (either binary or CMC)
-        if self.cmc:
-            cmc_criterion = CmcStoppingCriterion(
-                self.include_mask.data,
-                self.exclude_mask.data,
-                self.affine_vox2rasmm,
-                self.step_size,
-                self.min_nb_steps)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-        else:
-            binary_criterion = BinaryStoppingCriterion(
-                mask_data,
-                self.binary_stopping_threshold)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-                binary_criterion
-
-        # Neighborhood used as part of the state
-        self.add_neighborhood_vox = None
-        if add_neighborhood_mm:
-            self.add_neighborhood_vox = convert_length_mm2vox(
-                add_neighborhood_mm,
-                self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.tensor(
-                get_neighborhood_directions(
-                    radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(self.device)
-
-        # Tracking seeds
-        self.seeds = self._get_tracking_seeds_from_mask(
-            self.seeding_data,
-            self.npv,
-            self.rng)
-        print(
-            '{} has {} seeds.'.format(self.__class__.__name__,
-                                      len(self.seeds)))
+        # Filter out streamlines according to the Continuous Map Criterion
+        # if self.cmc:
+        #     self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
+        #                                           self.exclude_mask.data,
+        #                                           self.affine_vox2rasmm,
+        #                                           self.step_size,
+        #                                           self.min_nb_steps)
 
     @classmethod
     def from_dataset(
@@ -280,6 +301,9 @@ class BaseEnv(object):
         env_dto: dict,
         split: str,
     ):
+        """ TODO: Comment this
+        """
+
         dataset_file = env_dto['dataset_file']
         subject_id = env_dto['subject_id']
         interface_seeding = env_dto['interface_seeding']
@@ -306,6 +330,9 @@ class BaseEnv(object):
         cls,
         env_dto: dict,
     ):
+        """ TODO: Comment this
+        """
+
         in_odf = env_dto['in_odf']
         wm_file = env_dto['wm_file']
         in_seed = env_dto['in_seed']
@@ -382,6 +409,9 @@ class BaseEnv(object):
         in_mask,
         sh_basis
     ):
+        """ TODO: Docstring and comments
+        """
+
         signal = nib.load(signal_file)
 
         # Assert that the subject has iso voxels, else stuff will get
@@ -505,7 +535,7 @@ class BaseEnv(object):
             peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
             target_reward = TargetReward(self.target_mask)
             length_reward = LengthReward(self.max_nb_steps)
-            oracle_reward = OracleReward(self.checkpoint,
+            oracle_reward = OracleReward(self.oracle_checkpoint,
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)
@@ -526,7 +556,7 @@ class BaseEnv(object):
 
         self.stopping_criteria[
             StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
-            self.checkpoint,
+            self.oracle_checkpoint,
             self.min_nb_steps * 2,
             self.reference,
             self.affine_vox2rasmm,
@@ -738,7 +768,8 @@ class BaseEnv(object):
             of displaying directly
         """
 
-        from fury import window, actor
+        from fury import actor, window
+
         # Might be rendering from outside the environment
         if tractogram is None:
 

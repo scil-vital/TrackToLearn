@@ -218,11 +218,13 @@ class TrackingEnvironment(BaseEnv):
         # TODO: investigate why `not_stopping` is returned.
         return self.state[self.continue_idx], self.not_stopping
 
-    def get_streamlines(self, space=Space.RASMM) -> StatefulTractogram:
+    def get_streamlines(
+        self, space=Space.RASMM, filter_streamlines=False
+    ) -> StatefulTractogram:
         """ Obtain tracked streamlines from the environment.
         The last point will be removed if it raised a curvature stopping
         criteria (i.e. the angle was too high). Otherwise, other last points
-        are kept.
+        are kept (TODO: parametrize this ?).
 
         Returns
         -------
@@ -259,4 +261,9 @@ class TrackingEnvironment(BaseEnv):
             affine_to_rasmm=self.affine_vox2rasmm)
 
         tractogram.apply_affine(self.affine_vox2rasmm)
+
+        if filter_streamlines:
+            for f, tract_filter in self.filters.items():
+                tractogram = tract_filter(tractogram)
+
         return tractogram

@@ -103,16 +103,20 @@ class Tracker(object):
                 # Track forward
                 self.alg.validation_episode(
                     state, self.env)
-                batch_tractogram = self.env.get_streamlines(space=Space.VOX)
 
                 if not self.interface_seeding:
+                    batch_tractogram = self.env.get_streamlines(
+                        space=Space.VOX)
                     state = self.back_env.reset(batch_tractogram)
 
                     # Track backwards
                     self.alg.validation_episode(
                         state, self.back_env)
                     batch_tractogram = self.back_env.get_streamlines(
-                        space=Space.VOX)
+                        space=Space.VOX, filter_streamlines=True)
+                else:
+                    batch_tractogram = self.back_env.get_streamlines(
+                        space=Space.VOX, filter_streamlines=True)
 
                 for item in batch_tractogram:
 
@@ -241,23 +245,27 @@ class Tracker(object):
 
                 # Track forward
                 reward = self.alg.validation_episode(state, self.env)
-                batch_tractogram = self.env.get_streamlines()
 
                 if not self.interface_seeding:
+                    batch_tractogram = self.env.get_streamlines()
                     # Initialize backwards tracking
                     state = self.back_env.reset(batch_tractogram)
 
                     # Track backwards
                     reward = self.alg.validation_episode(
                         state, self.back_env)
-                    batch_tractogram = self.back_env.get_streamlines()
+                    batch_tractogram = self.back_env.get_streamlines(
+                        filter_streamlines=True)
+                else:
+                    batch_tractogram = self.env.get_streamlines(
+                        filter_streamlines=True)
 
                 yield batch_tractogram, reward
 
         for t, r in _generate_streamlines_and_rewards():
-            if tractogram is None:
+            if tractogram is None and len(t) > 0:
                 tractogram = t
-            else:
+            elif len(t) > 0:
                 tractogram += t
             cummulative_reward += r
 

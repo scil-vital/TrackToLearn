@@ -1,14 +1,13 @@
-import json
 import itertools
+import json
 import logging
-import nibabel as nib
-import numpy as np
 import os
 import tempfile
-
 from collections import namedtuple
-from dipy.io.streamline import load_tractogram
 
+import nibabel as nib
+import numpy as np
+from dipy.io.streamline import load_tractogram
 from scilpy.io.image import get_data_as_mask
 from scilpy.segment.tractogram_from_roi import segment_tractogram_from_roi
 from scilpy.tractanalysis.scoring import compute_tractometry

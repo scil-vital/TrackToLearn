@@ -271,7 +271,10 @@ class TrackToLearnExperiment(Experiment):
         flags = tractogram.data_per_streamline['flags']
         stats = {}
         for f in StoppingFlags:
-            set_pct = np.mean(is_flag_set(flags, f))
+            if len(flags) > 0:
+                set_pct = np.mean(is_flag_set(flags, f))
+            else:
+                set_pct = 0
             stats.update({f.name: set_pct})
         return stats
 

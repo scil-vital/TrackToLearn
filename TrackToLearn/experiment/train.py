@@ -1,28 +1,26 @@
 import json
-import numpy as np
-import random
 import os
-import torch
-
+import random
 from os.path import join as pjoin
+
+import numpy as np
+import torch
 
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.experiment.tracker import Tracker
-from TrackToLearn.experiment.ttl import TrackToLearnExperiment
-from TrackToLearn.experiment.experiment import (
-    add_data_args,
-    add_environment_args,
-    add_experiment_args,
-    add_model_args,
-    add_reward_args,
-    add_tracking_args,
-    add_oracle_args,
-    add_tractometer_args)
+from TrackToLearn.experiment.experiment import (add_data_args,
+                                                add_environment_args,
+                                                add_experiment_args,
+                                                add_model_args,
+                                                add_oracle_args,
+                                                add_reward_args,
+                                                add_tracking_args,
+                                                add_tractometer_args)
 from TrackToLearn.experiment.oracle_validator import OracleValidator
-from TrackToLearn.experiment.tractometer_validator import (
-    TractometerValidator)
+from TrackToLearn.experiment.tracker import Tracker
+from TrackToLearn.experiment.tractometer_validator import TractometerValidator
+from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
 assert torch.cuda.is_available(), "Training is only possible on CUDA devices."
 

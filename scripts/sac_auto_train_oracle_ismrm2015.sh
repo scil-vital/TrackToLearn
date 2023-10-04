@@ -26,7 +26,7 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.75 # Gamma for reward discounting
+gamma=0.90 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -38,7 +38,7 @@ n_actor=4096
 
 EXPERIMENT=SAC_Auto_ISMRM2015TrainOracle
 
-ID=oracle_stopping_criterion_$(date +"%F-%H_%M_%S")
+ID=no_oracle_stopping_criterion_$(date +"%F-%H_%M_%S")
 
 seeds=(1111 2222 3333 4444 5555)
 
@@ -71,14 +71,13 @@ do
     --interface_seeding \
     --use_gpu \
     --use_comet \
-    --binary_stopping_threshold=0.9 \
+    --binary_stopping_threshold=0.1 \
     --tractometer_validator \
-    --scoring_data=${SCORING_DATA}
-
-    # --oracle_stopping \
-    # --oracle_validator \
-    # --oracle_weighting=10.0 \
-    # --oracle_checkpoint='epoch_49_dense.ckpt' \
+    --scoring_data=${SCORING_DATA} \
+    --oracle_stopping \
+    --oracle_validator \
+    --sparse_oracle_weighting=10.0 \
+    --oracle_checkpoint='epoch_49_ttl_dense_ismrm2015.ckpt' \
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

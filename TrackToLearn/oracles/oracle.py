@@ -1,14 +1,10 @@
 import numpy as np
 import torch
-
 from dipy.tracking.streamline import set_number_of_points
 
-from TrackToLearn.oracles.autoencoder_oracle import (
-    AutoencoderOracle)
-from TrackToLearn.oracles.feed_forward_oracle import (
-    FeedForwardOracle)
-from TrackToLearn.oracles.transformer_oracle import (
-    TransformerOracle)
+from TrackToLearn.oracles.autoencoder_oracle import AutoencoderOracle
+from TrackToLearn.oracles.feed_forward_oracle import FeedForwardOracle
+from TrackToLearn.oracles.transformer_oracle import TransformerOracle
 
 
 class OracleSingleton:

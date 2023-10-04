@@ -13,6 +13,10 @@ from TrackToLearn.environments.reward import Reward
 class CoverageReward(Reward):
 
     """ Reward streamlines based on their coverage of the tracking mask.
+
+    **IMPORTANT**: This has not been published but it works reasonably well.
+    If you want to include this in your publication, please contact me
+    beforehand.
     """
 
     def __init__(

@@ -1,18 +1,13 @@
-import numpy as np
-
-from dipy.io.stateful_tractogram import StatefulTractogram, Space, Tractogram
 from enum import Enum
-from scipy.ndimage import spline_filter, map_coordinates
+
+import numpy as np
+from dipy.io.stateful_tractogram import Space, StatefulTractogram, Tractogram
+from scipy.ndimage import map_coordinates, spline_filter
 
 from TrackToLearn.environments.interpolation import (
-    interpolate_volume_at_coordinates,
-    nearest_neighbor_interpolation)
-
+    interpolate_volume_at_coordinates, nearest_neighbor_interpolation)
 from TrackToLearn.oracles.oracle import OracleSingleton
 from TrackToLearn.utils.utils import normalize_vectors
-
-
-# Flags enum
 
 
 class StoppingFlags(Enum):
@@ -179,10 +174,6 @@ class BinaryStoppingCriterion(object):
         return map_coordinates(
             self.mask, streamlines[:, -1, :].T, prefilter=False
         ) < self.threshold
-        # # Get last streamlines coordinates
-        # return interpolate_volume_at_coordinates(
-        #     self.mask, streamlines[:, -1, :], mode='constant',
-        #     order=3, filter=) < self.threshold
 
 
 class CmcStoppingCriterion(object):
@@ -195,9 +186,9 @@ class CmcStoppingCriterion(object):
         Neuroimage, 98, 266-278.
 
     This was included in the abstract
-        Theberge, A., Poirier, C., Petit, L., Jodoin, P.-M., Descoteaux, M., (2022)
-        Incorporating Anatomical Priors into Track-to-Learn. ISMRM Diffusion
-        Workshop: from Research to Clinic.
+        Theberge, A., Poirier, C., Petit, L., Jodoin, P.-M., Descoteaux, M.,
+        (2022) Incorporating Anatomical Priors into Track-to-Learn. ISMRM
+        Diffusion Workshop: from Research to Clinic.
 
     This is only in the partial-spirit of CMC. A good improvement (#TODO)
     would be to include or exclude streamlines from the resulting

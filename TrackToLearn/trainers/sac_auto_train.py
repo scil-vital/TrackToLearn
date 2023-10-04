@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
 import argparse
+from argparse import RawTextHelpFormatter
+
 import comet_ml  # noqa: F401 ugh
 import torch
-
-from argparse import RawTextHelpFormatter
 from comet_ml import Experiment as CometExperiment
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.experiment.train import (
-    add_training_args,
-    TrackToLearnTraining)
+from TrackToLearn.experiment.train import (TrackToLearnTraining,
+                                           add_training_args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 assert torch.cuda.is_available()

@@ -128,7 +128,7 @@ def add_environment_args(parser: ArgumentParser):
     parser.add_argument('--add_neighborhood', default=0.75, type=float,
                         help='Add neighborhood to model input')
 
-    tracking_mask_group = parser.add_mutually_exclusive_group()
+    tracking_mask_group = parser.add_mutually_exclusive_group(required=True)
     tracking_mask_group.add_argument(
         '--cmc', action='store_true',
         help='If set, use Continuous Mask Criteria to stop tracking.')

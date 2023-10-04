@@ -1,9 +1,8 @@
 import numpy as np
-
 from dipy.io.streamline import load_tractogram
 
-from TrackToLearn.oracles.oracle import OracleSingleton
 from TrackToLearn.experiment.validators import Validator
+from TrackToLearn.oracles.oracle import OracleSingleton
 
 
 class OracleValidator(Validator):
