@@ -2,6 +2,7 @@ from enum import Enum
 
 import numpy as np
 from dipy.io.stateful_tractogram import Space, StatefulTractogram, Tractogram
+from dipy.io.streamline import save_tractogram
 from scipy.ndimage import map_coordinates, spline_filter
 
 from TrackToLearn.environments.interpolation import (
@@ -336,7 +337,14 @@ class OracleStoppingCriterion(object):
             sft.to_vox()
             sft.to_corner()
 
-            predictions = self.model.predict(sft.streamlines)
+            batch_size = 4096
+            N = len(streamlines)
+            predictions = np.zeros((N))
+            for i in range(0, N, batch_size):
+
+                j = min(N, i + batch_size)
+                scores = self.model.predict(sft.streamlines[i:j])
+                predictions[i:j] = scores
 
             scores = np.zeros_like(predictions)
             scores[predictions <= 0.5] = 1.0

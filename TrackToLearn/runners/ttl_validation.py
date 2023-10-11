@@ -10,6 +10,7 @@ from argparse import RawTextHelpFormatter
 from os.path import join as pjoin
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
+from nibabel.streamlines.tck import TckFile
 
 from TrackToLearn.algorithms.a2c import A2C
 from TrackToLearn.algorithms.acktr import ACKTR
@@ -25,9 +26,10 @@ from TrackToLearn.experiment.experiment import (
     add_environment_args,
     add_experiment_args,
     add_model_args,
+    add_oracle_args,
     add_reward_args,
     add_tracking_args,
-    add_validator_args)
+    add_tractometer_args)
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
@@ -49,13 +51,13 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.experiment_path = valid_dto['path']
         self.experiment = valid_dto['experiment']
         self.id = valid_dto['id']
+        self.out_tractogram = valid_dto['out_tractogram']
         self.render = False
 
         self.valid_dataset_file = self.dataset_file = valid_dto['dataset_file']
         self.valid_subject_id = self.subject_id = valid_dto['subject_id']
         self.reference_file = valid_dto['reference_file']
-        self.run_tractometer = valid_dto['run_tractometer']
-        self.run_oracle = valid_dto['run_oracle']
+
         self.prob = valid_dto['prob']
         self.agent = valid_dto['agent']
         self.n_actor = valid_dto['n_actor']
@@ -69,8 +71,18 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.target_bonus_factor = valid_dto['target_bonus_factor']
         self.exclude_penalty_factor = valid_dto['exclude_penalty_factor']
         self.angle_penalty_factor = valid_dto['angle_penalty_factor']
-        self.oracle_weighting = valid_dto['oracle_weighting']
         self.coverage_weighting = valid_dto['coverage_weighting']
+
+        # Oracle parameters
+        self.oracle_checkpoint = valid_dto['oracle_checkpoint']
+        self.dense_oracle_weighting = valid_dto['dense_oracle_weighting']
+        self.sparse_oracle_weighting = valid_dto['sparse_oracle_weighting']
+        self.oracle_validator = valid_dto['oracle_validator']
+        self.oracle_stopping_criterion = valid_dto['oracle_stopping_criterion']
+
+        # Tractometer parameters
+        self.tractometer_validator = valid_dto['tractometer_validator']
+        self.scoring_data = valid_dto['scoring_data']
 
         self.compute_reward = True
 
@@ -95,6 +107,8 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.n_dirs = hyperparams['n_dirs']
             self.interface_seeding = hyperparams['interface_seeding']
             self.cmc = hyperparams.get('cmc', False)
+            self.binary_stopping_threshold = hyperparams.get(
+                'binary_stopping_threshold', 0.1)
             self.asymmetric = hyperparams.get('asymmetric', False)
             self.no_retrack = hyperparams.get('no_retrack', False)
             self.action_type = hyperparams.get("action_type", "cartesian")
@@ -139,9 +153,9 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         print("Subject has a voxel size of {}mm, setting step size to "
               "{}mm.".format(tracking_voxel_size, step_size_mm))
 
-        if back_env:
-            back_env.set_step_size(step_size_mm)
-        env.set_step_size(step_size_mm)
+        # if back_env:
+        #     back_env.set_step_size(step_size_mm)
+        # env.set_step_size(step_size_mm)
 
         # Load agent
         algs = {'VPG': VPG,
@@ -175,17 +189,16 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             min_length=self.min_length, max_length=self.max_length)
 
         # Run tracking
-        tractogram = tracker.track()
+
+        filename = pjoin(
+            self.experiment_path, self.out_tractogram)
+        filetype = nib.streamlines.detect_format(filename)
+
+        tractogram = tracker.track(apply_affine=filetype == TckFile)
 
         reference = get_reference_info(self.reference_file)
 
         tractogram.affine_to_rasmm = reference[0]
-
-        filename = pjoin(
-            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                self.experiment, self.id, self.valid_subject_id))
-
-        filetype = nib.streamlines.detect_format(filename)
 
         header = create_tractogram_header(filetype, *reference)
 
@@ -205,6 +218,8 @@ def add_valid_args(parser):
     parser.add_argument('hyperparameters',
                         help='File containing the hyperparameters for the '
                              'experiment')
+    parser.add_argument('out_tractogram',
+                        help='Tractogram output file (must be .trk or .tck).')
     parser.add_argument('--fa_map', type=str, default=None,
                         help='FA map to influence STD for probabilistic' +
                         'tracking')
@@ -224,7 +239,8 @@ def parse_args():
     add_model_args(parser)
     add_reward_args(parser)
     add_valid_args(parser)
-    add_validator_args(parser)
+    add_tractometer_args(parser)
+    add_oracle_args(parser)
     add_environment_args(parser)
     add_tracking_args(parser)
 

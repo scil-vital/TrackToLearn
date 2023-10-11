@@ -124,6 +124,7 @@ class BaseEnv(object):
 
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
+        self.oracle_filter = True
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -278,22 +279,23 @@ class BaseEnv(object):
 
         self.filters = {}
         # Filter out streamlines below the length threshold
-        # self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
+        self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
 
         # Filter out streamlines according to the oracle
-        # self.filters[Filters.ORACLE] = OracleFilter(self.oracle_checkpoint,
-        #                                             self.min_nb_steps,
-        #                                             self.reference,
-        #                                             self.affine_vox2rasmm,
-        #                                             self.device)
+        if self.oracle_filter:
+            self.filters[Filters.ORACLE] = OracleFilter(self.oracle_checkpoint,
+                                                        self.min_nb_steps,
+                                                        self.reference,
+                                                        self.affine_vox2rasmm,
+                                                        self.device)
 
         # Filter out streamlines according to the Continuous Map Criterion
-        # if self.cmc:
-        #     self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
-        #                                           self.exclude_mask.data,
-        #                                           self.affine_vox2rasmm,
-        #                                           self.step_size,
-        #                                           self.min_nb_steps)
+        if self.cmc:
+            self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
+                                                  self.exclude_mask.data,
+                                                  self.affine_vox2rasmm,
+                                                  self.step_size,
+                                                  self.min_nb_steps)
 
     @classmethod
     def from_dataset(

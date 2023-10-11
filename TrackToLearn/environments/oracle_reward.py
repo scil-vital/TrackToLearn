@@ -105,6 +105,7 @@ class OracleReward(Reward):
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
         N, L, P = streamlines.shape
+        reward = np.zeros((N))
         if L > 3 and sum(dones.astype(int)) > 0:
 
             # Change ref of streamlines. This is weird on the ISMRM2015
@@ -120,13 +121,18 @@ class OracleReward(Reward):
             sft.to_vox()
             sft.to_corner()
 
-            # Get scores from the oracle
-            scores = self.model.predict(sft.streamlines)
-            reward = np.zeros((N))
+            batch_size = 4096
+            N_not_done = len(sft.streamlines)
+            predictions = np.zeros((N_not_done))
+            for i in range(0, N_not_done, batch_size):
+                j = min(N_not_done, i + batch_size)
+                scores = self.model.predict(sft.streamlines[i:j])
+                predictions[i:j] = scores
+
             # Double indexing to get the indexes. Don't forget you
             # can't assign using double indexes as the first indexing
             # will return a copy of the array.
-            idx = np.arange(N)[dones][scores > 0.5]
+            idx = np.arange(N)[dones][predictions > 0.5]
             # Assign the reward using the precomputed double indexes.
             reward[idx] = 1.0
             return reward

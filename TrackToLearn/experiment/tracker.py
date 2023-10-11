@@ -62,12 +62,19 @@ class Tracker(object):
 
     def track(
         self,
+        apply_affine=False,
     ):
         """ Actual tracking function. Use this if you just want streamlines.
 
         Track with a generator to save streamlines to file
         as they are tracked. Used at tracking (test) time. No
         reward should be computed.
+
+        Arguments
+        ---------
+        apply_affine: bool
+            Whether to apply an affine or multiply the streamlines
+            by the voxel size. Depends if you're saving a TRK or TCK.
 
         Returns:
         --------
@@ -83,6 +90,8 @@ class Tracker(object):
 
         batch_size = self.n_actor
 
+        space = Space.RASMM if apply_affine else Space.VOX
+
         # Shuffle seeds so that massive tractograms wont load "sequentially"
         # when partially displayed
         np.random.shuffle(self.env.seeds)
@@ -94,7 +103,6 @@ class Tracker(object):
             for i, start in enumerate(
                 tqdm(range(0, len(self.env.seeds), batch_size))
             ):
-
                 # Last batch might not be "full"
                 end = min(start + batch_size, len(self.env.seeds))
 
@@ -113,16 +121,17 @@ class Tracker(object):
                     self.alg.validation_episode(
                         state, self.back_env)
                     batch_tractogram = self.back_env.get_streamlines(
-                        space=Space.VOX, filter_streamlines=True)
+                        space=space, filter_streamlines=True)
                 else:
-                    batch_tractogram = self.back_env.get_streamlines(
-                        space=Space.VOX, filter_streamlines=True)
+                    batch_tractogram = self.env.get_streamlines(
+                        space=space, filter_streamlines=True)
 
                 for item in batch_tractogram:
 
                     streamline = item.streamline
-                    # streamline += 0.5
-                    streamline *= vox_size
+                    if not apply_affine:
+                        streamline += 0.5
+                        streamline *= vox_size
 
                     streamline_length = length(item.streamline)
 
