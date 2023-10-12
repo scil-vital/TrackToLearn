@@ -25,6 +25,7 @@ from TrackToLearn.environments.local_reward import (LengthReward,
                                                     TargetReward)
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
+from TrackToLearn.environments.tractometer_reward import TractometerReward
 from TrackToLearn.environments.stopping_criteria import (
     BinaryStoppingCriterion, CmcStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
@@ -124,7 +125,7 @@ class BaseEnv(object):
 
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
-        self.oracle_filter = True
+        self.oracle_filter = False
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -233,6 +234,7 @@ class BaseEnv(object):
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.coverage_weighting = env_dto['coverage_weighting']
+        self.tractometer_weighting = 10
 
         # Oracle reward parameters
         self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
@@ -256,6 +258,11 @@ class BaseEnv(object):
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)
+
+            tractometer_reward = TractometerReward(env_dto['scoring_data'],
+                                                   self.reference,
+                                                   self.affine_vox2rasmm)
+
             # Reward streamlines according to coverage of the WM mask.
             cover_reward = CoverageReward(self.tracking_mask)
             # Combine all reward factors into the reward function
@@ -264,12 +271,17 @@ class BaseEnv(object):
             # missing (i.e. the target mask) is on the reward factors.
             # They should just not be initialized instead.
             self.reward_function = RewardFunction(
-                [peaks_reward, target_reward,
-                 length_reward, oracle_reward, cover_reward],
+                [peaks_reward,
+                 target_reward,
+                 length_reward,
+                 oracle_reward,
+                 tractometer_reward,
+                 cover_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
                  self.oracle_weighting,
+                 self.tractometer_weighting,
                  self.coverage_weighting])
 
         # ==========================================

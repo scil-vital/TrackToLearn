@@ -260,11 +260,11 @@ class TrackingEnvironment(BaseEnv):
                                  },
             affine_to_rasmm=self.affine_vox2rasmm)
 
-        if space == Space.RASMM:
-            tractogram.apply_affine(self.affine_vox2rasmm)
-
         if filter_streamlines:
             for f, tract_filter in self.filters.items():
                 tractogram = tract_filter(tractogram)
+
+        if space == Space.RASMM:
+            tractogram.apply_affine(self.affine_vox2rasmm)
 
         return tractogram

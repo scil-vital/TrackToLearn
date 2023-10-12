@@ -125,7 +125,7 @@ class Tracker(object):
                 else:
                     batch_tractogram = self.env.get_streamlines(
                         space=space, filter_streamlines=True)
-
+                print(batch_tractogram)
                 for item in batch_tractogram:
 
                     streamline = item.streamline

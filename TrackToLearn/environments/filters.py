@@ -62,6 +62,7 @@ class MinLengthFilter:
         valid = [len(s) > self.min_nb_steps for s in tractogram.streamlines]
         return tractogram[valid]
 
+
 class OracleFilter:
     """ TODO
     """
@@ -109,14 +110,14 @@ class OracleFilter:
             space=Space.RASMM)
 
         if not self.checkpoint:
-            return sft
+            return tractogram
 
         sft.to_vox()
         sft.to_corner()
 
         streamlines = sft.streamlines
         if len(streamlines) == 0:
-            return sft
+            return tractogram
 
         batch_size = 4096
         N = len(streamlines)
