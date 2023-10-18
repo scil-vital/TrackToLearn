@@ -125,7 +125,7 @@ class Tracker(object):
                 else:
                     batch_tractogram = self.env.get_streamlines(
                         space=space, filter_streamlines=True)
-                print(batch_tractogram)
+
                 for item in batch_tractogram:
 
                     streamline = item.streamline
@@ -135,6 +135,7 @@ class Tracker(object):
 
                     streamline_length = length(item.streamline)
 
+                    flag = item.data_for_streamline['flags']
                     seed_dict = {}
                     if self.save_seeds:
                         seed = item.data_for_streamline['seeds']

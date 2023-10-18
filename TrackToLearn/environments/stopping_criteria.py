@@ -5,8 +5,8 @@ from dipy.io.stateful_tractogram import Space, StatefulTractogram, Tractogram
 from dipy.io.streamline import save_tractogram
 from scipy.ndimage import map_coordinates, spline_filter
 
-from TrackToLearn.environments.interpolation import (
-    interpolate_volume_at_coordinates, nearest_neighbor_interpolation)
+from TrackToLearn.environments.interpolation import \
+    nearest_neighbor_interpolation
 from TrackToLearn.oracles.oracle import OracleSingleton
 from TrackToLearn.utils.utils import normalize_vectors
 
@@ -152,7 +152,8 @@ class BinaryStoppingCriterion(object):
             Voxels with a value higher or equal than this threshold are
             considered as part of the interior of the mask.
         """
-        self.mask = spline_filter(np.ascontiguousarray(mask), order=3)
+        self.mask = spline_filter(
+            np.ascontiguousarray(mask, dtype=float), order=3)
         self.threshold = threshold
 
     def __call__(
@@ -172,8 +173,9 @@ class BinaryStoppingCriterion(object):
             Array telling whether a streamline's last coordinate is outside the
             mask or not.
         """
+        coords = streamlines[:, -1, :].T -0.5
         return map_coordinates(
-            self.mask, streamlines[:, -1, :].T, prefilter=False
+            self.mask, coords, prefilter=False
         ) < self.threshold
 
 
@@ -217,8 +219,10 @@ class CmcStoppingCriterion(object):
             Voxels with a value higher or equal than this threshold are
             considered as part of the interior of the mask.
         """
-        self.include_mask = include_mask
-        self.exclude_mask = exclude_mask
+        self.include_mask = spline_filter(
+            np.ascontiguousarray(include_mask, dtype=float), order=3)
+        self.exclude_mask = spline_filter(
+            np.ascontiguousarray(exclude_mask, dtype=float), order=3)
         self.affine = affine
         vox_size = np.mean(np.abs(np.diag(affine)[:3]))
         self.correction_factor = step_size / vox_size
@@ -240,18 +244,20 @@ class CmcStoppingCriterion(object):
             mask or not.
         """
 
-        include_result = interpolate_volume_at_coordinates(
-            self.include_mask, streamlines[:, -1, :], mode='constant',
-            order=3)
+        coords = streamlines[:, -1, :].T - 0.5
+
+        include_result = map_coordinates(
+            self.include_mask, coords, prefilter=False,
+        )
         if streamlines.shape[1] < self.min_nb_steps:
-            include_result[:] = 0.
+            include_result[np.arange(streamlines.shape[0])] = 0.
 
-        exclude_result = interpolate_volume_at_coordinates(
-            self.exclude_mask, streamlines[:, -1, :], mode='constant',
-            order=3, cval=1.0)
+        exclude_result = map_coordinates(
+            self.exclude_mask, coords, prefilter=False,
+            cval=1.0
+        )
 
-        # If streamlines are still in 100% WM, don't exit
-        wm_points = include_result + exclude_result <= 0
+        not_continue_points = np.ones((streamlines.shape[0])).astype(bool)
 
         # Compute continue probability
         num = np.maximum(0, (1 - include_result - exclude_result))
@@ -259,15 +265,18 @@ class CmcStoppingCriterion(object):
         p = (num / den) ** self.correction_factor
 
         # p >= continue prob -> not continue
-        not_continue_points = np.random.random(streamlines.shape[0]) >= p
-
-        # if by some magic some wm point don't continue, make them continue
-        not_continue_points[wm_points] = False
+        not_continue_points[np.random.random(streamlines.shape[0]) < p] = False
 
         # if the point is in the include map, it has potentially reached GM
         p = (include_result / (include_result + exclude_result))
         stop_include = np.random.random(streamlines.shape[0]) < p
+
         not_continue_points[stop_include] = True
+
+        # If streamlines are still in 100% WM, don't exit
+        wm_points = include_result + exclude_result <= 0
+        # if by some magic some wm point don't continue, make them continue
+        not_continue_points[wm_points] = False
 
         return not_continue_points
 
@@ -347,7 +356,7 @@ class OracleStoppingCriterion(object):
                 predictions[i:j] = scores
 
             scores = np.zeros_like(predictions)
-            scores[predictions <= 0.5] = 1.0
+            scores[predictions <= 0.33333] = 1
             return scores.astype(bool)
 
         return np.array([False] * N)

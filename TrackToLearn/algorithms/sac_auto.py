@@ -195,14 +195,12 @@ class SACAuto(SAC):
         critic_loss = loss_q1 + loss_q2
 
         losses = {
-            'actor_loss': torch.as_tensor(0.,).to(
-                device=critic_loss.device, non_blocking=True),
-            'alpha_loss': torch.as_tensor(0.,).to(
-                device=critic_loss.device, non_blocking=True),
+            'actor_loss': actor_loss.detach(),
+            'alpha_loss': alpha_loss.detach(),
             'critic_loss': critic_loss.detach(),
             'loss_q1': loss_q1.detach(),
             'loss_q2': loss_q2.detach(),
-            'a': alpha.detach(),
+            'alpha': alpha.detach(),
             'Q1': current_Q1.mean().detach(),
             'Q2': current_Q2.mean().detach(),
             'backup': backup.mean().detach(),

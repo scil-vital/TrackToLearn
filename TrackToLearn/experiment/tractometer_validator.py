@@ -371,7 +371,7 @@ class TractometerValidator(Validator):
 
         temp = tempfile.mkdtemp()
         args = args_mocker(
-            False, False, True, self.reference, False, temp, 2, False)
+            False, False, True, self.reference, False, temp, 1, False)
 
         # Segment VB, WPC, IB
         (vb_sft_list, wpc_sft_list, ib_sft_list, nc_sft,

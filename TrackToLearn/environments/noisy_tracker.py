@@ -72,7 +72,7 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
         info: dict
         """
 
-        directions = self._format_actions(actions)
+        directions = actions
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[self.continue_idx,
@@ -83,10 +83,9 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
                 self.fa_map, idx, mode='constant', order=3)
             noise = ((1. - fa) * self.prob)
         else:
-            noise = np.asarray([self.prob] * directions.shape[0])
-
+            noise = self.rng.normal(0., self.prob, size=directions.shape)
         directions = (
-            directions + self.rng.normal(np.zeros((3, 1)), noise).T)
+            directions + noise)
         return super().step(directions)
 
 
@@ -139,7 +138,7 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
         info: dict
         """
 
-        directions = self._format_actions(actions)
+        directions = actions
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[self.continue_idx,
@@ -207,7 +206,7 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
         info: dict
         """
 
-        directions = self._format_actions(actions)
+        directions = actions
 
         if self.fa_map is not None and self.prob > 0.:
             idx = self.streamlines[:, self.length-1].astype(np.int32)

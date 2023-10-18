@@ -52,7 +52,7 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
             # Flip stopping trajectories
             directions[stopping] *= -1
 
-        return super().step(directions)
+        return super().step(actions)
 
 
 class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
@@ -102,4 +102,4 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
             # Flip stopping trajectories
             directions[stopping] *= -1
 
-        return super().step(directions)
+        return super().step(actions)

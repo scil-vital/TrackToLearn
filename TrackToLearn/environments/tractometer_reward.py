@@ -594,7 +594,7 @@ class TractometerReward(Reward):
 
         temp = tempfile.mkdtemp()
         self.args = args_mocker(
-            False, False, True, self.reference, False, temp, 2, False)
+            False, False, True, self.reference, False, temp, 1, False)
 
         # Load
         (self.gt_tails, self.gt_heads, self.bundle_names, self.list_rois,

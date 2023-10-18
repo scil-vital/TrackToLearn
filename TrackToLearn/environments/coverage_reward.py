@@ -25,16 +25,16 @@ class CoverageReward(Reward):
     ):
         self.name = 'coverage_reward'
 
-        mask = mask.data
+        self.mask = mask.data
 
-        wm_density = np.zeros_like(mask, dtype=int)
+        self.coverage = np.zeros_like(mask, dtype=int)
 
-        while not np.all(mask == 0.):
-            eroded_mask = binary_erosion(mask).astype(int)
-            wm_density += eroded_mask
-            mask = eroded_mask
-        self.max_density = np.max(wm_density)
-        self.inv_density = self.max_density - wm_density
+        # while not np.all(mask == 0.):
+        #     eroded_mask = binary_erosion(mask).astype(int)
+        #     wm_density += eroded_mask
+        #     mask = eroded_mask
+        # self.max_density = np.max(wm_density)
+        # self.inv_density = self.max_density - wm_density
 
     def __call__(
         self,
@@ -53,10 +53,16 @@ class CoverageReward(Reward):
             Array containing the reward
         """
         N, L, P = streamlines.shape
+        idx = streamlines[:, -1, :]
         # Get last streamlines coordinates
-        density = interpolate_volume_at_coordinates(
-            self.inv_density, streamlines[:, -1, :], mode='constant', order=3)
-        return density / self.max_density
+        coverage = interpolate_volume_at_coordinates(
+            self.coverage, idx, mode='constant', order=0)
+        x, y, z = idx[..., 0], idx[..., 1], idx[..., 2]
+        self.coverage[tuple(x, y, z)] = 1.
+        # wm = interpolate_volume_at_coordinates(
+        #     self.mask, streamlines[:, -1, :], mode='constant', order=3)
+
+        return 1 - coverage
 
     def reset(self):
 

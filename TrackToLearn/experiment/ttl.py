@@ -312,14 +312,9 @@ class TrackToLearnExperiment(Experiment):
 
         # Save tractogram so it can be looked at, used by the tractometer
         # and more
-        if i is not None:
-            filename = pjoin(
-                self.experiment_path, "tractogram_{}_{}_{}_{}.trk".format(
-                    self.experiment, self.name, self.valid_subject_id, i))
-        else:
-            filename = pjoin(
-                self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                    self.experiment, self.name, self.valid_subject_id))
+        filename = pjoin(
+            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
+                self.experiment, self.name, self.valid_subject_id))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.

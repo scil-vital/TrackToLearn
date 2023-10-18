@@ -124,6 +124,7 @@ class BaseEnv(object):
         add_neighborhood_mm = env_dto['add_neighborhood']
 
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
+
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
         self.oracle_filter = False
 
@@ -259,9 +260,9 @@ class BaseEnv(object):
                                          self.affine_vox2rasmm,
                                          self.device)
 
-            tractometer_reward = TractometerReward(env_dto['scoring_data'],
-                                                   self.reference,
-                                                   self.affine_vox2rasmm)
+            # tractometer_reward = TractometerReward(env_dto['scoring_data'],
+            #                                        self.reference,
+            #                                        self.affine_vox2rasmm)
 
             # Reward streamlines according to coverage of the WM mask.
             cover_reward = CoverageReward(self.tracking_mask)
@@ -275,13 +276,13 @@ class BaseEnv(object):
                  target_reward,
                  length_reward,
                  oracle_reward,
-                 tractometer_reward,
+                 # tractometer_reward,
                  cover_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
                  self.oracle_weighting,
-                 self.tractometer_weighting,
+                 # self.tractometer_weighting,
                  self.coverage_weighting])
 
         # ==========================================
@@ -302,12 +303,12 @@ class BaseEnv(object):
                                                         self.device)
 
         # Filter out streamlines according to the Continuous Map Criterion
-        if self.cmc:
-            self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
-                                                  self.exclude_mask.data,
-                                                  self.affine_vox2rasmm,
-                                                  self.step_size,
-                                                  self.min_nb_steps)
+        # if self.cmc:
+        #     self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
+        #                                           self.exclude_mask.data,
+        #                                           self.affine_vox2rasmm,
+        #                                           self.step_size,
+        #                                           self.min_nb_steps)
 
     @classmethod
     def from_dataset(
