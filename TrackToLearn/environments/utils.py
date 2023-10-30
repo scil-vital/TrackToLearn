@@ -2,11 +2,11 @@ import numpy as np
 import torch
 
 from dipy.tracking import metrics as tm
+from dwi_ml.data.processing.volume.interpolation import \
+    torch_trilinear_interpolation
 from multiprocessing import Pool
+from scipy.ndimage.interpolation import map_coordinates
 
-from TrackToLearn.environments.interpolation import (
-    interpolate_volume_at_coordinates,
-    torch_trilinear_interpolation)
 from TrackToLearn.utils.utils import normalize_vectors
 
 
@@ -139,8 +139,9 @@ def is_inside_mask(
         or not.
     """
     # Get last streamlines coordinates
-    return interpolate_volume_at_coordinates(
-        mask, streamlines[:, -1, :], mode='constant', order=0) >= threshold
+    return map_coordinates(
+        mask, streamlines[:, -1, :].T - 0.5,
+        mode='constant', order=0) >= threshold
 
 
 def is_outside_mask(
@@ -169,8 +170,9 @@ def is_outside_mask(
     """
 
     # Get last streamlines coordinates
-    return interpolate_volume_at_coordinates(
-        mask, streamlines[:, -1, :], mode='constant', order=0) < threshold
+    return map_coordinates(
+        mask, streamlines[:, -1, :].T - 0.5, mode='constant', order=0
+    ) < threshold
 
 
 def is_too_long(streamlines: np.ndarray, max_nb_steps: int):

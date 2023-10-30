@@ -59,6 +59,7 @@ class RLAlgorithm(object):
         self,
         initial_state,
         env: BaseEnv,
+        prob: float = 0.,
         compress=False,
     ):
         """
@@ -88,7 +89,7 @@ class RLAlgorithm(object):
             # Select action according to policy + noise to make tracking
             # probabilistic
             with torch.no_grad():
-                action = self.agent.select_action(state)
+                action = self.agent.select_action(state, probabilistic=prob)
             # Perform action
             next_state, reward, done, *_ = env.step(
                 action.to(device='cpu', copy=True).numpy())

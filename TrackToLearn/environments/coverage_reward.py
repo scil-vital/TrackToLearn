@@ -1,12 +1,10 @@
 import numpy as np
 
 from fury import window, actor
-from scipy.ndimage import binary_erosion
+from scipy.ndimage import binary_erosion, map_coordinates, spline_filter
 
 from TrackToLearn.datasets.utils import MRIDataVolume
 
-from TrackToLearn.environments.interpolation import (
-    interpolate_volume_at_coordinates)
 from TrackToLearn.environments.reward import Reward
 
 
@@ -25,16 +23,12 @@ class CoverageReward(Reward):
     ):
         self.name = 'coverage_reward'
 
-        self.mask = mask.data
+        self.mask = mask.data.astype(int)
 
-        self.coverage = np.zeros_like(mask, dtype=int)
+        erosion = binary_erosion(self.mask)
 
-        # while not np.all(mask == 0.):
-        #     eroded_mask = binary_erosion(mask).astype(int)
-        #     wm_density += eroded_mask
-        #     mask = eroded_mask
-        # self.max_density = np.max(wm_density)
-        # self.inv_density = self.max_density - wm_density
+        self.coverage = spline_filter(
+            np.ascontiguousarray((self.mask - erosion).astype(int)), order=3)
 
     def __call__(
         self,
@@ -53,16 +47,12 @@ class CoverageReward(Reward):
             Array containing the reward
         """
         N, L, P = streamlines.shape
-        idx = streamlines[:, -1, :]
-        # Get last streamlines coordinates
-        coverage = interpolate_volume_at_coordinates(
-            self.coverage, idx, mode='constant', order=0)
-        x, y, z = idx[..., 0], idx[..., 1], idx[..., 2]
-        self.coverage[tuple(x, y, z)] = 1.
-        # wm = interpolate_volume_at_coordinates(
-        #     self.mask, streamlines[:, -1, :], mode='constant', order=3)
 
-        return 1 - coverage
+        coords = streamlines[:, -1, :] - 0.5
+
+        coverage = map_coordinates(
+            self.coverage, coords.T, mode='constant', prefilter=False)
+        return coverage
 
     def reset(self):
 
@@ -76,7 +66,7 @@ class CoverageReward(Reward):
             streamlines, linewidth=1.0)
         scene.add(line_actor)
 
-        slice_actor = actor.slicer(self.inv_density.astype(int))
+        slice_actor = actor.slicer(self.coverage.astype(int))
         scene.add(slice_actor)
 
         showm = window.ShowManager(scene, reset_camera=True)

@@ -29,6 +29,7 @@ class Tracker(object):
         n_actor: int,
         interface_seeding: bool,
         no_retrack: bool,
+        prob: float = 0.,
         compress: float = 0.0,
         min_length: float = 20,
         max_length: float = 200,
@@ -55,6 +56,7 @@ class Tracker(object):
         self.n_actor = n_actor
         self.interface_seeding = interface_seeding
         self.no_retrack = no_retrack
+        self.prob = prob
         self.compress = compress
         self.min_length = min_length
         self.max_length = max_length
@@ -110,7 +112,7 @@ class Tracker(object):
 
                 # Track forward
                 self.alg.validation_episode(
-                    state, self.env)
+                    state, self.env, self.prob)
 
                 if not self.interface_seeding:
                     batch_tractogram = self.env.get_streamlines(
@@ -119,7 +121,7 @@ class Tracker(object):
 
                     # Track backwards
                     self.alg.validation_episode(
-                        state, self.back_env)
+                        state, self.back_env, self.prob)
                     batch_tractogram = self.back_env.get_streamlines(
                         space=space, filter_streamlines=True)
                 else:
@@ -135,7 +137,7 @@ class Tracker(object):
 
                     streamline_length = length(item.streamline)
 
-                    flag = item.data_for_streamline['flags']
+                    # flag = item.data_for_streamline['flags']
                     seed_dict = {}
                     if self.save_seeds:
                         seed = item.data_for_streamline['seeds']
@@ -254,7 +256,8 @@ class Tracker(object):
                 state = self.env.reset(start, end)
 
                 # Track forward
-                reward = self.alg.validation_episode(state, self.env)
+                reward = self.alg.validation_episode(
+                    state, self.env, self.prob)
 
                 if not self.interface_seeding:
                     batch_tractogram = self.env.get_streamlines()
@@ -263,7 +266,7 @@ class Tracker(object):
 
                     # Track backwards
                     reward = self.alg.validation_episode(
-                        state, self.back_env)
+                        state, self.back_env, self.prob)
                     batch_tractogram = self.back_env.get_streamlines(
                         filter_streamlines=True)
                 else:

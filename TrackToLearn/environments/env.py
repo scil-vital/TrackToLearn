@@ -9,6 +9,9 @@ from dipy.core.geometry import cart2sphere
 from dipy.core.sphere import HemiSphere
 from dipy.data import get_sphere
 from dipy.direction.peaks import reshape_peaks_for_visualization
+from dipy.tracking import utils as track_utils
+from dwi_ml.data.processing.volume.interpolation import \
+    interpolate_volume_in_neighborhood
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
@@ -25,7 +28,7 @@ from TrackToLearn.environments.local_reward import (LengthReward,
                                                     TargetReward)
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
-from TrackToLearn.environments.tractometer_reward import TractometerReward
+# from TrackToLearn.environments.tractometer_reward import TractometerReward
 from TrackToLearn.environments.stopping_criteria import (
     BinaryStoppingCriterion, CmcStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
@@ -157,10 +160,10 @@ class BaseEnv(object):
                 dtype=torch.float16).to(self.device)
 
         # Tracking seeds
-        self.seeds = self._get_tracking_seeds_from_mask(
+        self.seeds = track_utils.random_seeds_from_mask(
             self.seeding_data,
-            self.npv,
-            self.rng)
+            np.eye(4),
+            seeds_count=self.npv)
         print(
             '{} has {} seeds.'.format(self.__class__.__name__,
                                       len(self.seeds)))
@@ -200,7 +203,7 @@ class BaseEnv(object):
             self.stopping_criteria[
                 StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
                 self.oracle_checkpoint,
-                self.min_nb_steps * 2,
+                self.min_nb_steps * 5,
                 self.reference,
                 self.affine_vox2rasmm,
                 self.device)
@@ -292,7 +295,7 @@ class BaseEnv(object):
 
         self.filters = {}
         # Filter out streamlines below the length threshold
-        self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
+        # self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
 
         # Filter out streamlines according to the oracle
         if self.oracle_filter:
@@ -303,12 +306,12 @@ class BaseEnv(object):
                                                         self.device)
 
         # Filter out streamlines according to the Continuous Map Criterion
-        # if self.cmc:
-        #     self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
-        #                                           self.exclude_mask.data,
-        #                                           self.affine_vox2rasmm,
-        #                                           self.step_size,
-        #                                           self.min_nb_steps)
+        if self.cmc:
+            self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
+                                                  self.exclude_mask.data,
+                                                  self.affine_vox2rasmm,
+                                                  self.step_size,
+                                                  self.min_nb_steps)
 
     @classmethod
     def from_dataset(
@@ -667,13 +670,15 @@ class BaseEnv(object):
 
         segments = streamlines[:, -1, :][:, None, :]
 
-        signal = get_sh(
-            segments,
+        N, H, P = segments.shape
+        flat_coords = np.reshape(segments, (N * H, P))
+
+        coords = torch.as_tensor(flat_coords).to(self.device)
+
+        signal, _ = interpolate_volume_in_neighborhood(
             self.data_volume,
-            self.add_neighborhood_vox,
+            coords,
             self.neighborhood_directions,
-            self.n_signal,
-            self.device
         )
 
         N, S = signal.shape

@@ -50,6 +50,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.max_ep = train_dto['max_ep']
         self.log_interval = train_dto['log_interval']
         self.prob = train_dto['prob']
+        self.noise = train_dto['noise']
+
         self.lr = train_dto['lr']
         self.gamma = train_dto['gamma']
 
@@ -162,6 +164,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'n_dirs': self.n_dirs,
             'interface_seeding': self.interface_seeding,
             'no_retrack': self.no_retrack,
+            'prob': self.prob,
+            'noise': self.noise,
             # Reward parameters
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
@@ -233,12 +237,12 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # trainnig
         train_tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, compress=0.0)
+            self.no_retrack, prob=0.0, compress=0.0)
 
         valid_tracker = Tracker(
             alg, valid_env, back_valid_env, self.n_actor,
             self.interface_seeding, self.no_retrack,
-            compress=0.0)
+            prob=self.prob, compress=0.0)
 
         self.validators = []
 

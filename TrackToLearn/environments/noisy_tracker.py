@@ -1,13 +1,12 @@
-import nibabel as nib
 import numpy as np
 
+from scipy.ndimage import map_coordinates, spline_filter
 from typing import Tuple
 
 from TrackToLearn.environments.backward_tracking_env import (
     BackwardTrackingEnvironment)
 from TrackToLearn.environments.retracking_env import RetrackingEnvironment
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
-from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
 
 
 class NoisyTrackingEnvironment(TrackingEnvironment):
@@ -41,10 +40,10 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
             include_mask,
             exclude_mask)
 
-        self.prob = env_dto['prob']
+        self.noise = env_dto['noise']
         self.fa_map = None
         if env_dto['fa_map']:
-            self.fa_map = env_dto['fa_map'].data
+            self.fa_map = spline_filter(env_dto['fa_map'].data, order=3)
         self.max_action = 1.
 
     def step(
@@ -74,16 +73,16 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
 
         directions = actions
 
-        if self.fa_map is not None and self.prob > 0.:
+        if self.fa_map is not None and self.noise > 0.:
             idx = self.streamlines[self.continue_idx,
                                    self.length-1].astype(np.int32)
 
-            # Get peaks at streamline end
-            fa = interpolate_volume_at_coordinates(
-                self.fa_map, idx, mode='constant', order=3)
-            noise = ((1. - fa) * self.prob)
+            # Get FA at streamline end
+            fa = map_coordinates(
+                self.fa_map, idx.T - 0.5, prefilter=False)
+            noise = ((1. - fa) * self.noise)
         else:
-            noise = self.rng.normal(0., self.prob, size=directions.shape)
+            noise = self.rng.normal(0., self.noise, size=directions.shape)
         directions = (
             directions + noise)
         return super().step(directions)
@@ -107,10 +106,10 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
 
         super().__init__(env, env_dto)
 
-        self.prob = env_dto['prob']
+        self.noise = env_dto['noise']
         self.fa_map = None
         if env_dto['fa_map']:
-            self.fa_map = env_dto['fa_map'].data
+            self.fa_map = spline_filter(env_dto['fa_map'].data, order=3)
         self.max_action = 1.
 
     def step(
@@ -140,16 +139,16 @@ class NoisyRetrackingEnvironment(RetrackingEnvironment):
 
         directions = actions
 
-        if self.fa_map is not None and self.prob > 0.:
+        if self.fa_map is not None and self.noise > 0.:
             idx = self.streamlines[self.continue_idx,
                                    self.length-1].astype(np.int32)
 
-            # Get peaks at streamline end
-            fa = interpolate_volume_at_coordinates(
-                self.fa_map, idx, mode='constant', order=0)
-            noise = ((1. - fa) * self.prob)
+            # Get FA at streamline end
+            fa = map_coordinates(
+                self.fa_map, idx.T - 0.5, prefilter=False)
+            noise = ((1. - fa) * self.noise)
         else:
-            noise = np.asarray([self.prob] * len(directions))
+            noise = np.asarray([self.noise] * len(directions))
 
         directions = (
             directions + self.rng.normal(np.zeros((3, 1)), noise).T)
@@ -174,10 +173,10 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
 
         super().__init__(env, env_dto)
 
-        self.prob = env_dto['prob']
+        self.noise = env_dto['noise']
         self.fa_map = None
         if env_dto['fa_map']:
-            self.fa_map = env_dto['fa_map'].data
+            self.fa_map = spline_filter(env_dto['fa_map'].data, order=3)
         self.max_action = 1.
 
     def step(
@@ -208,19 +207,15 @@ class BackwardNoisyTrackingEnvironment(BackwardTrackingEnvironment):
 
         directions = actions
 
-        if self.fa_map is not None and self.prob > 0.:
+        if self.fa_map is not None and self.noise > 0.:
             idx = self.streamlines[:, self.length-1].astype(np.int32)
 
-            # Use affine to map coordinates in mask space
-            indices_mask = nib.affines.apply_affine(
-                np.linalg.inv(self.affine_vox2mask), idx).astype(np.int32)
-
-            # Get peaks at streamline end
-            fa = interpolate_volume_at_coordinates(
-                self.fa_map, indices_mask, mode='constant', order=0)
-            noise = ((1. - fa) * self.prob)
+            # Get FA at streamline end
+            fa = map_coordinates(
+                self.fa_map, idx.T - 0.5, prefilter=False)
+            noise = ((1. - fa) * self.noise)
         else:
-            noise = np.asarray([self.prob] * len(directions))
+            noise = np.asarray([self.noise] * len(directions))
 
         directions = (
             directions + self.rng.normal(np.zeros((3, 1)), noise).T)

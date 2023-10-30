@@ -173,7 +173,7 @@ class BinaryStoppingCriterion(object):
             Array telling whether a streamline's last coordinate is outside the
             mask or not.
         """
-        coords = streamlines[:, -1, :].T -0.5
+        coords = streamlines[:, -1, :].T - 0.5
         return map_coordinates(
             self.mask, coords, prefilter=False
         ) < self.threshold
@@ -356,7 +356,7 @@ class OracleStoppingCriterion(object):
                 predictions[i:j] = scores
 
             scores = np.zeros_like(predictions)
-            scores[predictions <= 0.33333] = 1
+            scores[predictions <= 0.5] = 1
             return scores.astype(bool)
 
         return np.array([False] * N)

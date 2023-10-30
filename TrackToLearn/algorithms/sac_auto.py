@@ -161,7 +161,8 @@ class SACAuto(SAC):
         state, action, next_state, reward, not_done = \
             batch
 
-        pi, logp_pi = self.agent.act(state)
+        pi, logp_pi = self.agent.act(
+            state, probabilistic=1.0)
         alpha_loss = -(self.log_alpha * (
             logp_pi + self.target_entropy).detach()).mean()
         alpha = self.log_alpha.exp()
@@ -174,7 +175,8 @@ class SACAuto(SAC):
 
         with torch.no_grad():
             # Target actions come from *current* agent
-            next_action, logp_next_action = self.agent.act(next_state)
+            next_action, logp_next_action = self.agent.act(
+                next_state, probabilistic=1.0)
 
             # Compute the target Q value
             target_Q1, target_Q2 = self.target.critic(
@@ -200,7 +202,7 @@ class SACAuto(SAC):
             'critic_loss': critic_loss.detach(),
             'loss_q1': loss_q1.detach(),
             'loss_q2': loss_q2.detach(),
-            'alpha': alpha.detach(),
+            'entropy': alpha.detach(),
             'Q1': current_Q1.mean().detach(),
             'Q2': current_Q2.mean().detach(),
             'backup': backup.mean().detach(),

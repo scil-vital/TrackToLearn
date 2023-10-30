@@ -94,7 +94,7 @@ class MaxEntropyActor(Actor):
     def forward(
         self,
         state: torch.Tensor,
-        stochastic: bool,
+        probabilistic: float,
     ) -> torch.Tensor:
         """ Forward propagation of the actor.
         Outputs an un-noisy un-normalized action
@@ -105,14 +105,14 @@ class MaxEntropyActor(Actor):
         log_std = p[:, self.action_dim:]
 
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
-        std = torch.exp(log_std)
 
+        std = torch.exp(log_std) * probabilistic
         pi_distribution = Normal(mu, std, validate_args=False)
+        pi_action = pi_distribution.rsample()
 
-        if stochastic:
-            pi_action = pi_distribution.rsample()
-        else:
-            pi_action = mu
+        # std = torch.exp(log_std)
+        # pi_distribution = Normal(mu, std, validate_args=False)
+        # pi_action = mu
 
         # Trick from Spinning Up's implementation:
         # Compute logprob from Gaussian, and then apply correction for Tanh
@@ -273,7 +273,7 @@ class ActorCritic(object):
         """
         return self.actor(state)
 
-    def select_action(self, state: np.array, stochastic=False) -> np.ndarray:
+    def select_action(self, state: np.array, probabilistic=0.0) -> np.ndarray:
         """ Move state to torch tensor, select action and
         move it back to numpy array
 
@@ -420,7 +420,7 @@ class SACActorCritic(ActorCritic):
             state_dim, action_dim, hidden_dims,
         ).to(device)
 
-    def act(self, state: torch.Tensor, stochastic=True) -> torch.Tensor:
+    def act(self, state: torch.Tensor, probabilistic=1.0) -> torch.Tensor:
         """ Select action according to actor
 
         Parameters:
@@ -433,10 +433,10 @@ class SACActorCritic(ActorCritic):
             action: torch.Tensor
                 Action selected by the policy
         """
-        action, logprob = self.actor(state, stochastic)
+        action, logprob = self.actor(state, probabilistic)
         return action, logprob
 
-    def select_action(self, state: np.array, stochastic=False) -> np.ndarray:
+    def select_action(self, state: np.array, probabilistic=0.0) -> np.ndarray:
         """ Move state to torch tensor, select action and
         move it back to numpy array
 
@@ -454,6 +454,6 @@ class SACActorCritic(ActorCritic):
         if len(state.shape) < 2:
             state = state[None, :]
 
-        action, _ = self.act(state, stochastic)
+        action, _ = self.act(state, probabilistic)
 
         return action

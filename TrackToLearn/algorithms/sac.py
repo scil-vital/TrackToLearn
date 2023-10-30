@@ -123,7 +123,7 @@ class SAC(DDPG):
         """
 
         # Select action according to policy + noise for exploration
-        action = self.agent.select_action(state, stochastic=True)
+        action = self.agent.select_action(state, probabilistic=1.0)
 
         return action
 

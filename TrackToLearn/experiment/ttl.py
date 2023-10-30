@@ -117,7 +117,7 @@ class TrackToLearnExperiment(Experiment):
             'sphere': self.sphere
             if hasattr(self, 'sphere') else None,
             'action_type': self.action_type,
-            'prob': self.prob,
+            'noise': self.noise,
             'npv': self.npv,
             'rng': self.rng,
             'reference': self.reference_file,
@@ -328,7 +328,7 @@ class TrackToLearnExperiment(Experiment):
             streamlines,
             self.reference_file,
             Space.RASMM,
-            origin=Origin.NIFTI,
+            origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,
             data_per_point=data_per_point)
 

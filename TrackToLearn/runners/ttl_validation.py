@@ -59,6 +59,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.reference_file = valid_dto['reference_file']
 
         self.prob = valid_dto['prob']
+        self.noise = valid_dto['noise']
         self.agent = valid_dto['agent']
         self.n_actor = valid_dto['n_actor']
         self.npv = valid_dto['npv']
@@ -185,7 +186,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         # Initialize Tracker, which will handle streamline generation
         tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, compress=0.0,
+            self.no_retrack, prob=self.prob, compress=0.0,
             min_length=self.min_length, max_length=self.max_length)
 
         # Run tracking
