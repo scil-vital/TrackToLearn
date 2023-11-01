@@ -12,6 +12,8 @@ from dipy.direction.peaks import reshape_peaks_for_visualization
 from dipy.tracking import utils as track_utils
 from dwi_ml.data.processing.volume.interpolation import \
     interpolate_volume_in_neighborhood
+from dwi_ml.data.processing.space.neighborhood import \
+    get_neighborhood_vectors_axes
 from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
@@ -28,12 +30,12 @@ from TrackToLearn.environments.local_reward import (LengthReward,
                                                     TargetReward)
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
-# from TrackToLearn.environments.tractometer_reward import TractometerReward
+from TrackToLearn.environments.tractometer_reward import TractometerReward
 from TrackToLearn.environments.stopping_criteria import (
     BinaryStoppingCriterion, CmcStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
-    get_neighborhood_directions, get_sh, is_too_curvy, is_too_long)
+    is_too_curvy, is_too_long)
 from TrackToLearn.utils.utils import from_polar, from_sphere, normalize_vectors
 
 # from dipy.io.utils import get_reference_info
@@ -154,10 +156,10 @@ class BaseEnv(object):
             self.add_neighborhood_vox = convert_length_mm2vox(
                 add_neighborhood_mm,
                 self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.tensor(
-                get_neighborhood_directions(
-                    radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(self.device)
+            self.neighborhood_directions = torch.cat(
+                (torch.zeros((1, 3)),
+                 get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
+            ).to(self.device)
 
         # Tracking seeds
         self.seeds = track_utils.random_seeds_from_mask(
@@ -238,7 +240,7 @@ class BaseEnv(object):
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.coverage_weighting = env_dto['coverage_weighting']
-        self.tractometer_weighting = 10
+        self.tractometer_weighting = 0
 
         # Oracle reward parameters
         self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
@@ -263,9 +265,9 @@ class BaseEnv(object):
                                          self.affine_vox2rasmm,
                                          self.device)
 
-            # tractometer_reward = TractometerReward(env_dto['scoring_data'],
-            #                                        self.reference,
-            #                                        self.affine_vox2rasmm)
+            tractometer_reward = TractometerReward(None,
+                                                   self.reference,
+                                                   self.affine_vox2rasmm)
 
             # Reward streamlines according to coverage of the WM mask.
             cover_reward = CoverageReward(self.tracking_mask)
@@ -279,13 +281,13 @@ class BaseEnv(object):
                  target_reward,
                  length_reward,
                  oracle_reward,
-                 # tractometer_reward,
+                 tractometer_reward,
                  cover_reward],
                 [self.alignment_weighting,
                  self.target_bonus_factor,
                  self.length_weighting,
                  self.oracle_weighting,
-                 # self.tractometer_weighting,
+                 self.tractometer_weighting,
                  self.coverage_weighting])
 
         # ==========================================
@@ -295,7 +297,7 @@ class BaseEnv(object):
 
         self.filters = {}
         # Filter out streamlines below the length threshold
-        # self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
+        self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
 
         # Filter out streamlines according to the oracle
         if self.oracle_filter:
@@ -540,10 +542,10 @@ class BaseEnv(object):
             self.add_neighborhood_vox = convert_length_mm2vox(
                 step_size_mm,
                 self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.tensor(
-                get_neighborhood_directions(
-                    radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(self.device)
+            self.neighborhood_directions = torch.cat(
+                (torch.zeros((1, 3)),
+                 get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
+            ).to(self.device)
 
         # Compute maximum length
         self.max_nb_steps = int(self.max_length / step_size_mm)

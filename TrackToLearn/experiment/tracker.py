@@ -5,7 +5,7 @@ from tqdm import tqdm
 from typing import Tuple
 
 from dipy.io.stateful_tractogram import Space
-from dipy.tracking.streamlinespeed import compress_streamlines, length
+from dipy.tracking.streamlinespeed import compress_streamlines
 from nibabel.streamlines import Tractogram
 from nibabel.streamlines.tractogram import LazyTractogram
 from nibabel.streamlines.tractogram import TractogramItem
@@ -135,8 +135,6 @@ class Tracker(object):
                         streamline += 0.5
                         streamline *= vox_size
 
-                    streamline_length = length(item.streamline)
-
                     # flag = item.data_for_streamline['flags']
                     seed_dict = {}
                     if self.save_seeds:
@@ -147,11 +145,8 @@ class Tracker(object):
                         streamline = compress_streamlines(
                             streamline, compress_th_vox)
 
-                    if (self.min_length < streamline_length <
-                            self.env.max_length):
-
-                        yield TractogramItem(
-                            streamline, seed_dict, {})
+                    yield TractogramItem(
+                        streamline, seed_dict, {})
 
         tractogram = LazyTractogram.from_data_func(tracking_generator)
 
@@ -267,11 +262,9 @@ class Tracker(object):
                     # Track backwards
                     reward = self.alg.validation_episode(
                         state, self.back_env, self.prob)
-                    batch_tractogram = self.back_env.get_streamlines(
-                        filter_streamlines=True)
+                    batch_tractogram = self.back_env.get_streamlines()
                 else:
-                    batch_tractogram = self.env.get_streamlines(
-                        filter_streamlines=True)
+                    batch_tractogram = self.env.get_streamlines()
 
                 yield batch_tractogram, reward
 

@@ -257,17 +257,18 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
         stopping_stats = self.stopping_stats(valid_tractogram)
         print(stopping_stats)
-        self.comet_monitor.log_losses(stopping_stats, i_episode)
+        if valid_tractogram:
+            self.comet_monitor.log_losses(stopping_stats, i_episode)
 
-        filename = self.save_rasmm_tractogram(valid_tractogram)
-        scores = self.score_tractogram(filename)
+            filename = self.save_rasmm_tractogram(valid_tractogram)
+            scores = self.score_tractogram(filename)
+            print(scores)
+            self.comet_monitor.log_losses(scores, i_episode)
         self.save_model(alg)
 
         # Display the results of the untrained network
         self.log(
             valid_tractogram, env, valid_reward, i_episode)
-        print(scores)
-        self.comet_monitor.log_losses(scores, i_episode)
 
         # Main training loop
         while i_episode < self.max_ep:

@@ -1,60 +1,9 @@
 import numpy as np
-import torch
-
 from dipy.tracking import metrics as tm
-from dwi_ml.data.processing.volume.interpolation import \
-    torch_trilinear_interpolation
 from multiprocessing import Pool
 from scipy.ndimage.interpolation import map_coordinates
 
 from TrackToLearn.utils.utils import normalize_vectors
-
-
-def get_sh(
-    segments,
-    data_volume,
-    add_neighborhood_vox,
-    neighborhood_directions,
-    history,
-    device
-) -> np.ndarray:
-    """ Get the sh coefficients at the end of streamlines
-    """
-
-    N, H, P = segments.shape
-    flat_coords = np.reshape(segments, (N * H, P))
-
-    coords = torch.as_tensor(flat_coords).to(device)
-    n_coords = coords.shape[0]
-
-    if add_neighborhood_vox:
-        # Extend the coords array with the neighborhood coordinates
-        coords = torch.repeat_interleave(
-            coords,
-            neighborhood_directions.size()[0],
-            axis=0)
-
-        coords[:, :3] += \
-            neighborhood_directions.repeat(n_coords, 1)
-
-        # Evaluate signal as if all coords were independent
-        partial_signal = torch_trilinear_interpolation(
-            data_volume, coords)
-
-        # Reshape signal into (n_coords, new_feature_size)
-        new_feature_size = partial_signal.size()[-1] * \
-            neighborhood_directions.size()[0]
-    else:
-        partial_signal = torch_trilinear_interpolation(
-            data_volume,
-            coords).type(torch.float32)
-        new_feature_size = partial_signal.size()[-1]
-
-    signal = torch.reshape(partial_signal, (N, history * new_feature_size))
-
-    assert len(signal.size()) == 2, signal.size()
-
-    return signal
 
 
 def get_neighborhood_directions(

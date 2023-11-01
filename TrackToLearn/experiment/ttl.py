@@ -268,6 +268,8 @@ class TrackToLearnExperiment(Experiment):
         """ TODO
         """
         # TODO: Add comments
+        if tractogram is None:
+            return {}
         flags = tractogram.data_per_streamline['flags']
         stats = {}
         for f in StoppingFlags:
@@ -363,8 +365,10 @@ class TrackToLearnExperiment(Experiment):
         filename:
             Filename to save a screenshot of the rendered environment.
         """
-
-        lens = [len(s) for s in valid_tractogram.streamlines]
+        if valid_tractogram:
+            lens = [len(s) for s in valid_tractogram.streamlines]
+        else:
+            lens = [0]
         avg_valid_reward = valid_reward / len(lens)
         avg_length = np.mean(lens)  # Euclidian length
 

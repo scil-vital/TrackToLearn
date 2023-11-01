@@ -582,6 +582,9 @@ class TractometerReward(Reward):
 
         self.name = 'tractometer_reward'
 
+        if base_dir is None:
+            return
+
         self.gt_config = os.path.join(base_dir, 'scil_scoring_config.json')
 
         self.gt_dir = base_dir

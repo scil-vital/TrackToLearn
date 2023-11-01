@@ -11,12 +11,13 @@ SCORING_DATA=${DATASET_FOLDER}/datasets/${SUBJECT_ID}/scoring_data
 
 # Data params
 dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
-reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_t1.nii.gz
+reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_T1.nii.gz
 
 n_actor=50000
 npv=33
 min_length=20
 max_length=200
+prob=1.0
 
 EXPERIMENT=$1
 ID=$2
@@ -29,14 +30,14 @@ for SEED in "${seeds[@]}"
 do
   for SUBJECT_ID in "${subjectids[@]}"
   do
-    for prob in "${validstds[@]}"
+    for noise in "${validstds[@]}"
     do
       EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
       SCORING_DATA=${DATASET_FOLDER}/datasets/${SUBJECT_ID}/scoring_data
       DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
 
       dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
-      reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/masks/${SUBJECT_ID}_wm.nii.gz
+      reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_T1.nii.gz
       filename=tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".tck
 
       echo $DEST_FOLDER/model/hyperparameters.json
@@ -51,14 +52,19 @@ do
         $DEST_FOLDER/model/hyperparameters.json \
         ${DEST_FOLDER}/${filename} \
         --prob="${prob}" \
+        --noise="${noise}" \
         --npv="${npv}" \
         --n_actor="${n_actor}" \
         --min_length="$min_length" \
         --max_length="$max_length" \
         --use_gpu \
-        --binary_stopping_threshold=0.1
+        --binary_stopping_threshold=0.000000001 \
+        --oracle_validator \
+        --oracle_filter \
+        --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt' \
+        # --scoring_data=${SCORING_DATA} \
 
-      validation_folder=$DEST_FOLDER/scoring_"${prob}"_"${SUBJECT_ID}"_${npv}
+      validation_folder=$DEST_FOLDER/scoring_"${noise}"_"${SUBJECT_ID}"_${npv}_filtered
 
       mkdir -p $validation_folder
 
