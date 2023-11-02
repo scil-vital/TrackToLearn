@@ -22,7 +22,6 @@ prob=1.0
 EXPERIMENT=$1
 ID=$2
 
-validstds=(0.0)
 subjectids=(ismrm2015)
 seeds=(1111 2222 3333 4444 5555)
 
@@ -30,60 +29,55 @@ for SEED in "${seeds[@]}"
 do
   for SUBJECT_ID in "${subjectids[@]}"
   do
-    for noise in "${validstds[@]}"
-    do
-      EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
-      SCORING_DATA=${DATASET_FOLDER}/datasets/${SUBJECT_ID}/scoring_data
-      DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
+    EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
+    SCORING_DATA=${DATASET_FOLDER}/datasets/${SUBJECT_ID}/scoring_data
+    DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
 
-      dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
-      reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_T1.nii.gz
-      filename=tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".tck
+    dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
+    reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_T1.nii.gz
+    filename=tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".tck
 
-      echo $DEST_FOLDER/model/hyperparameters.json
-      ttl_validation.py \
-        "$DEST_FOLDER" \
-        "$EXPERIMENT" \
-        "$ID" \
-        "${dataset_file}" \
-        "${SUBJECT_ID}" \
-        "${reference_file}" \
-        $DEST_FOLDER/model \
-        $DEST_FOLDER/model/hyperparameters.json \
-        ${DEST_FOLDER}/${filename} \
-        --prob="${prob}" \
-        --noise="${noise}" \
-        --npv="${npv}" \
-        --n_actor="${n_actor}" \
-        --min_length="$min_length" \
-        --max_length="$max_length" \
-        --use_gpu \
-        --binary_stopping_threshold=0.000000001 \
-        --oracle_validator \
-        --oracle_filter \
-        --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt' \
-        # --scoring_data=${SCORING_DATA} \
+    echo $DEST_FOLDER/model/hyperparameters.json
+    ttl_validation.py \
+      "$DEST_FOLDER" \
+      "$EXPERIMENT" \
+      "$ID" \
+      "${dataset_file}" \
+      "${SUBJECT_ID}" \
+      "${reference_file}" \
+      $DEST_FOLDER/model \
+      $DEST_FOLDER/model/hyperparameters.json \
+      ${DEST_FOLDER}/${filename} \
+      --prob="${prob}" \
+      --npv="${npv}" \
+      --n_actor="${n_actor}" \
+      --min_length="$min_length" \
+      --max_length="$max_length" \
+      --use_gpu \
+      --binary_stopping_threshold=0.1 \
+      --oracle_validator \
+      --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt' \
+      # --scoring_data=${SCORING_DATA} \
 
-      validation_folder=$DEST_FOLDER/scoring_"${noise}"_"${SUBJECT_ID}"_${npv}_filtered
+    validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}
 
-      mkdir -p $validation_folder
+    mkdir -p $validation_folder
 
-      mv $DEST_FOLDER/${filename} $validation_folder/
+    mv $DEST_FOLDER/${filename} $validation_folder/
 
-      if [[ -d ${validation_folder}/scoring ]]; then
-        rm -r $validation_folder/scoring
-      fi
-      ./scripts/tractometer.sh $validation_folder/${filename} $validation_folder/scoring ./
+    if [[ -d ${validation_folder}/scoring ]]; then
+      rm -r $validation_folder/scoring
+    fi
+    ./scripts/tractometer.sh $validation_folder/${filename} $validation_folder/scoring ./
 
-      # python scripts/score_tractogram.py $validation_folder/tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".trk
-      #   "$SCORING_DATA" \
-      #   $validation_folder \
-      #   --save_full_vc \
-      #   --save_full_ic \
-      #   --save_full_nc \
-      #   --compute_ic_ib \
-      #   --save_ib \
-      #   --save_vb -f -v
-    done
+    # python scripts/score_tractogram.py $validation_folder/tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".trk
+    #   "$SCORING_DATA" \
+    #   $validation_folder \
+    #   --save_full_vc \
+    #   --save_full_ic \
+    #   --save_full_nc \
+    #   --compute_ic_ib \
+    #   --save_ib \
+    #   --save_vb -f -v
   done
 done

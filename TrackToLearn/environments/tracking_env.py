@@ -239,11 +239,18 @@ class TrackingEnvironment(BaseEnv):
 
         # If the last point triggered a stopping criterion based on
         # angle, remove it so as not to produce ugly kinked streamlines.
-        flags = is_flag_set(
+        curvature_flags = is_flag_set(
             self.flags, StoppingFlags.STOPPING_CURVATURE)
 
-        # IMPORTANT: The Tractometer seems to give better scores if the
-        # last point is included. Moreover, the oracle will wildly
+        # Reduce overreach by removing the last point if it triggered
+        # a mask-based stopping criterion.
+        mask_flags = is_flag_set(
+            self.flags, StoppingFlags.STOPPING_MASK)
+
+        # Remove the last point if it triggered one of these two flags.
+        flags = np.logical_or(curvature_flags, mask_flags)
+
+        # IMPORTANT: The oracle will wildly
         # overestimate the tractogram if the last point is not included
         # since the last point (and segment) is what made it stop tracking.
         # **Therefore** the last point should be included as much as possible.

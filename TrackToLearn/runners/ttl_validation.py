@@ -79,8 +79,11 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.dense_oracle_weighting = valid_dto['dense_oracle_weighting']
         self.sparse_oracle_weighting = valid_dto['sparse_oracle_weighting']
         self.oracle_validator = valid_dto['oracle_validator']
-        self.oracle_stopping_criterion = valid_dto['oracle_stopping_criterion']
+        self.oracle_stopping_criterion = \
+            valid_dto['oracle_stopping_criterion']
 
+        self.binary_stopping_threshold = \
+            valid_dto['binary_stopping_threshold']
         # Tractometer parameters
         self.tractometer_validator = valid_dto['tractometer_validator']
         self.scoring_data = valid_dto['scoring_data']
@@ -108,8 +111,6 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.n_dirs = hyperparams['n_dirs']
             self.interface_seeding = hyperparams['interface_seeding']
             self.cmc = hyperparams.get('cmc', False)
-            self.binary_stopping_threshold = hyperparams.get(
-                'binary_stopping_threshold', 0.1)
             self.asymmetric = hyperparams.get('asymmetric', False)
             self.no_retrack = hyperparams.get('no_retrack', False)
             self.action_type = hyperparams.get("action_type", "cartesian")
