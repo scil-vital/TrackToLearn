@@ -4,12 +4,12 @@
 
 ### Installation and setup
 
-**Right now, only python 3.8 is supported.**
+**Right now, only python 3.10 is supported.**
 
 It is recommended to use `virtualenv` to run the code
 
 ``` bash
-virtualenv .env --python=python3.8
+virtualenv .env --python=python3.10
 source .env/bin/activate
 ```
 
@@ -22,14 +22,14 @@ Then, install the dependencies and setup the repo with
 pip install -r requirements.txt
 # Install some specific requirements directly from git
 # scilpy 1.3.0 requires a deprecated version of sklearn on pypi
-SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True pip install git+https://github.com/scilus/scilpy@1.3.0#egg=scilpy
+pip install git+https://github.com/scilus/scilpy@1.5.0#egg=scilpy
 pip install git+https://github.com/scil-vital/dwi_ml#egg=dwi_ml
 pip install git+https://github.com/scilus/ismrm_2015_tractography_challenge_scoring.git
 # Load the project into the environment
 pip install -e .
 ```
 
-TrackToLearn was developed using `torch==1.9.1` with CUDA 11. You may have to change the torch version in `requirements.txt` to suit your local installation (i.e CPU-only `torch` or using CUDA 10).
+TrackToLearn was developed using `torch==1.13.1` with CUDA 11. You may have to change the torch version in `requirements.txt` to suit your local installation (i.e CPU-only `torch` or using CUDA 10).
 
 Still getting errors during installation ? See the wiki: [https://github.com/scil-vital/TrackToLearn/wiki/Troubleshooting](https://github.com/scil-vital/TrackToLearn/wiki/Troubleshooting) or open an issue !
 
