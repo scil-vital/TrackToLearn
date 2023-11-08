@@ -84,7 +84,7 @@ def add_sac_auto_args(parser):
 
 
 def parse_args():
-    """ Generate a tractogram from a trained recurrent model. """
+    """ Generate a tractogram from a trained model. """
     parser = argparse.ArgumentParser(
         description=parse_args.__doc__,
         formatter_class=RawTextHelpFormatter)
@@ -100,11 +100,13 @@ def main():
     args = parse_args()
     print(args)
 
+    # Create comet-ml experiment
     experiment = CometExperiment(project_name=args.experiment,
                                  workspace=args.workspace, parse_args=False,
                                  auto_metric_logging=False,
                                  disabled=not args.use_comet)
 
+    # Create and run experiment
     sac_auto_experiment = SACAutoTrackToLearnTraining(
         # Dataset params
         vars(args),

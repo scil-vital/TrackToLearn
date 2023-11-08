@@ -34,7 +34,7 @@ class Actor(nn.Module):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dims: int
+            hidden_dims: str
                 String representing layer widths
 
         """
@@ -77,7 +77,7 @@ class MaxEntropyActor(Actor):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dims: int
+            hidden_dims: str
                 String representing layer widths
 
         """
@@ -96,23 +96,32 @@ class MaxEntropyActor(Actor):
         state: torch.Tensor,
         probabilistic: float,
     ) -> torch.Tensor:
-        """ Forward propagation of the actor.
-        Outputs an un-noisy un-normalized action
-        """
+        """ Forward propagation of the actor. Log probability is computed
+        from the Gaussian distribution of the action and correction
+        for the Tanh squashing is applied.
 
+        Parameters:
+        -----------
+        state: torch.Tensor
+            Current state of the environment
+        probabilistic: float
+            Factor to multiply the standard deviation by when sampling.
+            0 means a deterministic policy, 1 means a fully stochastic.
+        """
+        # Compute mean and log_std from neural network. Instead of
+        # have two separate outputs, we have one output of size
+        # action_dim * 2. The first action_dim are the means, and
+        # the last action_dim are the log_stds.
         p = self.layers(state)
         mu = p[:, :self.action_dim]
         log_std = p[:, self.action_dim:]
-
+        # Constrain log_std inside [LOG_STD_MIN, LOG_STD_MAX]
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
-
+        # Compute std from log_std
         std = torch.exp(log_std) * probabilistic
+        # Sample from Gaussian distribution using reparametrization trick
         pi_distribution = Normal(mu, std, validate_args=False)
         pi_action = pi_distribution.rsample()
-
-        # std = torch.exp(log_std)
-        # pi_distribution = Normal(mu, std, validate_args=False)
-        # pi_action = mu
 
         # Trick from Spinning Up's implementation:
         # Compute logprob from Gaussian, and then apply correction for Tanh
@@ -121,11 +130,13 @@ class MaxEntropyActor(Actor):
         # original SAC paper (arXiv 1801.01290) and look in appendix C.
         # This is a more numerically-stable equivalent to Eq 21.
         logp_pi = pi_distribution.log_prob(pi_action).sum(axis=-1)
+        # Squash correction
         logp_pi -= (2*(np.log(2) - pi_action -
                        F.softplus(-2*pi_action))).sum(axis=1)
 
+        # Run actions through tanh to get -1, 1 range
         pi_action = self.output_activation(pi_action)
-
+        # Return action and logprob
         return pi_action, logp_pi
 
 
@@ -189,7 +200,7 @@ class DoubleCritic(Critic):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dims: int
+            hidden_dims: str
                 String representing layer widths
 
         """
@@ -281,6 +292,8 @@ class ActorCritic(object):
         -----------
             state: np.array
                 State of the environment
+            probabilistic: float
+                Unused as TD3 does not use probabilistic actions.
 
         Returns:
         --------
@@ -357,7 +370,9 @@ class ActorCritic(object):
 
 
 class TD3ActorCritic(ActorCritic):
-    """ Module that handles the actor and the critic
+    """ Module that handles the actor and the critic for TD3
+    The actor is the same as the DDPG actor, but the critic is different.
+
     """
 
     def __init__(
@@ -374,8 +389,9 @@ class TD3ActorCritic(ActorCritic):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dims: int
+            hidden_dims: str
                 String representing layer widths
+            device: torch.device
 
         """
         self.device = device
@@ -406,9 +422,9 @@ class SACActorCritic(ActorCritic):
                 Size of input state
             action_dim: int
                 Size of output action
-            hidden_dim: int
-                Width of network. Presumes all intermediary
-                layers are of same size for simplicity
+            hidden_dims: str
+                String representing layer widths
+            device: torch.device
 
         """
         self.device = device
@@ -427,23 +443,30 @@ class SACActorCritic(ActorCritic):
         -----------
             state: torch.Tensor
                 Current state of the environment
+            probabilistic: float
+                Factor to multiply the standard deviation by when sampling
+                actions.
 
         Returns:
         --------
             action: torch.Tensor
                 Action selected by the policy
+            logprob: torch.Tensor
+                Log probability of the action
         """
         action, logprob = self.actor(state, probabilistic)
         return action, logprob
 
     def select_action(self, state: np.array, probabilistic=0.0) -> np.ndarray:
-        """ Move state to torch tensor, select action and
-        move it back to numpy array
+        """ Act on a state and return an action.
 
         Parameters:
         -----------
             state: np.array
                 State of the environment
+            probabilistic: float
+                Factor to multiply the standard deviation by when sampling
+                actions.
 
         Returns:
         --------

@@ -42,6 +42,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             Dictionnary containing the training parameters.
             Put into a dictionnary to prevent parameter errors if modified.
         """
+        # TODO: Find a better way to pass parameters around
+
+        # Experiment parameters
         self.experiment_path = train_dto['path']
         self.experiment = train_dto['experiment']
         self.name = train_dto['id']
@@ -52,6 +55,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.prob = train_dto['prob']
         self.noise = train_dto['noise']
 
+        # Training parameters
         self.lr = train_dto['lr']
         self.gamma = train_dto['gamma']
 
@@ -66,9 +70,11 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.rng_seed = train_dto['rng_seed']
         self.npv = train_dto['npv']
 
+        # Angular thresholds
         self.theta = train_dto['theta']
         self.epsilon = train_dto['epsilon']
 
+        # More tracking parameters
         self.min_length = train_dto['min_length']
         self.max_length = train_dto['max_length']
         self.interface_seeding = train_dto['interface_seeding']
@@ -133,6 +139,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         self.hyperparameters = {
             # RL parameters
+            # TODO: Make sure all parameters are logged
             'name': self.name,
             'experiment': self.experiment,
             'max_ep': self.max_ep,
@@ -181,10 +188,14 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         }
 
     def save_hyperparameters(self):
-
+        """ Save hyperparameters to json file
+        """
+        # Add input and action size to hyperparameters
+        # These are added here because they are not known before
         self.hyperparameters.update({'input_size': self.input_size,
                                      'action_size': self.action_size,
                                      'voxel_size': str(self.voxel_size)})
+
         directory = pjoin(self.experiment_path, "model")
         with open(
             pjoin(directory, "hyperparameters.json"),
@@ -197,6 +208,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                     separators=(',', ': ')))
 
     def save_model(self, alg):
+        """ Save the model state to disk
+        """
 
         directory = pjoin(self.experiment_path, "model")
         if not os.path.exists(directory):
@@ -222,10 +235,14 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 The RL algorithm, either TD3, PPO or any others
             env: BaseEnv
                 The tracking environment
-            back_env: BaseEnv
+            back_env: BaseEnv, optional
                 The backward tracking environment. Should be more or less
                 the same as the "forward" tracking environment but initalized
                 with half-streamlines
+            valid_env: BaseEnv
+                The validation tracking environment (forward).
+            back_valid_env: BaseEnv, optional
+                The backward validation tracking environment.
         """
 
         # Current epoch
@@ -244,8 +261,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.interface_seeding, self.no_retrack,
             prob=self.prob, compress=0.0)
 
+        # Setup validators, which will handle validation and scoring
+        # of the generated streamlines
         self.validators = []
-
         if self.tractometer_validator:
             self.validators.append(TractometerValidator(
                 self.scoring_data, self.reference_file))
@@ -282,10 +300,15 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             tractogram, losses, reward, reward_factors = \
                 train_tracker.track_and_train()
 
+            # Compute average streamline length
             lengths = [len(s) for s in tractogram]
-            avg_length = np.mean(lengths)  # Euclidian length
+            avg_length = np.mean(lengths)  # Nb. of steps
+
             # Keep track of how many transitions were gathered
             t += sum(lengths)
+
+            # Compute average reward per streamline
+            # Should I use the mean or the sum ?
             avg_reward = reward / self.n_actor
 
             print(
@@ -300,7 +323,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.train_length_monitor.end_epoch(i_episode)
 
             i_episode += 1
-
+            # Update comet logs
             if self.use_comet and self.comet_experiment is not None:
                 mean_ep_reward_factors = mean_rewards(reward_factors)
                 self.comet_monitor.log_losses(
@@ -333,7 +356,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 self.comet_monitor.log_losses(scores, i_episode)
                 self.save_model(alg)
 
-        # Validation run
+        # End of training, save the model and hyperparameters and track
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
         stopping_stats = self.stopping_stats(valid_tractogram)
         print(stopping_stats)
@@ -351,8 +374,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.save_model(alg)
 
     def run(self):
-        """
-        Main method where the magic happens
+        """ Prepare the environment, algorithm and trackers and run the
+        training loop
         """
 
         # Instantiate environment. Actions will be fed to it and new
@@ -364,7 +387,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Get example state to define NN input size
         self.input_size = env.get_state_size()
         self.action_size = env.get_action_size()
-        self.voxel_size = env.get_voxel_size()
 
         # Voxel size
         self.voxel_size = env.get_voxel_size()
@@ -374,37 +396,31 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # The RL training algorithm
         alg = self.get_alg(max_traj_length)
 
-        # Save hyperparameters to differentiate experiments later
+        # Save hyperparameters
         self.save_hyperparameters()
 
+        # Setup monitors to monitor training as it goes along
         self.setup_monitors()
 
         # Setup comet monitors to monitor experiment as it goes along
         if self.use_comet:
             self.setup_comet()
 
-        # If included, load pretrained policies
-        if self.load_agent:
-            alg.agent.load(self.load_agent)
-            alg.target.load(self.load_agent)
-
         # Start training !
         self.rl_train(alg, env, back_env, valid_env, back_valid_env)
-
-        torch.cuda.empty_cache()
 
 
 def add_rl_args(parser):
     # Add RL training arguments.
-    parser.add_argument('--max_ep', default=200000, type=int,
+    parser.add_argument('--max_ep', default=1000, type=int,
                         help='Number of episodes to run the training '
                         'algorithm')
-    parser.add_argument('--log_interval', default=20, type=int,
+    parser.add_argument('--log_interval', default=50, type=int,
                         help='Log statistics, update comet, save the model '
                         'and hyperparameters at n steps')
-    parser.add_argument('--lr', default=1e-6, type=float,
+    parser.add_argument('--lr', default=1e-5, type=float,
                         help='Learning rate')
-    parser.add_argument('--gamma', default=0.925, type=float,
+    parser.add_argument('--gamma', default=0.99, type=float,
                         help='Gamma param for reward discounting')
 
     add_reward_args(parser)

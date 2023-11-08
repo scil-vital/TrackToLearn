@@ -1,34 +1,10 @@
-import functools
 import numpy as np
-import torch
 
 from nibabel.streamlines import Tractogram
 from typing import Tuple
 
-from TrackToLearn.datasets.utils import (
-    convert_length_mm2vox,
-)
-
-from TrackToLearn.environments.coverage_reward import CoverageReward
-from TrackToLearn.environments.reward import RewardFunction
-from TrackToLearn.environments.local_reward import (
-    PeaksAlignmentReward,
-    TargetReward,
-    LengthReward)
-from TrackToLearn.environments.oracle_reward import OracleReward
 
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
-
-from TrackToLearn.environments.stopping_criteria import (
-    AngularErrorCriterion,
-    BinaryStoppingCriterion,
-    CmcStoppingCriterion,
-    StoppingFlags)
-
-from TrackToLearn.environments.utils import (
-    get_neighborhood_directions,
-    is_too_curvy,
-    is_too_long)
 
 
 class RetrackingEnvironment(TrackingEnvironment):
@@ -62,113 +38,43 @@ class RetrackingEnvironment(TrackingEnvironment):
         # Tracking parameters
         self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
-        self.theta = theta = env_dto['theta']
+        self.theta = env_dto['theta']
         self.epsilon = env_dto['epsilon']
+
+        self.npv = env_dto['npv']
         self.cmc = env_dto['cmc']
+        self.binary_stopping_threshold = env_dto['binary_stopping_threshold']
         self.asymmetric = env_dto['asymmetric']
 
         self.action_type = env_dto['action_type']
 
-        step_size_mm = env_dto['step_size']
-        min_length_mm = env_dto['min_length']
-        max_length_mm = env_dto['max_length']
-        add_neighborhood_mm = env_dto['add_neighborhood']
+        self.sphere = env.sphere
 
-        # Reward parameters
-        self.alignment_weighting = env_dto['alignment_weighting']
-        self.straightness_weighting = env_dto['straightness_weighting']
-        self.length_weighting = env_dto['length_weighting']
-        self.target_bonus_factor = env_dto['target_bonus_factor']
-        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.oracle_weighting = env_dto['oracle_weighting']
-        self.coverage_weighting = env_dto['coverage_weighting']
-        self.compute_reward = env_dto['compute_reward']
-        self.scoring_data = env_dto['scoring_data']
+        self.oracle_checkpoint = env_dto['oracle_checkpoint']
 
-        self.checkpoint = env_dto['oracle_checkpoint']
+        self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
+        self.oracle_filter = False
 
         self.rng = env_dto['rng']
         self.device = env_dto['device']
 
-        # Stopping criteria is a dictionary that maps `StoppingFlags`
-        # to functions that indicate whether streamlines should stop or not
-        self.stopping_criteria = {}
-        mask_data = env.tracking_mask.data.astype(np.uint8)
+        self.seeding_data = env.seeding_data
 
-        self.step_size = convert_length_mm2vox(
-            step_size_mm,
-            self.affine_vox2rasmm)
-        self.min_length = min_length_mm
-        self.max_length = max_length_mm
+        self.step_size = env.step_size
+        self.min_length = env.min_length
+        self.max_length = env.max_length
 
         # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size_mm)
-        self.min_nb_steps = int(self.min_length / step_size_mm)
+        self.max_nb_steps = env.max_nb_steps
+        self.min_nb_steps = env.min_nb_steps
 
-        # Reward function and reward factors
-        if self.compute_reward:
-            peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
-            target_reward = TargetReward(self.target_mask)
-            length_reward = LengthReward(self.max_nb_steps)
-            oracle_reward = OracleReward(self.checkpoint,
-                                         self.min_nb_steps, self.device)
-            cover_reward = CoverageReward(self.tracking_mask)
-            self.reward_function = RewardFunction(
-                [peaks_reward, target_reward,
-                 length_reward, oracle_reward, cover_reward],
-                [self.alignment_weighting,
-                 self.target_bonus_factor,
-                 self.length_weighting,
-                 self.oracle_weighting,
-                 self.coverage_weighting])
+        # Neighborhood used as part of the state
+        self.add_neighborhood_vox = env.add_neighborhood_vox
+        self.neighborhood_directions = env.neighborhood_directions
 
-        # Stopping criteria
-        # TODO: Switch all criteria to classes like Angular error and mask
-        # Length criterion
-        self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            functools.partial(is_too_long,
-                              max_nb_steps=self.max_nb_steps)
-        # Angle between segment (curvature criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_CURVATURE] = \
-            functools.partial(is_too_curvy, max_theta=theta)
-        # Streamline loop criterion (not used, too slow)
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=360)
-        # Angle between peaks and segments (angular error criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-            self.epsilon,
-            self.peaks)
-        # Mask criterion (either binary or CMC)
-        if self.cmc:
-            cmc_criterion = CmcStoppingCriterion(
-                self.include_mask.data,
-                self.exclude_mask.data,
-                self.affine_vox2rasmm,
-                self.step_size,
-                self.min_nb_steps)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-        else:
-            binary_criterion = BinaryStoppingCriterion(
-                mask_data,
-                0.1)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-                binary_criterion
-
-        # Convert neighborhood to voxel space
-        self.add_neighborhood_vox = None
-        if add_neighborhood_mm:
-            self.add_neighborhood_vox = convert_length_mm2vox(
-                add_neighborhood_mm,
-                self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.tensor(
-                get_neighborhood_directions(
-                    radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(self.device)
+        self.compute_reward = env.compute_reward
+        self.reward_function = env.reward_function
+        self.stopping_criteria = env.stopping_criteria
 
     @classmethod
     def from_env(
@@ -254,14 +160,15 @@ class RetrackingEnvironment(TrackingEnvironment):
         self.lengths = np.ones(N, dtype=np.int32)
         self.length = 1
 
-        # Done flags for tracking backwards
+        # Initialize rewards and done flags
         self.flags = np.zeros(N, dtype=int)
         self.dones = np.full(N, False)
         self.continue_idx = np.arange(N)
-
-        # Signal
-        return self._format_state(
+        self.state = self._format_state(
             self.streamlines[self.continue_idx, :self.length])
+
+        # Setup input signal
+        return self.state[self.continue_idx]
 
     def step(
         self,
@@ -305,22 +212,18 @@ class RetrackingEnvironment(TrackingEnvironment):
         stopping, new_flags = self._is_stopping(
             self.streamlines[self.continue_idx, :self.length],
             is_still_initializing)
+        self.not_stopping = np.logical_not(stopping)
 
         self.new_continue_idx, self.stopping_idx = (
             self.continue_idx[~stopping],
             self.continue_idx[stopping])
 
-        mask_continue = np.in1d(
-            self.continue_idx, self.new_continue_idx, assume_unique=True)
-        diff_stopping_idx = np.arange(
-            len(self.continue_idx))[~mask_continue]
-
         # Set "done" flags for RL
         self.dones[self.stopping_idx] = 1
 
-        # Store stopping flags
+        # Keep the reason why tracking stopped
         self.flags[
-            self.stopping_idx] = new_flags[diff_stopping_idx]
+            self.stopping_idx] = new_flags[stopping]
 
         reward = np.zeros(self.streamlines.shape[0])
         reward_info = {}

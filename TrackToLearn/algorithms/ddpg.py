@@ -52,21 +52,24 @@ class DDPG(RLAlgorithm):
             Input size for the model
         action_size: int
             Output size for the actor
-        hidden_size: int
-            Width of the model
+        hidden_dims: str
+            Dimensions of the hidden layers for the actor and critic
         action_std: float
-            Standard deviation on actions for exploration
+            Standard deviation of the noise added to the actor's output
         lr: float
-            Learning rate for optimizer
+            Learning rate for the optimizer(s)
         gamma: float
-            Gamma parameter future reward discounting
+            Discount factor
         n_actors: int
-           Number of learners
+            Number of actors to use
+        batch_size: int
+            Batch size to sample the replay buffer
+        replay_size: int
+            Size of the replay buffer
         rng: np.random.RandomState
-            rng for randomness. Should be fixed with a seed
-        device: torch.device,
-            Device to use for processing (CPU or GPU)
-            Should always on GPU
+            Random number generator
+        device: torch.device
+            Device to train on. Should always be cuda:0
         """
 
         self.input_size = input_size
@@ -119,6 +122,8 @@ class DDPG(RLAlgorithm):
         state: torch.Tensor
     ) -> np.ndarray:
         """ Sample an action according to the algorithm.
+        DDPG uses a deterministic policy, so no noise is added to the action
+        to explore.
         """
 
         # Select action according to policy + noise for exploration
@@ -153,13 +158,13 @@ class DDPG(RLAlgorithm):
         Returns
         -------
         running_reward: float
-            Cummulative training steps reward
-        actor_loss: float
-            Policty gradient loss of actor
-        critic_loss: float
-            MSE loss of critic
+            Sum of rewards gathered during the episode
+        running_losses: dict
+            Dict. containing losses and training-related metrics.
         episode_length: int
-            Length of episode aka how many transitions were gathered
+            Length of the episode
+        running_reward_factors: dict
+            Dict. containing the factors that contributed to the reward
         """
 
         running_reward = 0
@@ -239,15 +244,15 @@ class DDPG(RLAlgorithm):
 
         Parameters
         ----------
-        replay_buffer: ReplayBuffer
-            Replay buffer that contains transitions
-        batch_size: int
-            Batch size to sample the memory
+        batch: tuple
+            Tuple containing the batch of data to train on, including state,
+            action, next_state, reward, not_done.
 
         Returns
         -------
         losses: dict
-            Dict. containing losses and training-related metrics.
+            Dictionary containing the losses for the actor and critic and
+            various other metrics.
         """
         self.total_it += 1
 
@@ -260,7 +265,7 @@ class DDPG(RLAlgorithm):
             noise = torch.randn_like(action) * (self.action_std * 2)
             next_action = self.target.actor(next_state) + noise
 
-            # Compute the target Q value
+            # Compute the target Q value using the target critic
             target_Q = self.target.critic(
                 next_state, next_action)
             target_Q = reward + not_done * self.gamma * target_Q

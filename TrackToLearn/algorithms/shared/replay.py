@@ -348,8 +348,7 @@ class OffPolicyReplayBuffer(object):
         torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
     ]:
         """ Off-policy sampling. Will sample min(batch_size, self.size)
-        transitions in an unordered way. This removes the ability to do
-        GAE and reward discounting after the transitions are sampled.
+        transitions in an unordered way.
 
         Parameters:
         -----------
@@ -379,7 +378,12 @@ class OffPolicyReplayBuffer(object):
         d = self.not_done.index_select(0, ind).to(
             dtype=torch.float32).squeeze(-1).pin_memory()
 
-        return s.to(device=self.device, non_blocking=True), a.to(device=self.device, non_blocking=True), ns.to(device=self.device, non_blocking=True), r.to(device=self.device, non_blocking=True), d.to(device=self.device, non_blocking=True)
+        # Return tensors on the same device as the buffer in pinned memory
+        return (s.to(device=self.device, non_blocking=True),
+                a.to(device=self.device, non_blocking=True),
+                ns.to(device=self.device, non_blocking=True),
+                r.to(device=self.device, non_blocking=True),
+                d.to(device=self.device, non_blocking=True))
 
     def clear_memory(self):
         """ Reset the buffer

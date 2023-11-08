@@ -55,22 +55,24 @@ class SACAuto(SAC):
             Input size for the model
         action_size: int
             Output size for the actor
-        hidden_size: int
-            Width of the model
+        hidden_dims: str
+            Dimensions of the hidden layers
         lr: float
-            Learning rate for optimizer
+            Learning rate for the optimizer(s)
         gamma: float
-            Gamma parameter future reward discounting
+            Discount factor
         alpha: float
-            Initial value of parameter for entropy bonus.
-            Will get optimized.
+            Initial entropy coefficient (temperature).
         n_actors: int
-            Batch size for replay buffer sampling
+            Number of actors to use
+        batch_size: int
+            Batch size to sample the memory
+        replay_size: int
+            Size of the replay buffer
         rng: np.random.RandomState
-            rng for randomness. Should be fixed with a seed
-        device: torch.device,
-            Device to use for processing (CPU or GPU)
-            Should always on GPU
+            Random number generator
+        device: torch.device
+            Device to use for the algorithm. Should be either "cuda:0"
         """
 
         self.max_action = 1.
@@ -90,11 +92,14 @@ class SACAuto(SAC):
         )
 
         # Auto-temperature adjustment
+        # SAC automatically adjusts the temperature to maximize entropy and
+        # thus exploration, but reduces it over time to converge to a
+        # somewhat deterministic policy.
         starting_temperature = np.log(alpha)  # Found empirically
         self.target_entropy = -np.prod(action_size).item()
         self.log_alpha = torch.full(
             (1,), starting_temperature, requires_grad=True, device=device)
-
+        # Optimizer for alpha
         self.alpha_optimizer = torch.optim.Adam(
             [self.log_alpha], lr=lr)
 
@@ -137,36 +142,38 @@ class SACAuto(SAC):
     ) -> Tuple[float, float]:
         """
 
-        SAC Auto improves upon SAC by learning the entropy coefficient
-        instead of making it a hyperparameter.
+        SAC Auto improves upon SAC by automatically adjusting the temperature
+        parameter alpha. This is done by optimizing the temperature parameter
+        alpha to maximize the entropy of the policy. This is done by
+        maximizing the following objective:
+            J_alpha = E_pi [log pi(a|s) + alpha H(pi(.|s))]
+        where H(pi(.|s)) is the entropy of the policy.
 
 
         Parameters
         ----------
-        replay_buffer: ReplayBuffer
-            Replay buffer that contains transitions
-        batch_size: int
-            Batch size to sample the memory
+        batch: Tuple containing the batch of data to train on.
 
         Returns
         -------
-        running_actor_loss: float
-            Average agent loss over all gradient steps
-        running_critic_loss: float
-            Average critic loss over all gradient steps
+        losses: dict
+            Dictionary containing the losses of the algorithm and various
+            other metrics.
         """
         self.total_it += 1
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
             batch
-
+        # Compute \pi_\theta(s_t) and log \pi_\theta(s_t)
         pi, logp_pi = self.agent.act(
             state, probabilistic=1.0)
+        # Compute the temperature loss and the temperature
         alpha_loss = -(self.log_alpha * (
             logp_pi + self.target_entropy).detach()).mean()
         alpha = self.log_alpha.exp()
 
+        # Compute the Q values and the minimum Q value
         q1, q2 = self.agent.critic(state, pi)
         q_pi = torch.min(q1, q2)
 
@@ -178,11 +185,12 @@ class SACAuto(SAC):
             next_action, logp_next_action = self.agent.act(
                 next_state, probabilistic=1.0)
 
-            # Compute the target Q value
+            # Compute the next Q values using the target agent
             target_Q1, target_Q2 = self.target.critic(
                 next_state, next_action)
             target_Q = torch.min(target_Q1, target_Q2)
 
+            # Compute the backup which is the Q-learning "target"
             backup = reward + self.gamma * not_done * \
                 (target_Q - alpha * logp_next_action)
 
@@ -193,7 +201,7 @@ class SACAuto(SAC):
         # MSE loss against Bellman backup
         loss_q1 = F.mse_loss(current_Q1, backup.detach()).mean()
         loss_q2 = F.mse_loss(current_Q2, backup.detach()).mean()
-
+        # Total critic loss
         critic_loss = loss_q1 + loss_q2
 
         losses = {

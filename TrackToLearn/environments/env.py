@@ -5,7 +5,6 @@ import h5py
 import nibabel as nib
 import numpy as np
 import torch
-from dipy.core.geometry import cart2sphere
 from dipy.core.sphere import HemiSphere
 from dipy.data import get_sphere
 from dipy.direction.peaks import reshape_peaks_for_visualization
@@ -43,8 +42,21 @@ from TrackToLearn.utils.utils import from_polar, from_sphere, normalize_vectors
 
 class BaseEnv(object):
     """
-    Abstract tracking environment.
-    TODO: Add more explanations
+    Abstract tracking environment. This class should not be used directly.
+    Instead, use `TrackingEnvironment` or `InferenceTrackingEnvironment`.
+
+    Track-to-Learn environments are based on OpenAI Gym environments. They
+    are used to train reinforcement learning algorithms. They also emulate
+    "Trackers" in dipy by handling streamline propagation, stopping criteria,
+    and seeds.
+
+    Since many streamlines are propagated in parallel, the environment is
+    similar to VectorizedEnvironments in the Gym definition. However, the
+    environment is not vectorized in the sense that it does not reset
+    trajectories (streamlines) independently.
+
+    TODO: reset trajectories independently ?
+
     """
 
     def __init__(
@@ -176,6 +188,9 @@ class BaseEnv(object):
 
         # Stopping criteria is a dictionary that maps `StoppingFlags`
         # to functions that indicate whether streamlines should stop or not
+
+        # TODO: Make all stopping criteria classes.
+        # TODO?: Use dipy's stopping criteria instead of custom ones ?
         self.stopping_criteria = {}
 
         # Length criterion
@@ -294,6 +309,8 @@ class BaseEnv(object):
         # Filters
         # =========================================
         # Filters are applied when calling env.get_streamlines()
+        # They are used to filter out streamlines that do not meet
+        # certain criteria (e.g. length, oracle, CMC, etc.)
 
         self.filters = {}
         # Filter out streamlines below the length threshold
@@ -321,7 +338,7 @@ class BaseEnv(object):
         env_dto: dict,
         split: str,
     ):
-        """ TODO: Comment this
+        """ Initialize the environment from a dataset.
         """
 
         dataset_file = env_dto['dataset_file']
@@ -350,7 +367,8 @@ class BaseEnv(object):
         cls,
         env_dto: dict,
     ):
-        """ TODO: Comment this
+        """ Initialize the environment from files. This is useful for
+        tracking from a trained model.
         """
 
         in_odf = env_dto['in_odf']
@@ -390,7 +408,6 @@ class BaseEnv(object):
         with h5py.File(
                 dataset_file, 'r'
         ) as hdf_file:
-            print(list(hdf_file.keys()))
             assert split_id in ['training', 'validation', 'testing']
             split_set = hdf_file[split_id]
             tracto_data = SubjectData.from_hdf_subject(
@@ -429,7 +446,12 @@ class BaseEnv(object):
         in_mask,
         sh_basis
     ):
-        """ TODO: Docstring and comments
+        """ Load data volumes and masks from files. This is useful for
+        tracking from a trained model.
+
+        If the signal is not in descoteaux07 basis, it will be converted. The
+        WM mask will be loaded and concatenated to the signal. Additionally,
+        peaks will be computed from the signal.
         """
 
         signal = nib.load(signal_file)
@@ -501,12 +523,22 @@ class BaseEnv(object):
         return (signal_volume, peaks_volume, tracking_volume, seeding_volume)
 
     def get_state_size(self):
+        """ Returns the size of the state space by computing the size of
+        an example state.
+        """
+
         example_state = self.reset(0, 1)
         self._state_size = example_state.shape[1]
         return self._state_size
 
     def get_action_size(self):
-        """ TODO: Support spherical actions"""
+        """ Returns the size of the action space. This depends on the
+        action type. If the action type is discrete, the action space is
+        the number of vertices on the sphere. If the action type is polar,
+        the action space is 2 (theta and phi). If the action type is
+        cartesian, the action space is 3 (x, y, z).
+        """
+
         if self.action_type == 'discrete':
             return len(self.sphere.vertices)
         elif self.action_type == 'polar':
@@ -532,6 +564,8 @@ class BaseEnv(object):
         """ Set a different step size (in voxels) than computed by the
         environment. This is necessary when the voxel size between training
         and tracking envs is different.
+
+        TODO: Code should be reused from `__init__` instead of copy-pasted.
         """
 
         self.step_size = convert_length_mm2vox(
@@ -599,42 +633,18 @@ class BaseEnv(object):
         self.obs_rms.update(obs)
         return (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8)
 
-    def _get_tracking_seeds_from_mask(
-        self,
-        mask: np.ndarray,
-        npv: int,
-        rng: np.random.RandomState
-    ) -> np.ndarray:
-        """ Given a binary seeding mask, get seeds in DWI voxel
-        space using the provided affine. TODO: Replace this
-        with scilpy's SeedGenerator
-
-        Parameters
-        ----------
-        mask : 3D `numpy.ndarray`
-            Binary seeding mask
-        npv : int
-        rng : `numpy.random.RandomState`
-
-        Returns
-        -------
-        seeds : `numpy.ndarray`
-        """
-        seeds = []
-        indices = np.array(np.where(mask)).T
-        for idx in indices:
-            seeds_in_seeding_voxel = idx + rng.uniform(
-                -0.5,
-                0.5,
-                size=(npv, 3))
-            seeds.extend(seeds_in_seeding_voxel)
-        seeds = np.array(seeds, dtype=np.float16)
-        return seeds
-
     def _format_actions(
         self,
         actions: np.ndarray,
     ):
+        """ Format actions to be used by the environment. This includes
+        converting spherical actions to cartesian actions, and scaling
+        actions to the step size.
+
+        This is a leftover from an attempt to use spherical and discrete
+        actions.
+        """
+
         if self.action_type == 'polar' and actions.shape[-1] == 2:
             actions = from_polar(actions)
         if self.action_type == 'discrete' and actions.shape[-1] != 3:
@@ -664,58 +674,50 @@ class BaseEnv(object):
         """
         N, L, P = streamlines.shape
 
-        if self.action_type == 'polar':
-            P = P - 1
-
         if N <= 0:
             return []
 
+        # Get the last point of each streamline
         segments = streamlines[:, -1, :][:, None, :]
 
+        # Reshape to get a list of coordinates
         N, H, P = segments.shape
         flat_coords = np.reshape(segments, (N * H, P))
-
         coords = torch.as_tensor(flat_coords).to(self.device)
 
+        # Get the SH coefficients at the last point of each streamline
+        # The neighborhood is used to get the SH coefficients around
+        # the last point
         signal, _ = interpolate_volume_in_neighborhood(
             self.data_volume,
             coords,
-            self.neighborhood_directions,
-        )
-
+            self.neighborhood_directions)
         N, S = signal.shape
 
+        # Placeholder for the final imputs
         inputs = torch.zeros((N, S + (self.n_dirs * P)), device=self.device)
-
+        # Fill the first part of the inputs with the SH coefficients
         inputs[:, :S] = signal
 
+        # Placeholder for the previous directions
         previous_dirs = np.zeros((N, self.n_dirs, P), dtype=np.float32)
         if L > 1:
+            # Compute directions from the streamlines
             dirs = np.diff(streamlines, axis=1)
-
-            if self.action_type == 'polar':
-                X, Y, Z = (dirs[..., 0],
-                           dirs[..., 1],
-                           dirs[..., 2])
-                r, theta, phi = cart2sphere(X, Y, Z)
-
-                dirs = np.stack((theta, phi), axis=-1)
-
+            # Fetch the N last directions
             previous_dirs[:, :min(dirs.shape[1], self.n_dirs), :] = \
                 dirs[:, :-(self.n_dirs+1):-1, :]
 
+        # Flatten the directions to fit in the inputs and send to device
         dir_inputs = torch.reshape(
             torch.from_numpy(previous_dirs).to(self.device),
             (N, self.n_dirs * P))
-
+        # Fill the second part of the inputs with the previous directions
         inputs[:, S:] = dir_inputs
-
-        # if self.normalize_obs and self._state_size is not None:
-        #     inputs = self._normalize(inputs)
 
         return inputs
 
-    def _filter_stopping_streamlines(
+    def _compute_stopping_flags(
         self,
         streamlines: np.ndarray,
         stopping_criteria: Dict[StoppingFlags, Callable]
@@ -760,16 +762,17 @@ class BaseEnv(object):
         pass
 
     def reset(self):
-        """ Initialize tracking seeds and streamlines
+        """ Reset the environment to its initial state.
         """
         if self.compute_reward:
             self.reward_function.reset()
 
     def step():
         """
-        Apply actions and grow streamlines for one step forward
-        Calculate rewards and if the tracking is done, and compute new
-        hidden states
+        Abstract method to be implemented by subclasses which defines
+        the behavior of the environment when taking a step. This includes
+        propagating the streamlines, computing the reward, and checking
+        which streamlines should stop.
         """
         pass
 

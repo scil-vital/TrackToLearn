@@ -70,14 +70,5 @@ do
     fi
     ./scripts/tractometer.sh $validation_folder/${filename} $validation_folder/scoring ./
 
-    # python scripts/score_tractogram.py $validation_folder/tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".trk
-    #   "$SCORING_DATA" \
-    #   $validation_folder \
-    #   --save_full_vc \
-    #   --save_full_ic \
-    #   --save_full_nc \
-    #   --compute_ic_ib \
-    #   --save_ib \
-    #   --save_vb -f -v
   done
 done

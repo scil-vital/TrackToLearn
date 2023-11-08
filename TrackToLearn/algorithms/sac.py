@@ -15,9 +15,9 @@ class SAC(DDPG):
     Based on
 
         Haarnoja, T., Zhou, A., Abbeel, P., & Levine, S. (2018, July). Soft
-        actor-critic: Off-policy maximum entropy deep reinforcement learning with
-        a stochastic actor. In International conference on machine learning
-        (pp. 1861-1870). PMLR.
+        actor-critic: Off-policy maximum entropy deep reinforcement learning
+        with a stochastic actor. In International conference on machine
+        learning (pp. 1861-1870). PMLR.
 
     Implementation is based on Spinning Up's and rlkit
 
@@ -43,28 +43,33 @@ class SAC(DDPG):
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
-        """
+        """ Initialize the algorithm. This includes the replay buffer,
+        the policy and the target policy.
+
         Parameters
         ----------
         input_size: int
             Input size for the model
         action_size: int
             Output size for the actor
-        hidden_size: int
-            Width of the model
+        hidden_dims: str
+            Dimensions of the hidden layers
         lr: float
-            Learning rate for optimizer
+            Learning rate for the optimizer(s)
         gamma: float
-            Gamma parameter future reward discounting
+            Discount factor
         alpha: float
-            Parameter for entropy bonus
+            Entropy regularization coefficient
         n_actors: int
-            Batch size for replay buffer sampling
+            Number of actors to use
+        batch_size: int
+            Batch size for the update
+        replay_size: int
+            Size of the replay buffer
         rng: np.random.RandomState
-            rng for randomness. Should be fixed with a seed
-        device: torch.device,
-            Device to use for processing (CPU or GPU)
-            Should always on GPU
+            Random number generator
+        device: torch.device
+            Device to train on. Should always be cuda:0
         """
 
         self.max_action = 1.
@@ -133,23 +138,24 @@ class SAC(DDPG):
     ) -> Tuple[float, float]:
         """
 
-        SAC improves upon DDPG by:
-            - Introducing entropy into the objective
-            - Using Double Q-Learning to fight overestimation
+        SAC improves over DDPG by introducing an entropy regularization term
+        in the actor loss. This encourages the policy to be more stochastic,
+        which improves exploration. Additionally, SAC uses the minimum of two
+        Q-functions in the value loss, rather than just one Q-function as in
+        DDPG. This helps mitigate positive value biases and makes learning more
+        stable.
 
         Parameters
         ----------
-        replay_buffer: ReplayBuffer
-            Replay buffer that contains transitions
-        batch_size: int
-            Batch size to sample the memory
+        batch: tuple
+            Tuple containing the batch of data to train on, including
+            state, action, next_state, reward, not_done.
 
         Returns
         -------
-        running_actor_loss: float
-            Average policy loss over all gradient steps
-        running_critic_loss: float
-            Average critic loss over all gradient steps
+        losses: dict
+            Dictionary containing the losses for the actor and critic and
+            various other metrics.
         """
         self.total_it += 1
 

@@ -25,7 +25,7 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 lr=0.0005 # Learning rate
-gamma=0.99 # Gamma for reward discounting
+gamma=0.5 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
@@ -34,7 +34,7 @@ prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 
-EXPERIMENT=SAC_Auto_FiberCupTrainExp1
+EXPERIMENT=SAC_Auto_FiberCupTrainCompatibilityTest
 
 ID=$(date +"%F-%H_%M_%S")
 
@@ -54,17 +54,19 @@ do
     "${validation_dataset_file}" \
     "${VALIDATION_SUBJECT_ID}" \
     "${reference_file}" \
-    "${SCORING_DATA}" \
     --max_ep=${max_ep} \
     --log_interval=${log_interval} \
     --lr=${lr} \
     --gamma=${gamma} \
+    --binary_stopping_threshold=0.5 \
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
     --use_gpu \
     --use_comet \
-    --run_tractometer
+    --tractometer_validator \
+    --scoring_data=${SCORING_DATA}
+
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

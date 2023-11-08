@@ -11,7 +11,10 @@ from TrackToLearn.environments.stopping_criteria import (
 
 
 class TrackingEnvironment(BaseEnv):
-    """ Tracking environment.
+    """ Tracking environment. This environment is used to track
+    streamlines using a given model. Like the `BaseEnv`, it is
+    used as both an environment and a "tracker".
+
     TODO: Clean up "_private functions" and public functions. Some could
     go into BaseEnv.
     """
@@ -37,13 +40,15 @@ class TrackingEnvironment(BaseEnv):
             streamline.
         """
         stopping, flags = \
-            self._filter_stopping_streamlines(
+            self._compute_stopping_flags(
                 streamlines, self.stopping_criteria)
         return stopping, flags
 
     def nreset(self, n_seeds: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will
         chose N random seeds among all seeds.
+
+        TODO: Uniformize with `reset` function.
 
         Parameters
         ----------
@@ -86,6 +91,8 @@ class TrackingEnvironment(BaseEnv):
     def reset(self, start: int, end: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will select
         a given batch of seeds.
+
+        TODO: Uniformize with `nreset` function.
 
         Parameters
         ----------
@@ -219,12 +226,21 @@ class TrackingEnvironment(BaseEnv):
         return self.state[self.continue_idx], self.not_stopping
 
     def get_streamlines(
-        self, space=Space.RASMM, filter_streamlines=False
+        self,
+        space=Space.RASMM,
+        filter_streamlines=False
     ) -> StatefulTractogram:
         """ Obtain tracked streamlines from the environment.
-        The last point will be removed if it raised a curvature stopping
-        criteria (i.e. the angle was too high). Otherwise, other last points
-        are kept (TODO: parametrize this ?).
+        The last point will be removed if it raised a curvature or mask
+        stopping criterion.
+
+        Parameters
+        ----------
+        space: Space
+            Space in which to return the streamlines. Default is RASMM.
+        filter_streamlines: bool
+            Whether to filter the streamlines using the filters defined
+            in the environment.
 
         Returns
         -------

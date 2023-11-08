@@ -65,7 +65,7 @@ do
     --theta=${theta} \
     --alignment_weighting=1.0 \
     --hidden_dims='1024-1024-1024' \
-    --n_dirs=100 \
+    --n_dirs=4 \
     --n_actor=${n_actor} \
     --action_type='cartesian' \
     --interface_seeding \
