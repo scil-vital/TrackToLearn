@@ -116,6 +116,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Tractometer parameters
         self.tractometer_validator = train_dto['tractometer_validator']
+        self.tractometer_weighting = train_dto['tractometer_weighting']
         self.scoring_data = train_dto['scoring_data']
 
         self.compute_reward = True  # Always compute reward during training
@@ -181,10 +182,13 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'exclude_penalty_factor': self.exclude_penalty_factor,
             'angle_penalty_factor': self.angle_penalty_factor,
             'coverage_weighting': self.coverage_weighting,
+            # Oracle parameters
             'dense_oracle_weighting': self.dense_oracle_weighting,
             'sparse_oracle_weighting': self.sparse_oracle_weighting,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
+            # Tractometer parameters
+            'tractometer_weighting': self.tractometer_weighting,
         }
 
     def save_hyperparameters(self):

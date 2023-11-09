@@ -96,12 +96,14 @@ class BaseEnv(object):
         # TODO: Split this into several functions, which can
         # be reused in `set_step_size`
 
+        # Reference file
         self.reference = env_dto['reference']
 
-        # Volumes and masks
+        # Affines
         self.affine_vox2rasmm = input_volume.affine_vox2rasmm
         self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
 
+        # Volumes and masks
         self.data_volume = torch.from_numpy(
             input_volume.data).to(env_dto['device'], dtype=torch.float32)
         self.tracking_mask = tracking_mask
@@ -109,9 +111,12 @@ class BaseEnv(object):
         self.include_mask = include_mask
         self.exclude_mask = exclude_mask
         self.peaks = peaks
-        if self.peaks is None:
-            self.peaks
+        mask_data = tracking_mask.data.astype(np.uint8)
+        self.seeding_data = seeding_mask.data.astype(np.uint8)
 
+        # Unused: this is from an attempt to normalize the input data
+        # as is done by the original PPO impl
+        # Does not seem to be necessary here.
         self.normalize_obs = False  # env_dto['normalize']
         self.obs_rms = None
 
@@ -122,12 +127,16 @@ class BaseEnv(object):
         self.n_dirs = env_dto['n_dirs']
         self.theta = theta = env_dto['theta']
         self.epsilon = env_dto['epsilon']
-
+        # Number of seeds per voxel
         self.npv = env_dto['npv']
+        # Whether to use CMC or binary stopping criterion
         self.cmc = env_dto['cmc']
         self.binary_stopping_threshold = env_dto['binary_stopping_threshold']
+        # Whether to use asymmetric fODFs. Has not been tested in
+        # a while.
         self.asymmetric = env_dto['asymmetric']
-
+        # Action type (discrete, polar, cartesian)
+        # The code for polar and discrete actions is not finished.
         self.action_type = env_dto['action_type']
 
         if env_dto['sphere']:
@@ -135,22 +144,25 @@ class BaseEnv(object):
         else:
             self.sphere = None
 
+        # Step-size and min/max lengths are typically defined in mm
+        # by the user, but need to be converted to voxels.
         step_size_mm = env_dto['step_size']
         min_length_mm = env_dto['min_length']
         max_length_mm = env_dto['max_length']
         add_neighborhood_mm = env_dto['add_neighborhood']
 
+        # Oracle parameters
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
-
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
         self.oracle_filter = False
 
+        # Tractometer parameters
+        self.tractometer_weighting = env_dto['tractometer_weighting']
+        self.scoring_data = env_dto['scoring_data']
+
+        # Other parameters
         self.rng = env_dto['rng']
         self.device = env_dto['device']
-
-        mask_data = tracking_mask.data.astype(np.uint8)
-
-        self.seeding_data = seeding_mask.data.astype(np.uint8)
 
         self.step_size = convert_length_mm2vox(
             step_size_mm,
@@ -165,6 +177,8 @@ class BaseEnv(object):
         # Neighborhood used as part of the state
         self.add_neighborhood_vox = None
         if add_neighborhood_mm:
+            # TODO: This is a hack. The neighborhood should be computed
+            # from the step size, not from a separate parameter.
             self.add_neighborhood_vox = convert_length_mm2vox(
                 add_neighborhood_mm,
                 self.affine_vox2rasmm)
@@ -255,7 +269,7 @@ class BaseEnv(object):
         self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
         self.angle_penalty_factor = env_dto['angle_penalty_factor']
         self.coverage_weighting = env_dto['coverage_weighting']
-        self.tractometer_weighting = 0
+        self.tractometer_weighting = env_dto['tractometer_weighting']
 
         # Oracle reward parameters
         self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
@@ -279,8 +293,9 @@ class BaseEnv(object):
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)
-
-            tractometer_reward = TractometerReward(None,
+            # Reward streamlines according to tractometer
+            # This should not be used
+            tractometer_reward = TractometerReward(self.scoring_data,
                                                    self.reference,
                                                    self.affine_vox2rasmm)
 
@@ -338,7 +353,20 @@ class BaseEnv(object):
         env_dto: dict,
         split: str,
     ):
-        """ Initialize the environment from a dataset.
+        """ Initialize the environment from an HDF5.
+
+        Parameters
+        ----------
+        env_dto: dict
+            DTO containing env. parameters
+        split: str
+            Name of the split to load (e.g. 'training', 'validation',
+            'testing').
+
+        Returns
+        -------
+        env: BaseEnv
+            Environment initialized from a dataset.
         """
 
         dataset_file = env_dto['dataset_file']
@@ -369,6 +397,16 @@ class BaseEnv(object):
     ):
         """ Initialize the environment from files. This is useful for
         tracking from a trained model.
+
+        Parameters
+        ----------
+        env_dto: dict
+            DTO containing env. parameters
+
+        Returns
+        -------
+        env: BaseEnv
+            Environment initialized from files.
         """
 
         in_odf = env_dto['in_odf']
@@ -401,6 +439,37 @@ class BaseEnv(object):
 
         Should everything be put into `self` ? Should everything be returned
         instead ?
+
+        Parameters
+        ----------
+        dataset_file: str
+            Path to the HDF5 file containing the dataset.
+        split_id: str
+            Name of the split to load (e.g. 'training',
+            'validation', 'testing').
+        subject_id: str
+            Name of the subject to load (e.g. '100307')
+        interface_seeding: bool
+            Whether to seed from the interface or from the WM.
+
+        Returns
+        -------
+        input_volume: MRIDataVolume
+            Volumetric data containing the SH coefficients
+        tracking_mask: MRIDataVolume
+            Volumetric mask where tracking is allowed
+        include_mask: MRIDataVolume
+            Mask representing the tracking go zones. Only useful if
+            using CMC.
+        exclude_mask: MRIDataVolume
+            Mask representing the tracking no-go zones. Only useful if
+            using CMC.
+        target_mask: MRIDataVolume
+            Mask representing the tracking endpoints
+        seeding_mask: MRIDataVolume
+            Mask where seeding should be done
+        peaks: MRIDataVolume
+            Volume containing the fODFs peaks
         """
 
         print("Loading {} from the {} set.".format(subject_id, split_id))
@@ -452,6 +521,30 @@ class BaseEnv(object):
         If the signal is not in descoteaux07 basis, it will be converted. The
         WM mask will be loaded and concatenated to the signal. Additionally,
         peaks will be computed from the signal.
+
+        Parameters
+        ----------
+        signal_file: str
+            Path to the signal file (e.g. SH coefficients).
+        wm_file: str
+            Path to the WM mask file.
+        in_seed: str
+            Path to the seeding mask file.
+        in_mask: str
+            Path to the tracking mask file.
+        sh_basis: str
+            SH basis of the signal file.
+
+        Returns
+        -------
+        signal_volume: MRIDataVolume
+            Volumetric data containing the SH coefficients
+        peaks_volume: MRIDataVolume
+            Volume containing the fODFs peaks
+        tracking_volume: MRIDataVolume
+            Volumetric mask where tracking is allowed
+        seeding_volume: MRIDataVolume
+            Mask where seeding should be done
         """
 
         signal = nib.load(signal_file)
@@ -525,6 +618,11 @@ class BaseEnv(object):
     def get_state_size(self):
         """ Returns the size of the state space by computing the size of
         an example state.
+
+        Returns
+        -------
+        state_size: int
+            Size of the state space.
         """
 
         example_state = self.reset(0, 1)

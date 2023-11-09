@@ -7,12 +7,8 @@ import torch
 from comet_ml import Experiment as CometExperiment
 
 from TrackToLearn.algorithms.ddpg import DDPG
-from TrackToLearn.experiment.experiment import (add_data_args,
-                                                add_environment_args,
-                                                add_experiment_args,
-                                                add_model_args,
-                                                add_tracking_args)
-from TrackToLearn.experiment.train import TrackToLearnTraining, add_rl_args
+from TrackToLearn.experiment.train import (
+    add_training_args, TrackToLearnTraining)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 assert torch.cuda.is_available()
@@ -77,7 +73,7 @@ class DDPGTrackToLearnTraining(TrackToLearnTraining):
 
 
 def add_ddpg_args(parser):
-    parser.add_argument('--action_std', default=0.3, type=float,
+    parser.add_argument('--action_std', default=0.35, type=float,
                         help='Action STD')
     parser.add_argument('--batch_size', default=2**12, type=int,
                         help='How many tuples to sample from the replay '
@@ -92,14 +88,7 @@ def parse_args():
         description=parse_args.__doc__,
         formatter_class=RawTextHelpFormatter)
 
-    add_experiment_args(parser)
-    add_data_args(parser)
-
-    add_environment_args(parser)
-    add_model_args(parser)
-    add_rl_args(parser)
-    add_tracking_args(parser)
-
+    add_training_args(parser)
     add_ddpg_args(parser)
 
     arguments = parser.parse_args()

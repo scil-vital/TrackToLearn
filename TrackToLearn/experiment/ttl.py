@@ -32,12 +32,12 @@ class TrackToLearnExperiment(Experiment):
     """ Base class for TrackToLearn experiments, even if they're not actually
     RL (such as supervised learning). This "abstract" class provides helper
     methods for loading data, displaying stats and everything that is common
-    to all TrackToLearn experiments
+    to all TrackToLearn experiments.
     """
 
     def run(self):
-        """ Main method where data is loaded, classes are instanciated,
-        everything is set up.
+        """ Abstract version of the main method where data is loaded, classes
+        are instanciated, everything is set up.
         """
         pass
 
@@ -99,6 +99,24 @@ class TrackToLearnExperiment(Experiment):
     def _get_env_dict_and_dto(
         self, interface_tracking_env, no_retrack, noisy
     ) -> Tuple[dict, dict]:
+        """ Get the environment class and the environment DTO.
+
+        Parameters
+        ----------
+        interface_tracking_env: bool
+            Whether tracking is done on the interface or not.
+        no_retrack: bool
+            Whether to retrack or not.
+        noisy: bool
+            Whether to use the noisy environment or not.
+
+        Returns
+        -------
+        class_dict: dict
+            Dictionary of environment classes.
+        env_dto: dict
+            Dictionary of environment parameters.
+        """
 
         env_dto = {
             'dataset_file': self.dataset_file,
@@ -135,6 +153,7 @@ class TrackToLearnExperiment(Experiment):
             'oracle_checkpoint': self.oracle_checkpoint,
             'scoring_data': self.scoring_data,
             'tractometer_validator': self.tractometer_validator,
+            'tractometer_weighting': self.tractometer_weighting,
             'binary_stopping_threshold': self.binary_stopping_threshold,
             'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
@@ -265,13 +284,27 @@ class TrackToLearnExperiment(Experiment):
         return back_env, env
 
     def stopping_stats(self, tractogram):
-        """ TODO
+        """ Compute stopping statistics for a tractogram.
+
+        Parameters
+        ----------
+        tractogram: Tractogram
+            Tractogram to compute statistics on.
+
+        Returns
+        -------
+        stats: dict
+            Dictionary of stopping statistics.
         """
-        # TODO: Add comments
+        # Compute stopping statistics
         if tractogram is None:
             return {}
+        # Stopping statistics are stored in the data_per_streamline
+        # dictionary
         flags = tractogram.data_per_streamline['flags']
         stats = {}
+        # Compute the percentage of streamlines that have a given flag set
+        # for each flag
         for f in StoppingFlags:
             if len(flags) > 0:
                 set_pct = np.mean(is_flag_set(flags, f))
@@ -281,13 +314,21 @@ class TrackToLearnExperiment(Experiment):
         return stats
 
     def score_tractogram(self, filename):
-        """ TODO:
+        """ Score a tractogram using the tractometer or the oracle.
+
+        Parameters
+        ----------
+        filename: str
+            Filename of the tractogram to score.
+
         """
-        # TODO: Add comments
+        # Dict of scores
         all_scores = {}
+
+        # Compute scores for the tractogram according
+        # to each validator.
         for scorer in self.validators:
             scores = scorer(filename)
-
             all_scores.update(scores)
 
         return all_scores

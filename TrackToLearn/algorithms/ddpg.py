@@ -126,13 +126,14 @@ class DDPG(RLAlgorithm):
         to explore.
         """
 
-        # Select action according to policy + noise for exploration
-        a = self.agent.select_action(state)
-        action = (
-            a + self.rng.normal(
-                0, self.max_action * self.action_std,
-                size=a.shape)
-        )
+        with torch.no_grad():
+            # Select action according to policy + noise for exploration
+            a = self.agent.select_action(state)
+            action = (
+                a + torch.normal(
+                    0, self.max_action * self.action_std,
+                    size=a.shape, device=self.device)
+            )
 
         return action
 
@@ -292,10 +293,10 @@ class DDPG(RLAlgorithm):
         self.actor_optimizer.step()
 
         losses = {
-            'actor_loss': actor_loss.item(),
-            'critic_loss': critic_loss.item(),
-            'Q': current_Q.mean().item(),
-            'Q\'': target_Q.mean().item(),
+            'actor_loss': actor_loss.detach(),
+            'critic_loss': critic_loss.detach(),
+            'Q': current_Q.mean().detach(),
+            'Q\'': target_Q.mean().detach(),
         }
 
         # Update the frozen target models
