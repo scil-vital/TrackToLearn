@@ -113,10 +113,12 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.sparse_oracle_weighting = train_dto['sparse_oracle_weighting']
         self.oracle_validator = train_dto['oracle_validator']
         self.oracle_stopping_criterion = train_dto['oracle_stopping_criterion']
+        self.oracle_filter = train_dto['oracle_filter']
 
         # Tractometer parameters
         self.tractometer_validator = train_dto['tractometer_validator']
         self.tractometer_weighting = train_dto['tractometer_weighting']
+        self.tractometer_dilate = train_dto['tractometer_dilate']
         self.scoring_data = train_dto['scoring_data']
 
         self.compute_reward = True  # Always compute reward during training
@@ -187,6 +189,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'sparse_oracle_weighting': self.sparse_oracle_weighting,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
+            'oracle_filter': self.oracle_filter,
             # Tractometer parameters
             'tractometer_weighting': self.tractometer_weighting,
         }
@@ -270,7 +273,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.validators = []
         if self.tractometer_validator:
             self.validators.append(TractometerValidator(
-                self.scoring_data, self.reference_file))
+                self.scoring_data, self.reference_file,
+                dilate_endpoints=self.tractometer_dilate))
         if self.oracle_validator:
             self.validators.append(OracleValidator(
                 self.oracle_checkpoint, self.reference_file, self.device))

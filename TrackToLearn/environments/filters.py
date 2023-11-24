@@ -128,6 +128,6 @@ class OracleFilter:
             scores = self.model.predict(streamlines[i:j])
             predictions[i:j] = scores
 
-        viable = (predictions > 0.5).astype(bool)
+        viable = (predictions >= 0.5).astype(bool)
 
         return tractogram[viable]

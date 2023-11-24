@@ -151,6 +151,7 @@ class TrackToLearnExperiment(Experiment):
             'oracle_validator': self.oracle_validator,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
             'oracle_checkpoint': self.oracle_checkpoint,
+            'oracle_filter': self.oracle_filter,
             'scoring_data': self.scoring_data,
             'tractometer_validator': self.tractometer_validator,
             'tractometer_weighting': self.tractometer_weighting,

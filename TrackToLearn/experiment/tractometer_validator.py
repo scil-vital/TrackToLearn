@@ -334,7 +334,7 @@ class TractometerValidator(Validator):
         self,
         base_dir,
         reference,
-        use_gt_masks_as_all_masks=False
+        dilate_endpoints=1,
     ):
 
         self.name = 'Tractometer'
@@ -343,6 +343,7 @@ class TractometerValidator(Validator):
 
         self.gt_dir = base_dir
         self.reference = reference
+        self.dilation_factor = dilate_endpoints
 
         # Load
         (self.gt_tails, self.gt_heads, self.bundle_names, self.list_rois,
@@ -353,7 +354,7 @@ class TractometerValidator(Validator):
                 reference,
                 self.gt_config,
                 self.gt_dir,
-                use_gt_masks_as_all_masks)
+                False)
 
     def __call__(self, filename):
 
@@ -371,7 +372,8 @@ class TractometerValidator(Validator):
 
         temp = tempfile.mkdtemp()
         args = args_mocker(
-            False, False, True, self.reference, False, temp, 1, False)
+            False, False, True, self.reference, False, temp,
+            self.dilation_factor, False)
 
         # Segment VB, WPC, IB
         (vb_sft_list, wpc_sft_list, ib_sft_list, nc_sft,

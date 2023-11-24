@@ -79,6 +79,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.dense_oracle_weighting = valid_dto['dense_oracle_weighting']
         self.sparse_oracle_weighting = valid_dto['sparse_oracle_weighting']
         self.oracle_validator = valid_dto['oracle_validator']
+        self.oracle_filter = valid_dto['oracle_filter']
         self.oracle_stopping_criterion = \
             valid_dto['oracle_stopping_criterion']
 
@@ -86,6 +87,9 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             valid_dto['binary_stopping_threshold']
         # Tractometer parameters
         self.tractometer_validator = valid_dto['tractometer_validator']
+        self.tractometer_dilate = valid_dto['tractometer_dilate']
+        self.tractometer_weighting = valid_dto['tractometer_weighting']
+
         self.scoring_data = valid_dto['scoring_data']
 
         self.compute_reward = True

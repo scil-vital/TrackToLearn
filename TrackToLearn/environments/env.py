@@ -154,7 +154,7 @@ class BaseEnv(object):
         # Oracle parameters
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
-        self.oracle_filter = False
+        self.oracle_filter = env_dto['oracle_filter']
 
         # Tractometer parameters
         self.tractometer_weighting = env_dto['tractometer_weighting']

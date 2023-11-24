@@ -227,8 +227,11 @@ def add_tractometer_args(parser: ArgumentParser):
     tractom.add_argument('--tractometer_validator', action='store_true',
                          help='Run tractometer during validation to monitor' +
                          ' how the training is doing w.r.t. ground truth.')
-    tractom.add_argument('--tractometer_weighting', default=10, type=float,
+    tractom.add_argument('--tractometer_weighting', default=0, type=float,
                          help='Sparse tractometer weighting for reward.')
+    tractom.add_argument('--tractometer_dilate', default=1, type=int,
+                         help='Dilation factor for the ROIs of the '
+                              'Tractometer.')
 
 
 def add_oracle_args(parser: ArgumentParser):

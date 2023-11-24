@@ -9,7 +9,7 @@ VALIDATION_SUBJECT_ID=fibercup
 SUBJECT_ID=fibercup
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
-SCORING_DATA=${DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID}/scoring_data
+SCORING_DATA=${WORK_DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID}/scoring_data
 
 mkdir -p $WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}
 
@@ -24,22 +24,22 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.0001 # Learning rate
+lr=0.0005 # Learning rate
 gamma=0.95 # Gamma for reward discounting
 
 # Model params
-prob=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=1.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=10 # Seed per voxel
+npv=33 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
-epsilon=30 # Maximum angle for angular error
+n_actor=4096
 
 EXPERIMENT=SAC_Auto_FiberCupTrainOracle
 
 ID=$(date +"%F-%H_%M_%S")
 
-seeds=(1111 2222 3333 4444 5555)
+seeds=(2222 3333 4444 5555)
 
 for rng_seed in "${seeds[@]}"
 do
@@ -62,17 +62,23 @@ do
     --rng_seed=${rng_seed} \
     --npv=${npv} \
     --theta=${theta} \
-    --epsilon=${epsilon} \
     --alignment_weighting=1.0 \
-    --oracle_weighting=10.0 \
-    --coverage_weighting=0.0 \
+    --hidden_dims='1024-1024-1024' \
     --n_dirs=100 \
+    --n_actor=${n_actor} \
     --action_type='cartesian' \
+    --interface_seeding \
+    --prob=${prob} \
     --use_gpu \
     --use_comet \
-    --interface \
-    --run_oracle='feedforward_epoch99_fibercup.ckpt' \
-    --run_tractometer=${SCORING_DATA}
+    --binary_stopping_threshold=0.1 \
+    --coverage_weighting=0.0 \
+    --tractometer_validator \
+    --tractometer_dilate=3 \
+    --scoring_data=${SCORING_DATA} \
+    --oracle_validator \
+    --sparse_oracle_weighting=10.0 \
+    --oracle_checkpoint='epoch_49_fibercup_transformer.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
