@@ -121,14 +121,7 @@ class OracleReward(Reward):
             sft.to_vox()
             sft.to_corner()
 
-            batch_size = 4096
-            N_not_done = len(sft.streamlines)
-            predictions = np.zeros((N_not_done))
-            for i in range(0, N_not_done, batch_size):
-                j = min(N_not_done, i + batch_size)
-                scores = self.model.predict(sft.streamlines[i:j])
-                predictions[i:j] = scores
-
+            predictions = self.model.predict(sft.streamlines)
             # Double indexing to get the indexes. Don't forget you
             # can't assign using double indexes as the first indexing
             # will return a copy of the array.

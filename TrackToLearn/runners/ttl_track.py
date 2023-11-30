@@ -27,6 +27,10 @@ from TrackToLearn.algorithms.sac import SAC
 from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.algorithms.vpg import VPG
 from TrackToLearn.datasets.utils import MRIDataVolume
+from TrackToLearn.experiment.experiment import (
+    add_oracle_args,
+    add_tractometer_args)
+
 from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.ttl import TrackToLearnExperiment
 
@@ -66,6 +70,11 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.out_tractogram = track_dto['out_tractogram']
 
         self.prob = track_dto['prob']
+        self.noise = track_dto['noise']
+
+        self.binary_stopping_threshold = \
+            track_dto['binary_stopping_threshold']
+        self.cmc = track_dto['cmc']
 
         self.n_actor = track_dto['n_actor']
         self.npv = track_dto['npv']
@@ -126,8 +135,14 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.target_bonus_factor = 0.0
         self.exclude_penalty_factor = 0.0
         self.angle_penalty_factor = 0.0
-        self.oracle_weighting = 0.0
+        # Oracle parameters
+        self.oracle_checkpoint = track_dto['oracle_checkpoint']
+        self.dense_oracle_weighting = 0.0
+        self.sparse_oracle_weighting = 0.0
+        self.oracle_validator = False
         self.oracle_filter = False
+        self.oracle_stopping_criterion = \
+            track_dto['oracle_stopping_criterion']
         self.coverage_weighting = 0.0
 
         self.random_seed = track_dto['rng_seed']
@@ -300,16 +315,37 @@ def add_track_args(parser):
                          metavar='M',
                          help='Maximum length of a streamline in mm. '
                          '[%(default)s]')
-    track_g.add_argument('--prob', type=float, default=0.0, metavar='sigma',
-                         help='Add noise ~ N (0, `prob`) to the agent\'s\n'
-                         'output to make tracking more probabilistic.\n'
-                         'Around 0.1 generally gives good results '
-                         '[%(default)s].')
+    tracking_mask_group = parser.add_mutually_exclusive_group(required=True)
+    tracking_mask_group.add_argument(
+        '--cmc', action='store_true',
+        help='If set, use Continuous Mask Criteria to stop tracking.')
+    tracking_mask_group.add_argument(
+        '--binary_stopping_threshold',
+        type=float, default=0.1,
+        help='Lower limit for interpolation of tracking mask value.\n'
+             'Tracking will stop below this threshold.')
+
+    parser.add_argument('--prob', default=0.0, type=float, metavar='%',
+                        help='Factor multiplied to the standard '
+                        'deviation of the direction distribution '
+                        'predicted by the agent at each step. A '
+                        'value of 0.0 makes the agent deterministic, '
+                        'a value of 1.0 makes the agent fully '
+                        'probabilistic.'
+                        '[%(default)s]')
+    parser.add_argument('--noise', default=0.0, type=float, metavar='sigma',
+                        help='Add noise ~ N (0, `prob`) to the agent\'s\n'
+                        'output to make tracking more probabilistic.\n'
+                        'Should be between 0.0 and 0.1.'
+                        '[%(default)s]')
     track_g.add_argument('--fa_map', type=str, default=None,
-                         help='Scale the added noise (see `--prob`) according'
+                         help='Scale the added noise (see `--noise`) according'
                          '\nto the provided FA map (.nii.gz). Optional.')
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Random number generator seed [%(default)s].')
+
+    add_oracle_args(parser)
+    add_tractometer_args(parser)
 
 
 def verify_agent_option(parser, args):

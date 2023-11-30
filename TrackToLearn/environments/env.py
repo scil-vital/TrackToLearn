@@ -329,7 +329,7 @@ class BaseEnv(object):
 
         self.filters = {}
         # Filter out streamlines below the length threshold
-        self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
+        # self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
 
         # Filter out streamlines according to the oracle
         if self.oracle_filter:
