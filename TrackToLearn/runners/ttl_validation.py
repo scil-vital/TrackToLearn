@@ -7,10 +7,9 @@ import random
 import torch
 
 from argparse import RawTextHelpFormatter
-from os.path import join as pjoin
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
-from nibabel.streamlines.tck import TckFile
+from nibabel.streamlines import detect_format
 
 from TrackToLearn.algorithms.a2c import A2C
 from TrackToLearn.algorithms.acktr import ACKTR
@@ -159,9 +158,9 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         print("Subject has a voxel size of {}mm, setting step size to "
               "{}mm.".format(tracking_voxel_size, step_size_mm))
 
-        # if back_env:
-        #     back_env.set_step_size(step_size_mm)
-        # env.set_step_size(step_size_mm)
+        if back_env:
+            back_env.set_step_size(step_size_mm)
+        env.set_step_size(step_size_mm)
 
         # Load agent
         algs = {'VPG': VPG,
@@ -188,28 +187,23 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         # Load pretrained policies
         alg.agent.load(self.agent, 'last_model_state')
 
-        # Initialize Tracker, which will handle streamline generation
         tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, prob=self.prob, compress=0.0,
-            min_length=self.min_length, max_length=self.max_length)
+            self.no_retrack, self.reference_file, compress=0.0,
+            min_length=self.min_length, max_length=self.max_length,
+            save_seeds=False)
 
         # Run tracking
-
-        filename = pjoin(
-            self.experiment_path, self.out_tractogram)
-        filetype = nib.streamlines.detect_format(filename)
-
-        tractogram = tracker.track(apply_affine=filetype == TckFile)
+        filetype = detect_format(self.out_tractogram)
+        tractogram = tracker.track(filetype)
 
         reference = get_reference_info(self.reference_file)
-
-        tractogram.affine_to_rasmm = reference[0]
 
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly
-        nib.streamlines.save(tractogram, filename, header=header)
+        nib.streamlines.save(tractogram, self.out_tractogram, header=header)
+        # print('Saved {} streamlines'.format(len(tractogram)))
 
 
 def add_valid_args(parser):

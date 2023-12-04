@@ -371,10 +371,12 @@ class TrackToLearnExperiment(Experiment):
         sft = StatefulTractogram(
             streamlines,
             self.reference_file,
-            Space.RASMM,
+            Space.VOX,
             origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,
             data_per_point=data_per_point)
+
+        sft.to_rasmm()
 
         save_tractogram(sft, filename, bbox_valid_check=False)
 

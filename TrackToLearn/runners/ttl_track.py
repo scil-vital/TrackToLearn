@@ -11,6 +11,7 @@ from argparse import RawTextHelpFormatter
 from os.path import join
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
+from nibabel.streamlines import detect_format
 from scilpy.io.utils import (add_overwrite_arg,
                              add_sh_basis_args,
                              assert_inputs_exist, assert_outputs_exist,
@@ -157,19 +158,12 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         """
         Main method where the magic happens
         """
-        # Instanciate environment. Actions will be fed to it and new
-        # states will be returned. The environment updates the streamline
-        print('Loading environment.')
-        back_env, env = self.get_tracking_envs()
-
-        # Get example state to define NN input size
-        example_state = env.reset(0, 1)
-        self.input_size = example_state.shape[1]
-        self.action_size = env.get_action_size()
+        # Presume iso vox
+        ref_img = nib.load(self.reference_file)
+        tracking_voxel_size = ref_img.header.get_zooms()[0]
 
         # Set the voxel size so the agent traverses the same "quantity" of
         # voxels per step as during training.
-        tracking_voxel_size = env.get_voxel_size()
         step_size_mm = (tracking_voxel_size / self.voxel_size) * \
             self.step_size
 
@@ -179,9 +173,15 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         print("Subject has a voxel size of {}mm, setting step size to "
               "{}mm.".format(tracking_voxel_size, step_size_mm))
 
-        if back_env:
-            back_env.set_step_size(step_size_mm)
-        env.set_step_size(step_size_mm)
+        self.step_size = step_size_mm
+
+        # Instanciate environment. Actions will be fed to it and new
+        # states will be returned. The environment updates the streamline
+        back_env, env = self.get_tracking_envs()
+        # Get example state to define NN input size
+        example_state = env.reset(0, 1)
+        self.input_size = example_state.shape[1]
+        self.action_size = env.get_action_size()
 
         # Load agent
         algs = {'VPG': VPG,
@@ -212,21 +212,16 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, compress=self.compress,
+            self.no_retrack, self.reference_file, compress=self.compress,
             min_length=self.min_length, max_length=self.max_length,
             save_seeds=self.save_seeds)
 
         # Run tracking
-        tractogram = tracker.track()
+        filetype = detect_format(self.out_tractogram)
+        tractogram = tracker.track(filetype)
 
         reference = get_reference_info(self.reference_file)
 
-        tractogram.affine_to_rasmm = reference[0]
-
-        tractogram.apply_affine(tractogram.affine_to_rasmm)
-
-        filetype = nib.streamlines.detect_format(self.out_tractogram)
-        reference = get_reference_info(self.wm_file)
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly

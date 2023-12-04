@@ -1,11 +1,13 @@
+import nibabel as nib
 import numpy as np
 
 from collections import defaultdict
+from nibabel import Nifti1Image
+from nibabel.streamlines import TrkFile
 from tqdm import tqdm
 from typing import Tuple
 
-from dipy.io.stateful_tractogram import Space
-from dipy.tracking.streamlinespeed import compress_streamlines
+from dipy.tracking.streamlinespeed import compress_streamlines, length
 from nibabel.streamlines import Tractogram
 from nibabel.streamlines.tractogram import LazyTractogram
 from nibabel.streamlines.tractogram import TractogramItem
@@ -29,6 +31,7 @@ class Tracker(object):
         n_actor: int,
         interface_seeding: bool,
         no_retrack: bool,
+        reference: Nifti1Image,
         prob: float = 0.,
         compress: float = 0.0,
         min_length: float = 20,
@@ -49,12 +52,12 @@ class Tracker(object):
             Compression factor when saving streamlines.
 
         """
-
         self.alg = alg
         self.env = env
         self.back_env = back_env
         self.n_actor = n_actor
         self.interface_seeding = interface_seeding
+        self.reference = nib.load(reference)
         self.no_retrack = no_retrack
         self.prob = prob
         self.compress = compress
@@ -64,7 +67,7 @@ class Tracker(object):
 
     def track(
         self,
-        apply_affine=False,
+        tracts_format
     ):
         """ Actual tracking function. Use this if you just want streamlines.
 
@@ -74,9 +77,8 @@ class Tracker(object):
 
         Arguments
         ---------
-        apply_affine: bool
-            Whether to apply an affine or multiply the streamlines
-            by the voxel size. Depends if you're saving a TRK or TCK.
+        tracts_format : TrkFile or TckFile
+            Tractogram format.
 
         Returns:
         --------
@@ -84,27 +86,25 @@ class Tracker(object):
             Tractogram in a generator format.
 
         """
-
         # Presume iso vox
-        vox_size = abs(self.env.affine_vox2rasmm[0][0])
+        vox_size = self.reference.header.get_zooms()[0]
+        scaled_min_length = self.min_length / vox_size
+        scaled_max_length = self.max_length / vox_size
 
         compress_th_vox = self.compress / vox_size
 
         batch_size = self.n_actor
-
-        space = Space.RASMM if apply_affine else Space.VOX
 
         # Shuffle seeds so that massive tractograms wont load "sequentially"
         # when partially displayed
         np.random.shuffle(self.env.seeds)
 
         def tracking_generator():
+            print('Tracking called')
             # Switch policy to eval mode so no gradients are computed
             self.alg.agent.eval()
             # Track for every seed in the environment
-            for i, start in enumerate(
-                tqdm(range(0, len(self.env.seeds), batch_size))
-            ):
+            for start in tqdm(range(0, len(self.env.seeds), batch_size)):
                 # Last batch might not be "full"
                 end = min(start + batch_size, len(self.env.seeds))
 
@@ -115,40 +115,47 @@ class Tracker(object):
                     state, self.env, self.prob)
 
                 if not self.interface_seeding:
-                    batch_tractogram = self.env.get_streamlines(
-                        space=Space.VOX)
+                    batch_tractogram = self.env.get_streamlines()
                     state = self.back_env.reset(batch_tractogram)
 
                     # Track backwards
                     self.alg.validation_episode(
                         state, self.back_env, self.prob)
-                    batch_tractogram = self.back_env.get_streamlines(
-                        space=space, filter_streamlines=True)
+                    batch_tractogram = self.back_env.get_streamlines()
                 else:
-                    batch_tractogram = self.env.get_streamlines(
-                        space=space, filter_streamlines=True)
+                    batch_tractogram = self.env.get_streamlines()
 
                 for item in batch_tractogram:
-
                     streamline = item.streamline
-                    if not apply_affine:
-                        streamline += 0.5
-                        streamline *= vox_size
+                    if scaled_min_length <= length(streamline) \
+                            <= scaled_max_length:
 
-                    # flag = item.data_for_streamline['flags']
-                    seed_dict = {}
-                    if self.save_seeds:
-                        seed = item.data_for_streamline['seeds']
-                        seed_dict = {'seeds': seed-0.5}
+                        if self.compress:
+                            streamline = compress_streamlines(
+                                streamline, compress_th_vox)
 
-                    if self.compress:
-                        streamline = compress_streamlines(
-                            streamline, compress_th_vox)
+                        if tracts_format is TrkFile:
+                            streamline += 0.5
+                            streamline *= vox_size
+                        else:
+                            # Streamlines are dumped in true world space with
+                            # origin center as expected by .tck files.
+                            streamline = np.dot(
+                                streamline,
+                                self.reference.affine[:3, :3]) + \
+                                self.reference.affine[:3, 3]
 
-                    yield TractogramItem(
-                        streamline, seed_dict, {})
+                        # flag = item.data_for_streamline['flags']
+                        seed_dict = {}
+                        if self.save_seeds:
+                            seed = item.data_for_streamline['seeds']
+                            seed_dict = {'seeds': seed-0.5}
+
+                        yield TractogramItem(
+                            streamline, seed_dict, {})
 
         tractogram = LazyTractogram.from_data_func(tracking_generator)
+        tractogram.affine_to_rasmm = self.reference.affine
 
         return tractogram
 

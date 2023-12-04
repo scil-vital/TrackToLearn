@@ -2,7 +2,7 @@ import numpy as np
 
 from typing import Tuple
 
-from dipy.io.stateful_tractogram import Space, StatefulTractogram
+from dipy.io.stateful_tractogram import StatefulTractogram
 from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
@@ -225,11 +225,7 @@ class TrackingEnvironment(BaseEnv):
         # TODO: investigate why `not_stopping` is returned.
         return self.state[self.continue_idx], self.not_stopping
 
-    def get_streamlines(
-        self,
-        space=Space.RASMM,
-        filter_streamlines=False
-    ) -> StatefulTractogram:
+    def get_streamlines(self):
         """ Obtain tracked streamlines from the environment.
         The last point will be removed if it raised a curvature or mask
         stopping criterion.
@@ -245,7 +241,7 @@ class TrackingEnvironment(BaseEnv):
         Returns
         -------
         tractogram: Tractogram
-            Tracked streamlines in RASMM space.
+            Tracked streamlines in voxel space.
 
         """
         # Harvest stopped streamlines and associated data
@@ -279,15 +275,6 @@ class TrackingEnvironment(BaseEnv):
         tractogram = Tractogram(
             streamlines=stopped_streamlines,
             data_per_streamline={"seeds": stopped_seeds,
-                                 "flags": self.flags,
-                                 },
-            affine_to_rasmm=self.affine_vox2rasmm)
-
-        if filter_streamlines:
-            for f, tract_filter in self.filters.items():
-                tractogram = tract_filter(tractogram)
-
-        if space == Space.RASMM:
-            tractogram.apply_affine(self.affine_vox2rasmm)
+                                 "flags": self.flags})
 
         return tractogram

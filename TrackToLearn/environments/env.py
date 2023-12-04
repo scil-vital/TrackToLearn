@@ -23,7 +23,7 @@ from TrackToLearn.datasets.utils import (MRIDataVolume, SubjectData,
                                          set_sh_order_basis)
 from TrackToLearn.environments.coverage_reward import CoverageReward
 from TrackToLearn.environments.filters import (CMCFilter, Filters,
-                                               MinLengthFilter, OracleFilter)
+                                               OracleFilter)
 from TrackToLearn.environments.local_reward import (LengthReward,
                                                     PeaksAlignmentReward,
                                                     TargetReward)
@@ -670,7 +670,14 @@ class BaseEnv(object):
             step_size_mm,
             self.affine_vox2rasmm)
 
+        # Compute maximum length
+        self.max_nb_steps = int(self.max_length / step_size_mm)
+        self.min_nb_steps = int(self.min_length / step_size_mm)
+
+        # Neighborhood used as part of the state
         if self.add_neighborhood_vox:
+            # TODO: This is a hack. The neighborhood should be computed
+            # from the step size, not from a separate parameter.
             self.add_neighborhood_vox = convert_length_mm2vox(
                 step_size_mm,
                 self.affine_vox2rasmm)
@@ -679,40 +686,9 @@ class BaseEnv(object):
                  get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
             ).to(self.device)
 
-        # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size_mm)
-        self.min_nb_steps = int(self.min_length / step_size_mm)
-
-        if self.compute_reward:
-            peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
-            target_reward = TargetReward(self.target_mask)
-            length_reward = LengthReward(self.max_nb_steps)
-            oracle_reward = OracleReward(self.oracle_checkpoint,
-                                         self.reference,
-                                         self.affine_vox2rasmm,
-                                         self.device)
-            cover_reward = CoverageReward(self.tracking_mask)
-            self.reward_function = RewardFunction(
-                [peaks_reward, target_reward,
-                 length_reward, oracle_reward,
-                 cover_reward],
-                [self.alignment_weighting,
-                 self.target_bonus_factor,
-                 self.length_weighting,
-                 self.oracle_weighting,
-                 self.coverage_weighting])
-
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
                               max_nb_steps=self.max_nb_steps)
-
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = OracleStoppingCriterion(
-            self.oracle_checkpoint,
-            self.min_nb_steps * 2,
-            self.reference,
-            self.affine_vox2rasmm,
-            self.device)
 
         if self.cmc:
             cmc_criterion = CmcStoppingCriterion(
