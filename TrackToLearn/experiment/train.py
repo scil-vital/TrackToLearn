@@ -261,11 +261,11 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # trainnig
         train_tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, prob=0.0, compress=0.0)
+            self.no_retrack, self.reference_file, prob=0.0, compress=0.0)
 
         valid_tracker = Tracker(
             alg, valid_env, back_valid_env, self.n_actor,
-            self.interface_seeding, self.no_retrack,
+            self.interface_seeding, self.no_retrack, self.reference_file,
             prob=self.prob, compress=0.0)
 
         # Setup validators, which will handle validation and scoring
@@ -286,7 +286,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         if valid_tractogram:
             self.comet_monitor.log_losses(stopping_stats, i_episode)
 
-            filename = self.save_rasmm_tractogram(valid_tractogram)
+            filename = self.save_rasmm_tractogram(valid_tractogram,
+                                                  env.affine_vox2rasmm)
             scores = self.score_tractogram(filename)
             print(scores)
             self.comet_monitor.log_losses(scores, i_episode)
@@ -354,7 +355,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 print(stopping_stats)
                 self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
-                    valid_tractogram, i_episode)
+                    valid_tractogram, env.affine_vox2rasmm)
                 scores = self.score_tractogram(filename)
                 print(scores)
 
@@ -370,7 +371,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         print(stopping_stats)
         self.comet_monitor.log_losses(stopping_stats, i_episode)
 
-        filename = self.save_rasmm_tractogram(valid_tractogram, i_episode)
+        filename = self.save_rasmm_tractogram(valid_tractogram,
+                                              env.affine_vox2rasmm)
         scores = self.score_tractogram(filename)
         print(scores)
 

@@ -50,7 +50,7 @@ class InterfaceTrackingEnvironment(TrackingEnvironment):
                     streamlines[:, :self.length + 1])
 
             # Flip stopping trajectories
-            directions[stopping] *= -1
+            actions[stopping] *= -1
 
         return super().step(actions)
 
@@ -100,6 +100,6 @@ class InterfaceNoisyTrackingEnvironment(NoisyTrackingEnvironment):
                     streamlines[:, :self.length + 1])
 
             # Flip stopping trajectories
-            directions[stopping] *= -1
+            actions[stopping] *= -1
 
         return super().step(actions)

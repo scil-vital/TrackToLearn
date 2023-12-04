@@ -232,11 +232,6 @@ class TrackingEnvironment(BaseEnv):
 
         Parameters
         ----------
-        space: Space
-            Space in which to return the streamlines. Default is RASMM.
-        filter_streamlines: bool
-            Whether to filter the streamlines using the filters defined
-            in the environment.
 
         Returns
         -------

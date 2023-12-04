@@ -337,7 +337,7 @@ class TrackToLearnExperiment(Experiment):
     def save_rasmm_tractogram(
         self,
         tractogram,
-        i: int = None
+        affine: np.ndarray
     ) -> str:
         """
         Saves a non-stateful tractogram from the training/validation
@@ -364,6 +364,9 @@ class TrackToLearnExperiment(Experiment):
         # than the seed.
         indices = [i for (i, s) in enumerate(tractogram.streamlines)
                    if len(s) > 1]
+
+        tractogram.apply_affine(affine)
+
         streamlines = tractogram.streamlines[indices]
         data_per_streamline = tractogram.data_per_streamline[indices]
         data_per_point = tractogram.data_per_point[indices]
@@ -371,7 +374,7 @@ class TrackToLearnExperiment(Experiment):
         sft = StatefulTractogram(
             streamlines,
             self.reference_file,
-            Space.VOX,
+            Space.RASMM,
             origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,
             data_per_point=data_per_point)
