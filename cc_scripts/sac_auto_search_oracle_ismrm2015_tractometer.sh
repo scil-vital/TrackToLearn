@@ -59,7 +59,7 @@ npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 # n_dirs=0
 
-EXPERIMENT=SAC_Auto_ISMRM2015SearchOracle
+EXPERIMENT=SAC_Auto_ISMRM2015SearchOracle_Tractometer
 
 ID=oracle_$(date +"%F-%H_%M_%S")
 
@@ -94,8 +94,8 @@ python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --coverage_weighting=0.0 \
   --tractometer_validator \
   --scoring_data=${SCORING_DATA} \
+  --tractometer_weighting=10.0 \
   --oracle_validator \
-  --oracle_stopping \
-  --sparse_oracle_weighting=10.0 \
+  --sparse_oracle_weighting=0.0 \
   --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt'
 
