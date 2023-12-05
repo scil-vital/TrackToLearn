@@ -3,8 +3,8 @@
 # Request resources --------------
 # Graham GPU node: 12 cores, 10G ram, 1 GPU
 #SBATCH --account $SALLOC_ACCOUNT
-#SBATCH --gpus-per-node=v100l:1    # Number of GPUs (per node)
-#SBATCH --cpus-per-task=12         # Number of cores (not cpus)
+#SBATCH --gpus-per-node=v100:1    # Number of GPUs (per node)
+#SBATCH --cpus-per-task=2         # Number of cores (not cpus)
 #SBATCH --mem=12000M               # memory (per node)
 #SBATCH --time=01-00:00            # time (DD-HH:MM)
 #SBATCH --mail-type=BEGIN
@@ -12,11 +12,11 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-type=REQUEUE
 #SBATCH --mail-type=ALL
-#SBATCH --array=0-4                # IMPORTANT
+#SBATCH --mail-user=antoine.theberge@usherbrooke.ca
 
-cd /home/$USER/projects/$SALLOC_ACCOUNT/$USER/TractoRL
+cd /home/$USER/projects/$SALLOC_ACCOUNT/$USER/TrackToLearn
 
-module load python/3.8
+module load python/3.10
 pwd
 source .env/bin/activate
 module load httpproxy
