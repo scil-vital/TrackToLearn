@@ -5,8 +5,8 @@ set -e  # exit if any command fails
 DATASET_FOLDER=${TRACK_TO_LEARN_DATA}/
 WORK_DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}/
 
-VALIDATION_SUBJECT_ID=ismrm2015
-SUBJECT_ID=ismrm2015
+VALIDATION_SUBJECT_ID=ismrm2015_nowm
+SUBJECT_ID=ismrm2015_nowm
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 SCORING_DATA=${WORK_DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID}/scoring_data
@@ -26,10 +26,10 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.75 # Gamma for reward discounting
+gamma=0.6 # Gamma for reward discounting
 
 # Model params
-prob=1.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
 npv=10 # Seed per voxel
@@ -40,7 +40,7 @@ EXPERIMENT=SAC_Auto_ISMRM2015TrainOracle
 
 ID=$1_$(date +"%F-%H_%M_%S")
 
-seeds=(1111)
+seeds=(1111 2222 3333 4444 5555)
 
 for rng_seed in "${seeds[@]}"
 do
@@ -65,14 +65,14 @@ do
     --theta=${theta} \
     --alignment_weighting=1.0 \
     --hidden_dims='1024-1024-1024' \
-    --n_dirs=4 \
+    --n_dirs=2 \
     --n_actor=${n_actor} \
     --action_type='cartesian' \
     --interface_seeding \
     --prob=${prob} \
     --use_gpu \
     --use_comet \
-    --binary_stopping_threshold=0.1 \
+    --binary_stopping_threshold=0.5 \
     --coverage_weighting=0.0 \
     --tractometer_validator \
     --scoring_data=${SCORING_DATA} \

@@ -39,7 +39,7 @@ EXPERIMENT=SAC_Auto_FiberCupTrainOracle
 
 ID=$(date +"%F-%H_%M_%S")
 
-seeds=(2222 3333 4444 5555)
+seeds=(1111 2222 3333 4444 5555)
 
 for rng_seed in "${seeds[@]}"
 do
@@ -78,6 +78,7 @@ do
     --scoring_data=${SCORING_DATA} \
     --oracle_validator \
     --sparse_oracle_weighting=10.0 \
+    --oracle_stopping \
     --oracle_checkpoint='epoch_49_fibercup_transformer.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"

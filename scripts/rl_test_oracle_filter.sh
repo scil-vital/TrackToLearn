@@ -34,7 +34,7 @@ do
     DEST_FOLDER="$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$SEED"
 
     dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
-    reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/dti/${SUBJECT_ID}_fa.nii.gz
+    reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}_T1.nii.gz
     filename=tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".tck
 
     ttl_validation.py \
@@ -55,9 +55,10 @@ do
       --use_gpu \
       --binary_stopping_threshold=0.1 \
       --oracle_validator \
+      --oracle_filter \
       --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt' \
 
-    validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}_test_track
+    validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}_filtered
 
     mkdir -p $validation_folder
 

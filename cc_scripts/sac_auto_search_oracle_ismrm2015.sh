@@ -50,27 +50,24 @@ reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VA
 # RL params
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
-lr=0.0001 # Learning rate
-gamma=0.75 # Gamma for reward discounting
 
 # Model params
-prob=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=1.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
 npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
+# n_dirs=0
 
-EXPERIMENT=SAC_Auto_ISMRM2015TrainTarget10Exp5
+EXPERIMENT=SAC_Auto_ISMRM2015SearchOracle
 
-ID=${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+ID=oracle_$(date +"%F-%H_%M_%S")
 
-seeds=(1111 2222 3333 4444 5555)
-
-rng_seed=${seeds[${SLURM_ARRAY_TASK_ID}]}
+rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-python TrackToLearn/runners/sac_auto_train.py \
+python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   $DEST_FOLDER \
   "$EXPERIMENT" \
   "$ID" \
@@ -79,20 +76,26 @@ python TrackToLearn/runners/sac_auto_train.py \
   "${validation_dataset_file}" \
   "${VALIDATION_SUBJECT_ID}" \
   "${reference_file}" \
-  "${SCORING_DATA}" \
   --max_ep=${max_ep} \
   --log_interval=${log_interval} \
-  --lr=${lr} \
-  --gamma=${gamma} \
   --rng_seed=${rng_seed} \
   --npv=${npv} \
   --theta=${theta} \
-  --target_bonus_factor=10 \
+  --alignment_weighting=1.0 \
+  --hidden_dims='1024-1024-1024' \
+  --n_dirs=100 \
+  --n_actor=4096 \
+  --action_type='cartesian' \
+  --interface_seeding \
+  --prob=${prob} \
   --use_gpu \
   --use_comet \
-  --run_tractometer
+  --binary_stopping_threshold=0.1 \
+  --coverage_weighting=0.0 \
+  --tractometer_validator \
+  --scoring_data=${SCORING_DATA} \
+  --oracle_validator \
+  --oracle_stopping \
+  --sparse_oracle_weighting=10.0 \
+  --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt'
 
-mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
-mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"
-mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"/
-cp -f -r $DEST_FOLDER "$EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/
