@@ -28,16 +28,7 @@ def main():
                 "values": [5e-4, 1e-3, 5e-3]},
             "gamma": {
                 "type": "discrete",
-                "values": [0.95, 0.99]},
-            "alpha": {
-                "type": "discrete",
-                "values": [0.2]},
-            "coverage_weighting": {
-                "type": "discrete",
-                "values": [0.0]},
-            "oracle_weighting": {
-                "type": "discrete",
-                "values": [0.0, 1., 5., 10., 20.]},
+                "values": [0.5, 0.75, 0.90, 0.95, 0.99]},
         },
 
         # Declare what we will be optimizing, and how:
@@ -61,17 +52,11 @@ def main():
 
         lr = experiment.get_parameter("lr")
         gamma = experiment.get_parameter("gamma")
-        alpha = experiment.get_parameter("alpha")
-        coverage_weighting = experiment.get_parameter("coverage_weighting")
-        oracle_weighting = experiment.get_parameter("oracle_weighting")
 
         arguments = vars(args)
         arguments.update({
             'lr': lr,
             'gamma': gamma,
-            'alpha': alpha,
-            'coverage_weighting': coverage_weighting,
-            'oracle_weighting': oracle_weighting,
         })
 
         sac_experiment = SACAutoTrackToLearnTraining(

@@ -26,20 +26,22 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 # Model params
-prob=1.0 # Noise to add to make a prob output. 0 for deterministic
+prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
 npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 # n_dirs=0
 
-EXPERIMENT=SAC_Auto_ISMRM2015SearchOracle
+EXPERIMENT=SAC_Auto_ISMRM2015SearchOracleVanilla
 
-ID=oracle_$(date +"%F-%H_%M_%S")
+ID=vanilla_$(date +"%F-%H_%M_%S")
 
 rng_seed=1111
 
 DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
+
+export COMET_OPTIMIZER_ID=b0361e3c6d7243498d56027a710c3e2b
 
 python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   $DEST_FOLDER \
@@ -57,19 +59,18 @@ python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --theta=${theta} \
   --alignment_weighting=1.0 \
   --hidden_dims='1024-1024-1024' \
-  --n_dirs=100 \
+  --n_dirs=2 \
   --n_actor=4096 \
   --action_type='cartesian' \
   --interface_seeding \
   --prob=${prob} \
   --use_gpu \
   --use_comet \
-  --binary_stopping_threshold=0.1 \
+  --binary_stopping_threshold=0.5 \
   --coverage_weighting=0.0 \
   --tractometer_validator \
   --scoring_data=${SCORING_DATA} \
   --oracle_validator \
-  --oracle_stopping \
-  --sparse_oracle_weighting=10.0 \
+  --sparse_oracle_weighting=0.0 \
   --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt'
 

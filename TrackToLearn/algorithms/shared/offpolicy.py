@@ -191,7 +191,7 @@ class DoubleCritic(Critic):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
-        critic_size_factor=2,
+        critic_size_factor=1,
     ):
         """
         Parameters:
