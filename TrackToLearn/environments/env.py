@@ -414,6 +414,7 @@ class BaseEnv(object):
         in_seed = env_dto['in_seed']
         in_mask = env_dto['in_mask']
         sh_basis = env_dto['sh_basis']
+        input_wm = env_dto['input_wm']
 
         input_volume, peaks_volume, tracking_mask, seeding_mask = \
             BaseEnv._load_files(
@@ -421,7 +422,8 @@ class BaseEnv(object):
                 wm_file,
                 in_seed,
                 in_mask,
-                sh_basis)
+                sh_basis,
+                input_wm)
 
         return cls(
             input_volume,
@@ -513,7 +515,8 @@ class BaseEnv(object):
         wm_file,
         in_seed,
         in_mask,
-        sh_basis
+        sh_basis,
+        input_wm
     ):
         """ Load data volumes and masks from files. This is useful for
         tracking from a trained model.
@@ -533,7 +536,9 @@ class BaseEnv(object):
         in_mask: str
             Path to the tracking mask file.
         sh_basis: str
-            SH basis of the signal file.
+            SH basis of the signal file
+        input_wm: bool
+            If set, append the WM mask to the input fODF
 
         Returns
         -------
@@ -599,9 +604,11 @@ class BaseEnv(object):
         wm_data = wm.get_fdata()
         if len(wm_data.shape) == 3:
             wm_data = wm_data[..., None]
-
-        signal_data = np.concatenate(
-            [data, wm_data], axis=-1)
+        if input_wm:
+            signal_data = np.concatenate(
+                [data, wm_data], axis=-1)
+        else:
+            signal_data = data
         signal_volume = MRIDataVolume(
             signal_data, signal.affine)
 

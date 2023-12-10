@@ -63,6 +63,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         self.in_seed = track_dto['in_seed']
         self.in_mask = track_dto['in_mask']
+        self.input_wm = track_dto['input_wm']
 
         self.dataset_file = None
         self.subject_id = None
@@ -242,6 +243,9 @@ def add_mandatory_options_tracking(p):
                         'Tracking will stop outside this mask.')
     p.add_argument('out_tractogram',
                    help='Tractogram output file (must be .trk or .tck).')
+    p.add_argument('--input_wm',
+                   help='If set, append the WM mask to the input signal. The '
+                        'agent must have been trained accordingly.')
 
 
 def add_out_options(p):
