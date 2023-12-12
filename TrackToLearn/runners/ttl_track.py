@@ -213,9 +213,9 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, self.reference_file, compress=self.compress,
-            min_length=self.min_length, max_length=self.max_length,
-            save_seeds=self.save_seeds)
+            self.no_retrack, self.reference_file, prob=self.prob,
+            compress=self.compress, min_length=self.min_length,
+            max_length=self.max_length, save_seeds=self.save_seeds)
 
         # Run tracking
         filetype = detect_format(self.out_tractogram)
@@ -314,6 +314,23 @@ def add_track_args(parser):
                          metavar='M',
                          help='Maximum length of a streamline in mm. '
                          '[%(default)s]')
+    track_g.add_argument('--prob', default=1.0, type=float, metavar='%',
+                         help='Factor multiplied to the standard '
+                         'deviation of the direction distribution '
+                         'predicted by the agent at each step. A '
+                         'value of 0.0 makes the agent deterministic, '
+                         'a value of 1.0 makes the agent fully '
+                         'probabilistic.'
+                         '[%(default)s]')
+    track_g.add_argument('--noise', default=0.1, type=float, metavar='sigma',
+                         help='Add noise ~ N (0, `prob`) to the agent\'s\n'
+                         'output to make tracking more probabilistic.\n'
+                         'Should be between 0.0 and 0.1.'
+                         '[%(default)s]')
+    track_g.add_argument('--fa_map', type=str, default=None,
+                         help='Scale the added noise (see `--noise`) according'
+                         '\nto the provided FA map (.nii.gz). Optional.')
+
     tracking_mask_group = parser.add_mutually_exclusive_group(required=True)
     tracking_mask_group.add_argument(
         '--cmc', action='store_true',
@@ -323,23 +340,6 @@ def add_track_args(parser):
         type=float, default=0.1,
         help='Lower limit for interpolation of tracking mask value.\n'
              'Tracking will stop below this threshold.')
-
-    parser.add_argument('--prob', default=0.0, type=float, metavar='%',
-                        help='Factor multiplied to the standard '
-                        'deviation of the direction distribution '
-                        'predicted by the agent at each step. A '
-                        'value of 0.0 makes the agent deterministic, '
-                        'a value of 1.0 makes the agent fully '
-                        'probabilistic.'
-                        '[%(default)s]')
-    parser.add_argument('--noise', default=0.0, type=float, metavar='sigma',
-                        help='Add noise ~ N (0, `prob`) to the agent\'s\n'
-                        'output to make tracking more probabilistic.\n'
-                        'Should be between 0.0 and 0.1.'
-                        '[%(default)s]')
-    track_g.add_argument('--fa_map', type=str, default=None,
-                         help='Scale the added noise (see `--noise`) according'
-                         '\nto the provided FA map (.nii.gz). Optional.')
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Random number generator seed [%(default)s].')
 
