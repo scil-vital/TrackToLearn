@@ -118,7 +118,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             self.algorithm = hyperparams['algorithm']
             self.step_size = float(hyperparams['step_size'])
             self.add_neighborhood = hyperparams['add_neighborhood']
-            self.voxel_size = float(hyperparams['voxel_size'])
+            self.voxel_size = hyperparams.get('voxel_size', 2.0)
             self.theta = hyperparams['max_angle']
             self.epsilon = hyperparams.get('max_angular_error', 90)
             self.hidden_dims = hyperparams['hidden_dims']
@@ -165,7 +165,9 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         # Set the voxel size so the agent traverses the same "quantity" of
         # voxels per step as during training.
-        step_size_mm = (tracking_voxel_size / self.voxel_size) * \
+
+        tracking_voxel_size = env.get_voxel_size()
+        step_size_mm = (float(tracking_voxel_size) / float(self.voxel_size)) * \
             self.step_size
 
         print("Agent was trained on a voxel size of {}mm and a "

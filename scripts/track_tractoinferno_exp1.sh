@@ -2,7 +2,6 @@
 subjects=~/braindata/processedData/atheb/tracktolearn/datasets/tractoinferno
 arr=(${subjects}/*)
 arr=("${arr[@]##*/}")
-
 set -e
 
 export TRACK_TO_LEARN_DATA=~/braindata/processedData/atheb/tracktolearn
