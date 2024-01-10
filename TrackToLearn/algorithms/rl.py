@@ -59,7 +59,7 @@ class RLAlgorithm(object):
         self,
         initial_state,
         env: BaseEnv,
-        prob: float = 0.,
+        prob: float = 1.,
         compress=False,
     ):
         """

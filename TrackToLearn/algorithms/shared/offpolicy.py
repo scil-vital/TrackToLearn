@@ -457,7 +457,7 @@ class SACActorCritic(ActorCritic):
         action, logprob = self.actor(state, probabilistic)
         return action, logprob
 
-    def select_action(self, state: np.array, probabilistic=0.0) -> np.ndarray:
+    def select_action(self, state: np.array, probabilistic=1.0) -> np.ndarray:
         """ Act on a state and return an action.
 
         Parameters:
