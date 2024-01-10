@@ -245,7 +245,7 @@ def add_mandatory_options_tracking(p):
                         'Tracking will stop outside this mask.')
     p.add_argument('out_tractogram',
                    help='Tractogram output file (must be .trk or .tck).')
-    p.add_argument('--input_wm',
+    p.add_argument('--input_wm', action='store_true',
                    help='If set, append the WM mask to the input signal. The '
                         'agent must have been trained accordingly.')
 
@@ -324,7 +324,7 @@ def add_track_args(parser):
                          'a value of 1.0 makes the agent fully '
                          'probabilistic.'
                          '[%(default)s]')
-    track_g.add_argument('--noise', default=0.1, type=float, metavar='sigma',
+    track_g.add_argument('--noise', default=0.0, type=float, metavar='sigma',
                          help='Add noise ~ N (0, `prob`) to the agent\'s\n'
                          'output to make tracking more probabilistic.\n'
                          'Should be between 0.0 and 0.1.'
