@@ -103,6 +103,7 @@ class Tracker(object):
             print('Tracking called')
             # Switch policy to eval mode so no gradients are computed
             self.alg.agent.eval()
+            self.env.load_subject()
             # Track for every seed in the environment
             for start in tqdm(range(0, len(self.env.seeds), batch_size)):
                 # Last batch might not be "full"
@@ -116,7 +117,7 @@ class Tracker(object):
 
                 if not self.interface_seeding:
                     batch_tractogram = self.env.get_streamlines()
-                    state = self.back_env.reset(batch_tractogram)
+                    state = self.back_env.reset(self.env, batch_tractogram)
 
                     # Track backwards
                     self.alg.validation_episode(
@@ -184,6 +185,7 @@ class Tracker(object):
         mean_reward_factors = defaultdict(list)
 
         # Fetch n=n_actor seeds
+        self.env.load_subject()
         state = self.env.nreset(self.n_actor)
 
         # Track and train forward
@@ -199,7 +201,7 @@ class Tracker(object):
 
         if not self.interface_seeding:
             # Flip streamlines to initialize backwards tracking
-            state = self.back_env.reset(train_tractogram)
+            state = self.back_env.reset(self.env, train_tractogram)
 
             # Track and train backwards
             back_reward, losses, length, reward_factors = \
@@ -248,6 +250,7 @@ class Tracker(object):
 
         def _generate_streamlines_and_rewards():
 
+            self.env.load_subject()
             # Track for every seed in the environment
             for i, start in enumerate(
                     tqdm(range(0, len(self.env.seeds), self.n_actor))):
@@ -264,7 +267,7 @@ class Tracker(object):
                 if not self.interface_seeding:
                     batch_tractogram = self.env.get_streamlines()
                     # Initialize backwards tracking
-                    state = self.back_env.reset(batch_tractogram)
+                    state = self.back_env.reset(self.env, batch_tractogram)
 
                     # Track backwards
                     reward = self.alg.validation_episode(

@@ -174,7 +174,8 @@ class BaseEnv(object):
 
         # Load random subject
         subject_id = self.rng.choice(self.subjects)
-        print('Loading subject {}'.format(subject_id))
+        self.subject_id = subject_id
+        # print('Loading subject {}'.format(subject_id))
         (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
          seeding_mask, peaks) = \
             self._load_subject_data(
@@ -224,9 +225,9 @@ class BaseEnv(object):
             self.seeding_data,
             np.eye(4),
             seeds_count=self.npv)
-        print(
-            '{} has {} seeds.'.format(self.__class__.__name__,
-                                      len(self.seeds)))
+        # print(
+        #     '{} has {} seeds.'.format(self.__class__.__name__,
+        #                               len(self.seeds)))
 
         # ===========================================
         # Stopping criteria
@@ -449,10 +450,8 @@ class BaseEnv(object):
         exclude_mask = tracto_data.exclude
 
         if interface_seeding:
-            print("Seeding from the interface")
             seeding = tracto_data.interface
         else:
-            print("Seeding from the WM.")
             seeding = tracto_data.wm
 
         return (input_volume, tracking_mask, include_mask, exclude_mask,

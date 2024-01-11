@@ -320,7 +320,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             print(
                 f"Total T: {t+1} Episode Num: {i_episode+1} "
                 f"Avg len: {avg_length:.3f} Avg. reward: "
-                f"{avg_reward:.3f}")
+                f"{avg_reward:.3f} sub: {env.subject_id}")
 
             # Update monitors
             self.train_reward_monitor.update(avg_reward)
