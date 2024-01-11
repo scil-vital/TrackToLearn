@@ -63,9 +63,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.add_neighborhood = train_dto['add_neighborhood']
         self.step_size = train_dto['step_size']
         self.dataset_file = train_dto['dataset_file']
-        self.subject_id = train_dto['subject_id']
         self.valid_dataset_file = train_dto['valid_dataset_file']
-        self.valid_subject_id = train_dto['valid_subject_id']
         self.reference_file = train_dto['reference_file']
         self.rng_seed = train_dto['rng_seed']
         self.npv = train_dto['npv']
@@ -154,7 +152,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'step_size': self.step_size,
             'random_seed': self.rng_seed,
             'dataset_file': self.dataset_file,
-            'subject_id': self.subject_id,
             'n_seeds_per_voxel': self.npv,
             'max_angle': self.theta,
             'max_angular_error': self.epsilon,

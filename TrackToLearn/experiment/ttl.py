@@ -120,7 +120,6 @@ class TrackToLearnExperiment(Experiment):
 
         env_dto = {
             'dataset_file': self.dataset_file,
-            'subject_id': self.subject_id,
             'interface_seeding': self.interface_seeding,
             'fa_map': self.fa_map,
             'n_signal': self.n_signal,
@@ -358,8 +357,8 @@ class TrackToLearnExperiment(Experiment):
         # Save tractogram so it can be looked at, used by the tractometer
         # and more
         filename = pjoin(
-            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                self.experiment, self.name, self.valid_subject_id))
+            self.experiment_path, "tractogram_{}_{}.trk".format(
+                self.experiment, self.name))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.

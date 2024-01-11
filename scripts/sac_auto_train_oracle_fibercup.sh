@@ -5,21 +5,21 @@ set -e  # exit if any command fails
 DATASET_FOLDER=${TRACK_TO_LEARN_DATA}/
 WORK_DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}/
 
-VALIDATION_SUBJECT_ID=fibercup
-SUBJECT_ID=fibercup
+VALIDATION_DATASET_NAME=fibercup
+DATASET_NAME=fibercup
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
-SCORING_DATA=${WORK_DATASET_FOLDER}/datasets/${VALIDATION_SUBJECT_ID}/scoring_data
+SCORING_DATA=${WORK_DATASET_FOLDER}/datasets/${VALIDATION_DATASET_NAME}/scoring_data
 
-mkdir -p $WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}
+mkdir -p $WORK_DATASET_FOLDER/datasets/${DATASET_NAME}
 
 echo "Transfering data to working folder..."
-cp -rnv "${DATASET_FOLDER}"/datasets/${VALIDATION_SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
-cp -rnv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
+cp -rnv "${DATASET_FOLDER}"/datasets/${VALIDATION_DATASET_NAME} "${WORK_DATASET_FOLDER}"/datasets/
+cp -rnv "${DATASET_FOLDER}"/datasets/${DATASET_NAME} "${WORK_DATASET_FOLDER}"/datasets/
 
-dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
-validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/${VALIDATION_SUBJECT_ID}.hdf5
-reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VALIDATION_SUBJECT_ID}_wm.nii.gz
+dataset_file=$WORK_DATASET_FOLDER/datasets/${DATASET_NAME}/${DATASET_NAME}.hdf5
+validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_DATASET_NAME}/${VALIDATION_DATASET_NAME}.hdf5
+reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_DATASET_NAME}/masks/${VALIDATION_DATASET_NAME}_wm.nii.gz
 
 # RL params
 max_ep=1000 # Chosen empirically
@@ -51,9 +51,7 @@ do
     "$EXPERIMENT" \
     "$ID" \
     "${dataset_file}" \
-    "${SUBJECT_ID}" \
     "${validation_dataset_file}" \
-    "${VALIDATION_SUBJECT_ID}" \
     "${reference_file}" \
     --max_ep=${max_ep} \
     --log_interval=${log_interval} \
