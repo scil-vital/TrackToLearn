@@ -137,7 +137,6 @@ class TrackToLearnExperiment(Experiment):
             'noise': self.noise,
             'npv': self.npv,
             'rng': self.rng,
-            'reference': self.reference_file,
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
             'length_weighting': self.length_weighting,
@@ -314,7 +313,7 @@ class TrackToLearnExperiment(Experiment):
             stats.update({f.name: set_pct})
         return stats
 
-    def score_tractogram(self, filename):
+    def score_tractogram(self, filename, affine):
         """ Score a tractogram using the tractometer or the oracle.
 
         Parameters
@@ -329,7 +328,7 @@ class TrackToLearnExperiment(Experiment):
         # Compute scores for the tractogram according
         # to each validator.
         for scorer in self.validators:
-            scores = scorer(filename)
+            scores = scorer(filename, affine)
             all_scores.update(scores)
 
         return all_scores
@@ -373,7 +372,7 @@ class TrackToLearnExperiment(Experiment):
 
         sft = StatefulTractogram(
             streamlines,
-            self.reference_file,
+            affine,
             Space.RASMM,
             origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,

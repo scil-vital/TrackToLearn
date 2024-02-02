@@ -63,8 +63,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.add_neighborhood = train_dto['add_neighborhood']
         self.step_size = train_dto['step_size']
         self.dataset_file = train_dto['dataset_file']
-        self.valid_dataset_file = train_dto['valid_dataset_file']
-        self.reference_file = train_dto['reference_file']
         self.rng_seed = train_dto['rng_seed']
         self.npv = train_dto['npv']
 
@@ -258,11 +256,11 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # trainnig
         train_tracker = Tracker(
             alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, self.reference_file, prob=0.0, compress=0.0)
+            self.no_retrack, prob=0.0, compress=0.0)
 
         valid_tracker = Tracker(
             alg, valid_env, back_valid_env, self.n_actor,
-            self.interface_seeding, self.no_retrack, self.reference_file,
+            self.interface_seeding, self.no_retrack,
             prob=self.prob, compress=0.0)
 
         # Setup validators, which will handle validation and scoring
@@ -270,11 +268,11 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.validators = []
         if self.tractometer_validator:
             self.validators.append(TractometerValidator(
-                self.scoring_data, self.reference_file,
+                self.scoring_data, self.tractometer_reference,
                 dilate_endpoints=self.tractometer_dilate))
         if self.oracle_validator:
             self.validators.append(OracleValidator(
-                self.oracle_checkpoint, self.reference_file, self.device))
+                self.oracle_checkpoint, self.device))
 
         # Run tracking before training to see what an untrained network does
         valid_tractogram, valid_reward = valid_tracker.track_and_validate()
@@ -285,7 +283,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
             filename = self.save_rasmm_tractogram(valid_tractogram,
                                                   env.affine_vox2rasmm)
-            scores = self.score_tractogram(filename)
+            scores = self.score_tractogram(filename, env.affine_vox2rasmm)
             print(scores)
             self.comet_monitor.log_losses(scores, i_episode)
         self.save_model(alg)
@@ -353,7 +351,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
                     valid_tractogram, env.affine_vox2rasmm)
-                scores = self.score_tractogram(filename)
+                scores = self.score_tractogram(filename, env.affine_vox2rasmm)
                 print(scores)
 
                 # Display what the network is capable-of "now"
@@ -370,7 +368,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         filename = self.save_rasmm_tractogram(valid_tractogram,
                                               env.affine_vox2rasmm)
-        scores = self.score_tractogram(filename)
+        scores = self.score_tractogram(filename, env.affine_vox2rasmm)
         print(scores)
 
         # Display what the network is capable-of "now"

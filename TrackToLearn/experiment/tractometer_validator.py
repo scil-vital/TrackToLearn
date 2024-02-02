@@ -356,7 +356,7 @@ class TractometerValidator(Validator):
                 self.gt_dir,
                 False)
 
-    def __call__(self, filename):
+    def __call__(self, filename, affine):
 
         logging.info("Loading tractogram.")
         sft = load_tractogram(filename, self.reference,

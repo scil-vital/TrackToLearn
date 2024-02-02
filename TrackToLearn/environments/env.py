@@ -90,7 +90,7 @@ class BaseEnv(object):
 
         # Reference file
         # TODO: Have one reference per subject
-        self.reference = env_dto['reference']
+        # self.reference = env_dto['reference']
 
         self.interface_seeding = env_dto['interface_seeding']
 
@@ -268,7 +268,7 @@ class BaseEnv(object):
                 StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
                 self.oracle_checkpoint,
                 self.min_nb_steps * 5,
-                self.reference,
+                self.affine_vox2rasmm,
                 self.affine_vox2rasmm,
                 self.device)
 
@@ -304,13 +304,13 @@ class BaseEnv(object):
             # Reward streamlines according to an oracle
             oracle_reward = OracleReward(self.oracle_checkpoint,
                                          self.dense_oracle,
-                                         self.reference,
+                                         self.affine_vox2rasmm,
                                          self.affine_vox2rasmm,
                                          self.device)
             # Reward streamlines according to tractometer
             # This should not be used
             tractometer_reward = TractometerReward(self.scoring_data,
-                                                   self.reference,
+                                                   self.affine_vox2rasmm,
                                                    self.affine_vox2rasmm)
 
             # Reward streamlines according to coverage of the WM mask.
@@ -349,7 +349,7 @@ class BaseEnv(object):
         if self.oracle_filter:
             self.filters[Filters.ORACLE] = OracleFilter(self.oracle_checkpoint,
                                                         self.min_nb_steps,
-                                                        self.reference,
+                                                        self.affine_vox2rasmm,
                                                         self.affine_vox2rasmm,
                                                         self.device)
 

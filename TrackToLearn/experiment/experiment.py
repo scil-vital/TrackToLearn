@@ -110,10 +110,6 @@ def add_experiment_args(parser: ArgumentParser):
 def add_data_args(parser: ArgumentParser):
     parser.add_argument('dataset_file',
                         help='Path to preprocessed dataset file (.hdf5)')
-    parser.add_argument('valid_dataset_file',
-                        help='Path to preprocessed dataset file (.hdf5)')
-    parser.add_argument('reference_file',
-                        help='Path to reference anatomy (.nii.gz).')
 
 
 def add_environment_args(parser: ArgumentParser):

@@ -88,7 +88,7 @@ def generate_dataset(
 
         with open(join(path, config_file), "r") as conf:
             config = json.load(conf)
-
+            print(config.keys())
             add_subjects_to_hdf5(
                 path, config, hdf_file, "training", normalize)
 

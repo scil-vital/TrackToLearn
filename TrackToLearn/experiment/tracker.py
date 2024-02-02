@@ -1,8 +1,6 @@
-import nibabel as nib
 import numpy as np
 
 from collections import defaultdict
-from nibabel import Nifti1Image
 from nibabel.streamlines import TrkFile
 from tqdm import tqdm
 from typing import Tuple
@@ -31,7 +29,6 @@ class Tracker(object):
         n_actor: int,
         interface_seeding: bool,
         no_retrack: bool,
-        reference: Nifti1Image,
         prob: float = 0.,
         compress: float = 0.0,
         min_length: float = 20,
@@ -57,7 +54,6 @@ class Tracker(object):
         self.back_env = back_env
         self.n_actor = n_actor
         self.interface_seeding = interface_seeding
-        self.reference = nib.load(reference)
         self.no_retrack = no_retrack
         self.prob = prob
         self.compress = compress
@@ -86,14 +82,12 @@ class Tracker(object):
             Tractogram in a generator format.
 
         """
-        # Presume iso vox
-        vox_size = self.reference.header.get_zooms()[0]
-        scaled_min_length = self.min_length / vox_size
-        scaled_max_length = self.max_length / vox_size
-
-        compress_th_vox = self.compress / vox_size
 
         batch_size = self.n_actor
+
+        self.alg.agent.eval()
+        self.env.load_subject()
+        affine = self.env.affine_vox2rasmm
 
         # Shuffle seeds so that massive tractograms wont load "sequentially"
         # when partially displayed
@@ -102,8 +96,15 @@ class Tracker(object):
         def tracking_generator():
             print('Tracking called')
             # Switch policy to eval mode so no gradients are computed
-            self.alg.agent.eval()
-            self.env.load_subject()
+
+            # Presume iso vox
+            vox_size = np.mean(
+                np.abs(affine)[np.diag_indices(4)][:3])
+            scaled_min_length = self.min_length / vox_size
+            scaled_max_length = self.max_length / vox_size
+
+            compress_th_vox = self.compress / vox_size
+
             # Track for every seed in the environment
             for start in tqdm(range(0, len(self.env.seeds), batch_size)):
                 # Last batch might not be "full"
@@ -143,8 +144,8 @@ class Tracker(object):
                             # origin center as expected by .tck files.
                             streamline = np.dot(
                                 streamline,
-                                self.reference.affine[:3, :3]) + \
-                                self.reference.affine[:3, 3]
+                                affine[:3, :3]) + \
+                                affine[:3, 3]
 
                         # flag = item.data_for_streamline['flags']
                         seed_dict = {}
@@ -156,7 +157,7 @@ class Tracker(object):
                             streamline, seed_dict, {})
 
         tractogram = LazyTractogram.from_data_func(tracking_generator)
-        tractogram.affine_to_rasmm = self.reference.affine
+        tractogram.affine_to_rasmm = affine
 
         return tractogram
 
