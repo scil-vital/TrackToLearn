@@ -51,8 +51,6 @@ do
     "$EXPERIMENT" \
     "$ID" \
     "${dataset_file}" \
-    "${validation_dataset_file}" \
-    "${reference_file}" \
     --max_ep=${max_ep} \
     --log_interval=${log_interval} \
     --lr=${lr} \
@@ -73,11 +71,12 @@ do
     --coverage_weighting=0.0 \
     --tractometer_validator \
     --tractometer_dilate=3 \
-    --scoring_data=${SCORING_DATA} \
-    --oracle_validator \
-    --sparse_oracle_weighting=10.0 \
-    --oracle_stopping \
-    --oracle_checkpoint='epoch_49_fibercup_transformer.ckpt'
+    --tractometer_reference="${reference_file}" \
+    --scoring_data=${SCORING_DATA}
+    # --oracle_validator \
+    # --sparse_oracle_weighting=10.0 \
+    # --oracle_stopping \
+    # --oracle_checkpoint='epoch_49_fibercup_transformer.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"/"$ID"

@@ -216,6 +216,8 @@ def add_tractometer_args(parser: ArgumentParser):
     tractom = parser.add_argument_group('Tractometer')
     tractom.add_argument('--scoring_data', type=str, default=None,
                          help='Location of the tractometer scoring data.')
+    tractom.add_argument('--tractometer_reference', type=str, default=None,
+                         help='Reference anatomy for the Tractometer.')
     tractom.add_argument('--tractometer_validator', action='store_true',
                          help='Run tractometer during validation to monitor' +
                          ' how the training is doing w.r.t. ground truth.')

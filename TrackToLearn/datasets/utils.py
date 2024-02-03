@@ -1,3 +1,4 @@
+import nibabel as nib
 import numpy as np
 
 from dipy.data import get_sphere
@@ -26,9 +27,6 @@ class MRIDataVolume(object):
             affine_vox2rasmm = np.array(
                 hdf[group].attrs['vox2rasmm'], dtype=np.float32)
         except KeyError:
-            print(
-                "{} is absent from {}, replacing it with empty volume.".format(
-                    group, hdf))
             data = np.zeros_like(hdf[default]['data'], dtype=np.float32)
             affine_vox2rasmm = np.array(
                 hdf[default].attrs['vox2rasmm'], dtype=np.float32)
@@ -61,6 +59,7 @@ class SubjectData(object):
         include=None,
         exclude=None,
         interface=None,
+        reference=None,
         sft=None,
         rewards=None,
         states=None
@@ -74,6 +73,7 @@ class SubjectData(object):
         self.include = include
         self.exclude = exclude
         self.interface = interface
+        self.reference = reference
         self.rewards = rewards
         self.states = states
         self.sft = sft
@@ -95,6 +95,10 @@ class SubjectData(object):
             hdf_subject, 'exclude_volume', 'wm_volume')
         interface = MRIDataVolume.from_hdf_group(
             hdf_subject, 'interface_volume', 'wm_volume')
+        anatomy = MRIDataVolume.from_hdf_group(
+            hdf_subject, 'anat_volume', 'wm_volume')
+
+        reference = nib.Nifti1Image(anatomy.data, anatomy.affine_vox2rasmm)
 
         states = None
         sft = None
@@ -103,7 +107,8 @@ class SubjectData(object):
         return cls(
             subject_id, input_dv=input_dv, wm=wm, gm=gm, csf=csf,
             include=include, exclude=exclude, interface=interface,
-            peaks=peaks, sft=sft, rewards=rewards, states=states)
+            reference=reference, peaks=peaks, sft=sft, rewards=rewards,
+            states=states)
 
 
 def convert_length_mm2vox(

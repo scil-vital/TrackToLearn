@@ -1,4 +1,5 @@
 import os
+import nibabel as nib
 import numpy as np
 
 from os.path import join as pjoin
@@ -336,7 +337,8 @@ class TrackToLearnExperiment(Experiment):
     def save_rasmm_tractogram(
         self,
         tractogram,
-        affine: np.ndarray
+        affine: np.ndarray,
+        reference: nib.Nifti1Image
     ) -> str:
         """
         Saves a non-stateful tractogram from the training/validation
@@ -372,7 +374,7 @@ class TrackToLearnExperiment(Experiment):
 
         sft = StatefulTractogram(
             streamlines,
-            affine,
+            reference,
             Space.RASMM,
             origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,

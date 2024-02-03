@@ -19,9 +19,9 @@ class OracleValidator(Validator):
 
         self.device = device
 
-    def __call__(self, filename, affine):
+    def __call__(self, filename, reference):
 
-        sft = load_tractogram(filename, affine,
+        sft = load_tractogram(filename, reference,
                               bbox_valid_check=True, trk_header_check=True)
 
         sft.to_vox()

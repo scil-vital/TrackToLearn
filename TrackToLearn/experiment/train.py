@@ -115,6 +115,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.tractometer_validator = train_dto['tractometer_validator']
         self.tractometer_weighting = train_dto['tractometer_weighting']
         self.tractometer_dilate = train_dto['tractometer_dilate']
+        self.tractometer_reference = train_dto['tractometer_reference']
         self.scoring_data = train_dto['scoring_data']
 
         self.compute_reward = True  # Always compute reward during training
@@ -282,8 +283,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.comet_monitor.log_losses(stopping_stats, i_episode)
 
             filename = self.save_rasmm_tractogram(valid_tractogram,
-                                                  env.affine_vox2rasmm)
-            scores = self.score_tractogram(filename, env.affine_vox2rasmm)
+                                                  env.affine_vox2rasmm,
+                                                  env.reference)
+            scores = self.score_tractogram(filename, env.reference)
             print(scores)
             self.comet_monitor.log_losses(scores, i_episode)
         self.save_model(alg)
@@ -350,8 +352,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 print(stopping_stats)
                 self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
-                    valid_tractogram, env.affine_vox2rasmm)
-                scores = self.score_tractogram(filename, env.affine_vox2rasmm)
+                    valid_tractogram, env.affine_vox2rasmm, env.reference)
+                scores = self.score_tractogram(filename, env.reference)
                 print(scores)
 
                 # Display what the network is capable-of "now"
@@ -367,8 +369,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.comet_monitor.log_losses(stopping_stats, i_episode)
 
         filename = self.save_rasmm_tractogram(valid_tractogram,
-                                              env.affine_vox2rasmm)
-        scores = self.score_tractogram(filename, env.affine_vox2rasmm)
+                                              env.affine_vox2rasmm,
+                                              env.reference)
+        scores = self.score_tractogram(filename, env.reference)
         print(scores)
 
         # Display what the network is capable-of "now"

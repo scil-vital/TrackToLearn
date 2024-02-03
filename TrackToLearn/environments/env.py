@@ -177,12 +177,13 @@ class BaseEnv(object):
         self.subject_id = subject_id
         # print('Loading subject {}'.format(subject_id))
         (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
-         seeding_mask, peaks) = \
+         seeding_mask, peaks, reference) = \
             self._load_subject_data(
                 subject_id, self.interface_seeding
         )
 
         # Affines
+        self.reference = reference
         self.affine_vox2rasmm = input_volume.affine_vox2rasmm
         self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
 
@@ -304,13 +305,13 @@ class BaseEnv(object):
             # Reward streamlines according to an oracle
             oracle_reward = OracleReward(self.oracle_checkpoint,
                                          self.dense_oracle,
-                                         self.affine_vox2rasmm,
+                                         self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)
             # Reward streamlines according to tractometer
             # This should not be used
             tractometer_reward = TractometerReward(self.scoring_data,
-                                                   self.affine_vox2rasmm,
+                                                   self.reference,
                                                    self.affine_vox2rasmm)
 
             # Reward streamlines according to coverage of the WM mask.
@@ -454,8 +455,10 @@ class BaseEnv(object):
         else:
             seeding = tracto_data.wm
 
+        reference = tracto_data.reference
+
         return (input_volume, tracking_mask, include_mask, exclude_mask,
-                target_mask, seeding, peaks)
+                target_mask, seeding, peaks, reference)
 
     @staticmethod
     def _get_subjects(
