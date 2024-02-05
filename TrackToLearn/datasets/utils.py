@@ -27,6 +27,7 @@ class MRIDataVolume(object):
             affine_vox2rasmm = np.array(
                 hdf[group].attrs['vox2rasmm'], dtype=np.float32)
         except KeyError:
+            print('Missing {} from dataset'.format(group))
             data = np.zeros_like(hdf[default]['data'], dtype=np.float32)
             affine_vox2rasmm = np.array(
                 hdf[default].attrs['vox2rasmm'], dtype=np.float32)

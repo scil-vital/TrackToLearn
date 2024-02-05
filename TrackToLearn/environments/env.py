@@ -17,7 +17,9 @@ from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
                                   get_maximas)
+from torch.utils.data import DataLoader
 
+from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume, SubjectData,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
@@ -86,13 +88,17 @@ class BaseEnv(object):
 
         self.dataset_file = dataset_file
         self.split = split_id
-        self.subjects = subjects
-
-        # Reference file
-        # TODO: Have one reference per subject
-        # self.reference = env_dto['reference']
-
         self.interface_seeding = env_dto['interface_seeding']
+
+        def collate_fn(data):
+            return data
+
+        self.dataset = SubjectDataset(
+            self.dataset_file, self.split, self.interface_seeding)
+        self.loader = DataLoader(self.dataset, 1, shuffle=True,
+                                 collate_fn=collate_fn,
+                                 num_workers=2)
+        self.loader_iter = iter(self.loader)
 
         # Unused: this is from an attempt to normalize the input data
         # as is done by the original PPO impl
@@ -172,16 +178,26 @@ class BaseEnv(object):
         """ Load a random subject from the dataset. This is used to
         initialize the environment. """
 
-        # Load random subject
-        subject_id = self.rng.choice(self.subjects)
-        self.subject_id = subject_id
-        # print('Loading subject {}'.format(subject_id))
-        (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
-         seeding_mask, peaks, reference) = \
-            self._load_subject_data(
-                subject_id, self.interface_seeding
-        )
+        # if hasattr(self, 'subject_id') and len(self.subjects) == 1:
+        #     return
 
+        # Load random subject
+        # print('Loading subject {}'.format(subject_id))
+
+        if hasattr(self, 'subject_id') and len(self.dataset) == 1:
+            return
+
+        try:
+            (sub_id, input_volume, tracking_mask, include_mask, exclude_mask,
+             target_mask, seeding_mask, peaks, reference) = \
+                next(self.loader_iter)[0]
+        except StopIteration:
+            self.loader_iter = iter(self.loader)
+            (sub_id, input_volume, tracking_mask, include_mask, exclude_mask,
+             target_mask, seeding_mask, peaks, reference) = \
+                next(self.loader_iter)[0]
+
+        self.subject_id = sub_id
         # Affines
         self.reference = reference
         self.affine_vox2rasmm = input_volume.affine_vox2rasmm
@@ -269,7 +285,7 @@ class BaseEnv(object):
                 StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
                 self.oracle_checkpoint,
                 self.min_nb_steps * 5,
-                self.affine_vox2rasmm,
+                self.reference,
                 self.affine_vox2rasmm,
                 self.device)
 
@@ -350,7 +366,7 @@ class BaseEnv(object):
         if self.oracle_filter:
             self.filters[Filters.ORACLE] = OracleFilter(self.oracle_checkpoint,
                                                         self.min_nb_steps,
-                                                        self.affine_vox2rasmm,
+                                                        self.reference,
                                                         self.affine_vox2rasmm,
                                                         self.device)
 

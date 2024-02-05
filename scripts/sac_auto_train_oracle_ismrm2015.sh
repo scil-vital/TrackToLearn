@@ -26,10 +26,10 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.6 # Gamma for reward discounting
+gamma=0.95 # Gamma for reward discounting
 
 # Model params
-prob=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=1.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
 npv=10 # Seed per voxel
@@ -52,10 +52,6 @@ do
     "$EXPERIMENT" \
     "$ID" \
     "${dataset_file}" \
-    "${SUBJECT_ID}" \
-    "${validation_dataset_file}" \
-    "${VALIDATION_SUBJECT_ID}" \
-    "${reference_file}" \
     --max_ep=${max_ep} \
     --log_interval=${log_interval} \
     --lr=${lr} \
@@ -65,19 +61,21 @@ do
     --theta=${theta} \
     --alignment_weighting=1.0 \
     --hidden_dims='1024-1024-1024' \
-    --n_dirs=2 \
+    --n_dirs=100 \
     --n_actor=${n_actor} \
     --action_type='cartesian' \
     --interface_seeding \
     --prob=${prob} \
     --use_gpu \
     --use_comet \
-    --binary_stopping_threshold=0.5 \
+    --binary_stopping_threshold=0.1 \
     --coverage_weighting=0.0 \
     --tractometer_validator \
+    --tractometer_reference=${reference_file} \
     --scoring_data=${SCORING_DATA} \
     --oracle_validator \
-    --sparse_oracle_weighting=0.0 \
+    --sparse_oracle_weighting=10.0 \
+    --oracle_stopping \
     --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
