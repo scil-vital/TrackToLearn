@@ -228,15 +228,15 @@ class TrackToLearnExperiment(Experiment):
         # clean this
         if self.interface_seeding:
             env = class_dict['interface_tracking_env'].from_dataset(
-                env_dto, 'validation')
+                env_dto, 'training')
             back_env = None
         else:
             if self.no_retrack:
-                env = class_dict['tracker'].from_dataset(env_dto, 'validation')
+                env = class_dict['tracker'].from_dataset(env_dto, 'training')
                 back_env = class_dict['back_tracker'].from_env(
                     env_dto, env)
             else:
-                env = class_dict['tracker'].from_dataset(env_dto, 'validation')
+                env = class_dict['tracker'].from_dataset(env_dto, 'training')
                 back_env = class_dict['retracker'].from_env(
                     env_dto, env)
 

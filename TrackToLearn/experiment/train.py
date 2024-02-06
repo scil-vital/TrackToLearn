@@ -256,12 +256,11 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Initialize Trackers, which will handle streamline generation and
         # trainnig
         train_tracker = Tracker(
-            alg, env, back_env, self.n_actor, self.interface_seeding,
+            alg, self.n_actor, self.interface_seeding,
             self.no_retrack, prob=0.0, compress=0.0)
 
         valid_tracker = Tracker(
-            alg, valid_env, back_valid_env, self.n_actor,
-            self.interface_seeding, self.no_retrack,
+            alg, self.n_actor, self.interface_seeding, self.no_retrack,
             prob=self.prob, compress=0.0)
 
         # Setup validators, which will handle validation and scoring
@@ -276,16 +275,18 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 self.oracle_checkpoint, self.device))
 
         # Run tracking before training to see what an untrained network does
-        valid_tractogram, valid_reward = valid_tracker.track_and_validate()
+        valid_env.load_subject()
+        valid_tractogram, valid_reward = valid_tracker.track_and_validate(
+            valid_env)
         stopping_stats = self.stopping_stats(valid_tractogram)
         print(stopping_stats)
         if valid_tractogram:
             self.comet_monitor.log_losses(stopping_stats, i_episode)
 
             filename = self.save_rasmm_tractogram(valid_tractogram,
-                                                  env.affine_vox2rasmm,
-                                                  env.reference)
-            scores = self.score_tractogram(filename, env.reference)
+                                                  valid_env.affine_vox2rasmm,
+                                                  valid_env.reference)
+            scores = self.score_tractogram(filename, valid_env.reference)
             print(scores)
             self.comet_monitor.log_losses(scores, i_episode)
         self.save_model(alg)
@@ -303,8 +304,9 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.last_episode = i_episode
 
             # Train for an episode
+            env.load_subject()
             tractogram, losses, reward, reward_factors = \
-                train_tracker.track_and_train()
+                train_tracker.track_and_train(env)
 
             # Compute average streamline length
             lengths = [len(s) for s in tractogram]
@@ -344,16 +346,19 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
             # Time to do a valid run and display stats
             if i_episode % self.log_interval == 0:
-
                 # Validation run
+                valid_env.load_subject()
                 valid_tractogram, valid_reward = \
-                    valid_tracker.track_and_validate()
+                    valid_tracker.track_and_validate(valid_env)
+                print('Tracking {}'.format(valid_env.subject_id))
                 stopping_stats = self.stopping_stats(valid_tractogram)
                 print(stopping_stats)
                 self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
-                    valid_tractogram, env.affine_vox2rasmm, env.reference)
-                scores = self.score_tractogram(filename, env.reference)
+                    valid_tractogram, valid_env.affine_vox2rasmm,
+                    valid_env.reference)
+                print('Scoring {}'.format(valid_env.subject_id))
+                scores = self.score_tractogram(filename, valid_env.reference)
                 print(scores)
 
                 # Display what the network is capable-of "now"
@@ -363,15 +368,17 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 self.save_model(alg)
 
         # End of training, save the model and hyperparameters and track
-        valid_tractogram, valid_reward = valid_tracker.track_and_validate()
+        valid_env.load_subject()
+        valid_tractogram, valid_reward = valid_tracker.track_and_validate(
+            valid_env)
         stopping_stats = self.stopping_stats(valid_tractogram)
         print(stopping_stats)
         self.comet_monitor.log_losses(stopping_stats, i_episode)
 
         filename = self.save_rasmm_tractogram(valid_tractogram,
-                                              env.affine_vox2rasmm,
-                                              env.reference)
-        scores = self.score_tractogram(filename, env.reference)
+                                              valid_env.affine_vox2rasmm,
+                                              valid_env.reference)
+        scores = self.score_tractogram(filename, valid_env.reference)
         print(scores)
 
         # Display what the network is capable-of "now"
