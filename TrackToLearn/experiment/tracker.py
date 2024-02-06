@@ -1,8 +1,6 @@
-import nibabel as nib
 import numpy as np
 
 from collections import defaultdict
-from nibabel import Nifti1Image
 from nibabel.streamlines import TrkFile
 from tqdm import tqdm
 from typing import Tuple
@@ -26,12 +24,9 @@ class Tracker(object):
     def __init__(
         self,
         alg: RLAlgorithm,
-        env: BaseEnv,
-        back_env: BaseEnv,
         n_actor: int,
         interface_seeding: bool,
         no_retrack: bool,
-        reference: Nifti1Image,
         prob: float = 0.,
         compress: float = 0.0,
         min_length: float = 20,
@@ -53,11 +48,8 @@ class Tracker(object):
 
         """
         self.alg = alg
-        self.env = env
-        self.back_env = back_env
         self.n_actor = n_actor
         self.interface_seeding = interface_seeding
-        self.reference = nib.load(reference)
         self.no_retrack = no_retrack
         self.prob = prob
         self.compress = compress
@@ -67,6 +59,7 @@ class Tracker(object):
 
     def track(
         self,
+        env: BaseEnv,
         tracts_format
     ):
         """ Actual tracking function. Use this if you just want streamlines.
@@ -86,44 +79,49 @@ class Tracker(object):
             Tractogram in a generator format.
 
         """
-        # Presume iso vox
-        vox_size = self.reference.header.get_zooms()[0]
-        scaled_min_length = self.min_length / vox_size
-        scaled_max_length = self.max_length / vox_size
-
-        compress_th_vox = self.compress / vox_size
 
         batch_size = self.n_actor
 
+        self.alg.agent.eval()
+        affine = env.affine_vox2rasmm
+
         # Shuffle seeds so that massive tractograms wont load "sequentially"
         # when partially displayed
-        np.random.shuffle(self.env.seeds)
+        np.random.shuffle(env.seeds)
 
         def tracking_generator():
             print('Tracking called')
             # Switch policy to eval mode so no gradients are computed
-            self.alg.agent.eval()
-            # Track for every seed in the environment
-            for start in tqdm(range(0, len(self.env.seeds), batch_size)):
-                # Last batch might not be "full"
-                end = min(start + batch_size, len(self.env.seeds))
 
-                state = self.env.reset(start, end)
+            # Presume iso vox
+            vox_size = np.mean(
+                np.abs(affine)[np.diag_indices(4)][:3])
+            scaled_min_length = self.min_length / vox_size
+            scaled_max_length = self.max_length / vox_size
+
+            compress_th_vox = self.compress / vox_size
+
+            # Track for every seed in the environment
+            for start in tqdm(range(0, len(env.seeds), batch_size)):
+                # Last batch might not be "full"
+                end = min(start + batch_size, len(env.seeds))
+
+                state = env.reset(start, end)
 
                 # Track forward
                 self.alg.validation_episode(
-                    state, self.env, self.prob)
+                    state, env, self.prob)
 
                 if not self.interface_seeding:
-                    batch_tractogram = self.env.get_streamlines()
-                    state = self.back_env.reset(batch_tractogram)
+                    batch_tractogram = env.get_streamlines()
+                    state = self.back_env.reset(env, batch_tractogram)
 
                     # Track backwards
                     self.alg.validation_episode(
                         state, self.back_env, self.prob)
                     batch_tractogram = self.back_env.get_streamlines()
                 else:
-                    batch_tractogram = self.env.get_streamlines()
+                    batch_tractogram = env.get_streamlines()
 
                 for item in batch_tractogram:
                     streamline = item.streamline
@@ -142,8 +140,8 @@ class Tracker(object):
                             # origin center as expected by .tck files.
                             streamline = np.dot(
                                 streamline,
-                                self.reference.affine[:3, :3]) + \
-                                self.reference.affine[:3, 3]
+                                affine[:3, :3]) + \
+                                affine[:3, 3]
 
                         # flag = item.data_for_streamline['flags']
                         seed_dict = {}
@@ -155,12 +153,13 @@ class Tracker(object):
                             streamline, seed_dict, {})
 
         tractogram = LazyTractogram.from_data_func(tracking_generator)
-        tractogram.affine_to_rasmm = self.reference.affine
+        tractogram.affine_to_rasmm = affine
 
         return tractogram
 
     def track_and_train(
         self,
+        env: BaseEnv,
     ) -> Tuple[Tractogram, float, float, float]:
         """
         Call the main training loop forward then backward.
@@ -184,13 +183,13 @@ class Tracker(object):
         mean_reward_factors = defaultdict(list)
 
         # Fetch n=n_actor seeds
-        state = self.env.nreset(self.n_actor)
+        state = env.nreset(self.n_actor)
 
         # Track and train forward
         reward, losses, length, reward_factors = \
-            self.alg._episode(state, self.env)
+            self.alg._episode(state, env)
         # Get the streamlines generated from forward training
-        train_tractogram = self.env.get_streamlines()
+        train_tractogram = env.get_streamlines()
         if len(losses.keys()) > 0:
             mean_losses = add_to_means(mean_losses, losses)
         if len(reward_factors.keys()) > 0:
@@ -199,7 +198,7 @@ class Tracker(object):
 
         if not self.interface_seeding:
             # Flip streamlines to initialize backwards tracking
-            state = self.back_env.reset(train_tractogram)
+            state = self.back_env.reset(env, train_tractogram)
 
             # Track and train backwards
             back_reward, losses, length, reward_factors = \
@@ -225,6 +224,7 @@ class Tracker(object):
 
     def track_and_validate(
         self,
+        env: BaseEnv
     ) -> Tuple[Tractogram, float, dict]:
         """
         Run the tracking algorithm without training to see how it performs, but
@@ -250,28 +250,28 @@ class Tracker(object):
 
             # Track for every seed in the environment
             for i, start in enumerate(
-                    tqdm(range(0, len(self.env.seeds), self.n_actor))):
+                    tqdm(range(0, len(env.seeds), self.n_actor))):
 
                 # Last batch might not be "full"
-                end = min(start + self.n_actor, len(self.env.seeds))
+                end = min(start + self.n_actor, len(env.seeds))
 
-                state = self.env.reset(start, end)
+                state = env.reset(start, end)
 
                 # Track forward
                 reward = self.alg.validation_episode(
-                    state, self.env, self.prob)
+                    state, env, self.prob)
 
                 if not self.interface_seeding:
-                    batch_tractogram = self.env.get_streamlines()
+                    batch_tractogram = env.get_streamlines()
                     # Initialize backwards tracking
-                    state = self.back_env.reset(batch_tractogram)
+                    state = self.back_env.reset(env, batch_tractogram)
 
                     # Track backwards
                     reward = self.alg.validation_episode(
                         state, self.back_env, self.prob)
                     batch_tractogram = self.back_env.get_streamlines()
                 else:
-                    batch_tractogram = self.env.get_streamlines()
+                    batch_tractogram = env.get_streamlines()
 
                 yield batch_tractogram, reward
 

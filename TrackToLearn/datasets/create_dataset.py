@@ -88,7 +88,7 @@ def generate_dataset(
 
         with open(join(path, config_file), "r") as conf:
             config = json.load(conf)
-
+            print(config.keys())
             add_subjects_to_hdf5(
                 path, config, hdf_file, "training", normalize)
 
@@ -147,11 +147,12 @@ def add_subject_to_hdf5(
     interface_file = config['interface']
     include_file = config['include']
     exclude_file = config['exclude']
+    anat_file = config['anat']
 
     # Process subject's data
     process_subject(hdf_subject, path, input_files, peaks_file, wm_file,
                     gm_file, csf_file, interface_file, include_file,
-                    exclude_file, normalize)
+                    exclude_file, anat_file, normalize)
 
 
 def process_subject(
@@ -165,6 +166,7 @@ def process_subject(
     interface: str,
     include: str,
     exclude: str,
+    anat: str,
     normalize: bool,
 ):
     """
@@ -228,6 +230,9 @@ def process_subject(
 
     exclude_mask_image = nib.load(join(path, exclude))
     add_volume_to_hdf5(hdf_subject, exclude_mask_image, 'exclude_volume')
+
+    anat_image = nib.load(join(path, anat))
+    add_volume_to_hdf5(hdf_subject, anat_image, 'anat_volume')
 
 
 def add_volume_to_hdf5(hdf_subject, volume_img, volume_name):

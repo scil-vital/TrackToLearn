@@ -7,10 +7,9 @@ from TrackToLearn.oracles.oracle import OracleSingleton
 
 class OracleValidator(Validator):
 
-    def __init__(self, checkpoint, reference, device):
+    def __init__(self, checkpoint, device):
 
         self.name = 'Oracle'
-        self.reference = reference
 
         if checkpoint:
             self.checkpoint = checkpoint
@@ -20,10 +19,11 @@ class OracleValidator(Validator):
 
         self.device = device
 
-    def __call__(self, filename):
+    def __call__(self, filename, reference):
 
-        sft = load_tractogram(filename, self.reference,
-                              bbox_valid_check=True, trk_header_check=True)
+        # Bbox check=False, TractoInferno volume may be cropped really tight
+        sft = load_tractogram(filename, reference,
+                              bbox_valid_check=False, trk_header_check=True)
 
         sft.to_vox()
         sft.to_corner()

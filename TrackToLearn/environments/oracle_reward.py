@@ -1,3 +1,4 @@
+import nibabel as nib
 import numpy as np
 
 from dipy.io.stateful_tractogram import StatefulTractogram, Space, Tractogram
@@ -20,7 +21,7 @@ class OracleReward(Reward):
         self,
         checkpoint: str,
         dense: bool,
-        reference: str,
+        reference: nib.Nifti1Image,
         affine_vox2rasmm: np.ndarray,
         device: str
     ):
@@ -37,11 +38,10 @@ class OracleReward(Reward):
         else:
             self.checkpoint = None
 
-        # Affine from vox to world diff space.
-        self.affine_vox2rasmm = affine_vox2rasmm
-        # Reference anat
         self.reference = reference
-        # Device to load the oracle.
+        self.affine_vox2rasmm = affine_vox2rasmm
+
+        # Reference anat
         self.device = device
 
     def dense_reward(self, streamlines, dones):
@@ -59,33 +59,11 @@ class OracleReward(Reward):
         if not self.checkpoint:
             return None
 
-        # Resample streamlines to a fixed number of points. This should be
-        # set by the model ? TODO?
-        N, L, P = streamlines.shape
-        if L > 3:
+        # In the "dense" version, the reward per point is simply
+        # the direct score.
+        scores = self.model.predict(streamlines)
 
-            # Change ref of streamlines. This is weird on the ISMRM2015
-            # dataset as the diff and anat are not in the same space,
-            # but it should be fine on other datasets.
-            tractogram = Tractogram(
-                streamlines=streamlines.copy())
-            # It is unclear whether I should apply the affine or just
-            # multiply by the voxel size.
-            tractogram.apply_affine(self.affine_vox2rasmm)
-            sft = StatefulTractogram(
-                streamlines=tractogram.streamlines,
-                reference=self.reference,
-                space=Space.RASMM)
-            sft.to_vox()
-            sft.to_corner()
-
-            # In the "dense" version, the reward per point is simply
-            # the direct score.
-            scores = self.model.predict(sft.streamlines)
-
-            return scores
-
-        return np.zeros((N))
+        return scores
 
     def sparse_reward(self, streamlines, dones):
         """
@@ -101,11 +79,26 @@ class OracleReward(Reward):
         """
         if not self.checkpoint:
             return None
+        N = dones.shape[0]
+        reward = np.zeros((N))
+        predictions = self.model.predict(streamlines)
+        # Double indexing to get the indexes. Don't forget you
+        # can't assign using double indexes as the first indexing
+        # will return a copy of the array.
+        idx = np.arange(N)[dones][predictions > 0.5]
+        # Assign the reward using the precomputed double indexes.
+        reward[idx] = 1.0
+        return reward
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+        dones: np.ndarray,
+    ):
 
         # Resample streamlines to a fixed number of points. This should be
         # set by the model ? TODO?
         N, L, P = streamlines.shape
-        reward = np.zeros((N))
         if L > 3 and sum(dones.astype(int)) > 0:
 
             # Change ref of streamlines. This is weird on the ISMRM2015
@@ -121,25 +114,10 @@ class OracleReward(Reward):
             sft.to_vox()
             sft.to_corner()
 
-            predictions = self.model.predict(sft.streamlines)
-            # Double indexing to get the indexes. Don't forget you
-            # can't assign using double indexes as the first indexing
-            # will return a copy of the array.
-            idx = np.arange(N)[dones][predictions > 0.5]
-            # Assign the reward using the precomputed double indexes.
-            reward[idx] = 1.0
-            return reward
-
+            if self.dense:
+                return self.dense_reward(sft.streamlines, dones)
+            return self.sparse_reward(sft.streamlines, dones)
         return np.zeros((N))
-
-    def __call__(
-        self,
-        streamlines: np.ndarray,
-        dones: np.ndarray
-    ):
-        if self.dense:
-            return self.dense_reward(streamlines, dones)
-        return self.sparse_reward(streamlines, dones)
 
     def render(self, streamlines, predictions=None):
 

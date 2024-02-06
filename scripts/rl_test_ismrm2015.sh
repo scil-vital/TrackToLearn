@@ -21,9 +21,9 @@ max_length=200
 EXPERIMENT=$1
 ID=$2
 
-validstds=(0.0 0.1)
+validstds=(0.0)
 subjectids=(ismrm2015)
-seeds=(1111 2222 3333 4444 5555)
+seeds=(1111 1111 1111 1111 1111)
 
 for SEED in "${seeds[@]}"
 do
@@ -48,7 +48,8 @@ do
         "${reference_file}" \
         $DEST_FOLDER/model \
         $DEST_FOLDER/model/hyperparameters.json \
-        --prob="${prob}" \
+        --prob=0 \
+        --noise=0 \
         --npv="${npv}" \
         --n_actor="${n_actor}" \
         --min_length="$min_length" \

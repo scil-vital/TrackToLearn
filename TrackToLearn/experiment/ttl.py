@@ -1,4 +1,5 @@
 import os
+import nibabel as nib
 import numpy as np
 
 from os.path import join as pjoin
@@ -120,7 +121,6 @@ class TrackToLearnExperiment(Experiment):
 
         env_dto = {
             'dataset_file': self.dataset_file,
-            'subject_id': self.subject_id,
             'interface_seeding': self.interface_seeding,
             'fa_map': self.fa_map,
             'n_signal': self.n_signal,
@@ -138,7 +138,6 @@ class TrackToLearnExperiment(Experiment):
             'noise': self.noise,
             'npv': self.npv,
             'rng': self.rng,
-            'reference': self.reference_file,
             'alignment_weighting': self.alignment_weighting,
             'straightness_weighting': self.straightness_weighting,
             'length_weighting': self.length_weighting,
@@ -229,15 +228,15 @@ class TrackToLearnExperiment(Experiment):
         # clean this
         if self.interface_seeding:
             env = class_dict['interface_tracking_env'].from_dataset(
-                env_dto, 'validation')
+                env_dto, 'training')
             back_env = None
         else:
             if self.no_retrack:
-                env = class_dict['tracker'].from_dataset(env_dto, 'validation')
+                env = class_dict['tracker'].from_dataset(env_dto, 'training')
                 back_env = class_dict['back_tracker'].from_env(
                     env_dto, env)
             else:
-                env = class_dict['tracker'].from_dataset(env_dto, 'validation')
+                env = class_dict['tracker'].from_dataset(env_dto, 'training')
                 back_env = class_dict['retracker'].from_env(
                     env_dto, env)
 
@@ -315,7 +314,7 @@ class TrackToLearnExperiment(Experiment):
             stats.update({f.name: set_pct})
         return stats
 
-    def score_tractogram(self, filename):
+    def score_tractogram(self, filename, affine):
         """ Score a tractogram using the tractometer or the oracle.
 
         Parameters
@@ -330,7 +329,7 @@ class TrackToLearnExperiment(Experiment):
         # Compute scores for the tractogram according
         # to each validator.
         for scorer in self.validators:
-            scores = scorer(filename)
+            scores = scorer(filename, affine)
             all_scores.update(scores)
 
         return all_scores
@@ -338,7 +337,8 @@ class TrackToLearnExperiment(Experiment):
     def save_rasmm_tractogram(
         self,
         tractogram,
-        affine: np.ndarray
+        affine: np.ndarray,
+        reference: nib.Nifti1Image
     ) -> str:
         """
         Saves a non-stateful tractogram from the training/validation
@@ -358,8 +358,8 @@ class TrackToLearnExperiment(Experiment):
         # Save tractogram so it can be looked at, used by the tractometer
         # and more
         filename = pjoin(
-            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                self.experiment, self.name, self.valid_subject_id))
+            self.experiment_path, "tractogram_{}_{}.trk".format(
+                self.experiment, self.name))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.
@@ -374,7 +374,7 @@ class TrackToLearnExperiment(Experiment):
 
         sft = StatefulTractogram(
             streamlines,
-            self.reference_file,
+            reference,
             Space.RASMM,
             origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,

@@ -110,14 +110,6 @@ def add_experiment_args(parser: ArgumentParser):
 def add_data_args(parser: ArgumentParser):
     parser.add_argument('dataset_file',
                         help='Path to preprocessed dataset file (.hdf5)')
-    parser.add_argument('subject_id',
-                        help='Subject id to fetch from the dataset file')
-    parser.add_argument('valid_dataset_file',
-                        help='Path to preprocessed dataset file (.hdf5)')
-    parser.add_argument('valid_subject_id',
-                        help='Subject id to fetch from the dataset file')
-    parser.add_argument('reference_file',
-                        help='Path to reference anatomy (.nii.gz).')
 
 
 def add_environment_args(parser: ArgumentParser):
@@ -224,6 +216,8 @@ def add_tractometer_args(parser: ArgumentParser):
     tractom = parser.add_argument_group('Tractometer')
     tractom.add_argument('--scoring_data', type=str, default=None,
                          help='Location of the tractometer scoring data.')
+    tractom.add_argument('--tractometer_reference', type=str, default=None,
+                         help='Reference anatomy for the Tractometer.')
     tractom.add_argument('--tractometer_validator', action='store_true',
                          help='Run tractometer during validation to monitor' +
                          ' how the training is doing w.r.t. ground truth.')

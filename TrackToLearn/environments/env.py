@@ -17,7 +17,9 @@ from gymnasium.wrappers.normalize import RunningMeanStd
 from nibabel.streamlines import Tractogram
 from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
                                   get_maximas)
+from torch.utils.data import DataLoader
 
+from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume, SubjectData,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
@@ -61,58 +63,42 @@ class BaseEnv(object):
 
     def __init__(
         self,
-        input_volume: MRIDataVolume,
-        tracking_mask: MRIDataVolume,
-        target_mask: MRIDataVolume,
-        seeding_mask: MRIDataVolume,
-        peaks: MRIDataVolume,
+        dataset_file: str,
+        split_id: str,
+        subjects: list,
         env_dto: dict,
-        include_mask: MRIDataVolume = None,
-        exclude_mask: MRIDataVolume = None,
     ):
         """
+        Initialize the environment. This should not be called directly.
+        Instead, use `from_dataset` or `from_files`.
+
         Parameters
         ----------
-        input_volume: MRIDataVolume
-            Volumetric data containing the SH coefficients
-        tracking_mask: MRIDataVolume
-            Volumetric mask where tracking is allowed
-        target_mask: MRIDataVolume
-            Mask representing the tracking endpoints
-        seeding_mask: MRIDataVolume
-            Mask where seeding should be done
-        peaks: MRIDataVolume
-            Volume containing the fODFs peaks
+        dataset_file: str
+            Path to the HDF5 file containing the dataset.
+        split_id: str
+            Name of the split to load (e.g. 'training',
+            'validation', 'testing').
+        subjects: list
+            List of subjects to load.
         env_dto: dict
             DTO containing env. parameters
-        include_mask: MRIDataVolume
-            Mask representing the tracking go zones. Only useful if
-            using CMC.
-        exclude_mask: MRIDataVolume
-            Mask representing the tracking no-go zones. Only useful if
-            using CMC.
+
         """
 
-        # TODO: Split this into several functions, which can
-        # be reused in `set_step_size`
+        self.dataset_file = dataset_file
+        self.split = split_id
+        self.interface_seeding = env_dto['interface_seeding']
 
-        # Reference file
-        self.reference = env_dto['reference']
+        def collate_fn(data):
+            return data
 
-        # Affines
-        self.affine_vox2rasmm = input_volume.affine_vox2rasmm
-        self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
-
-        # Volumes and masks
-        self.data_volume = torch.from_numpy(
-            input_volume.data).to(env_dto['device'], dtype=torch.float32)
-        self.tracking_mask = tracking_mask
-        self.target_mask = target_mask
-        self.include_mask = include_mask
-        self.exclude_mask = exclude_mask
-        self.peaks = peaks
-        mask_data = tracking_mask.data.astype(np.uint8)
-        self.seeding_data = seeding_mask.data.astype(np.uint8)
+        self.dataset = SubjectDataset(
+            self.dataset_file, self.split, self.interface_seeding)
+        self.loader = DataLoader(self.dataset, 1, shuffle=True,
+                                 collate_fn=collate_fn,
+                                 num_workers=2)
+        self.loader_iter = iter(self.loader)
 
         # Unused: this is from an attempt to normalize the input data
         # as is done by the original PPO impl
@@ -125,7 +111,7 @@ class BaseEnv(object):
         # Tracking parameters
         self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
-        self.theta = theta = env_dto['theta']
+        self.theta = env_dto['theta']
         self.epsilon = env_dto['epsilon']
         # Number of seeds per voxel
         self.npv = env_dto['npv']
@@ -146,10 +132,10 @@ class BaseEnv(object):
 
         # Step-size and min/max lengths are typically defined in mm
         # by the user, but need to be converted to voxels.
-        step_size_mm = env_dto['step_size']
-        min_length_mm = env_dto['min_length']
-        max_length_mm = env_dto['max_length']
-        add_neighborhood_mm = env_dto['add_neighborhood']
+        self.step_size_mm = env_dto['step_size']
+        self.min_length_mm = env_dto['min_length']
+        self.max_length_mm = env_dto['max_length']
+        self.add_neighborhood_mm = env_dto['add_neighborhood']
 
         # Oracle parameters
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
@@ -160,27 +146,91 @@ class BaseEnv(object):
         self.tractometer_weighting = env_dto['tractometer_weighting']
         self.scoring_data = env_dto['scoring_data']
 
+        # Reward parameters
+        self.compute_reward = env_dto['compute_reward']
+        # "Local" reward parameters
+        self.alignment_weighting = env_dto['alignment_weighting']
+        self.straightness_weighting = env_dto['straightness_weighting']
+        self.length_weighting = env_dto['length_weighting']
+        self.target_bonus_factor = env_dto['target_bonus_factor']
+        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
+        self.angle_penalty_factor = env_dto['angle_penalty_factor']
+        self.coverage_weighting = env_dto['coverage_weighting']
+        self.tractometer_weighting = env_dto['tractometer_weighting']
+
+        # Oracle reward parameters
+        self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
+        if self.dense_oracle:
+            self.oracle_weighting = env_dto['dense_oracle_weighting']
+        else:
+            self.oracle_weighting = env_dto['sparse_oracle_weighting']
+
         # Other parameters
         self.rng = env_dto['rng']
         self.device = env_dto['device']
 
+        # Load one subject as an example
+        self.load_subject()
+
+    def load_subject(
+        self,
+    ):
+        """ Load a random subject from the dataset. This is used to
+        initialize the environment. """
+
+        # if hasattr(self, 'subject_id') and len(self.subjects) == 1:
+        #     return
+
+        # Load random subject
+        # print('Loading subject {}'.format(subject_id))
+
+        if hasattr(self, 'subject_id') and len(self.dataset) == 1:
+            return
+
+        try:
+            (sub_id, input_volume, tracking_mask, include_mask, exclude_mask,
+             target_mask, seeding_mask, peaks, reference) = \
+                next(self.loader_iter)[0]
+        except StopIteration:
+            self.loader_iter = iter(self.loader)
+            (sub_id, input_volume, tracking_mask, include_mask, exclude_mask,
+             target_mask, seeding_mask, peaks, reference) = \
+                next(self.loader_iter)[0]
+
+        self.subject_id = sub_id
+        # Affines
+        self.reference = reference
+        self.affine_vox2rasmm = input_volume.affine_vox2rasmm
+        self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+
+        # Volumes and masks
+        self.data_volume = torch.from_numpy(
+            input_volume.data).to(self.device, dtype=torch.float32)
+        self.tracking_mask = tracking_mask
+        self.target_mask = target_mask
+        self.include_mask = include_mask
+        self.exclude_mask = exclude_mask
+        self.peaks = peaks
+        mask_data = tracking_mask.data.astype(np.uint8)
+        self.seeding_data = seeding_mask.data.astype(np.uint8)
+
         self.step_size = convert_length_mm2vox(
-            step_size_mm,
+            self.step_size_mm,
             self.affine_vox2rasmm)
-        self.min_length = min_length_mm
-        self.max_length = max_length_mm
+        self.min_length = self.min_length_mm
+        self.max_length = self.max_length_mm
 
         # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size_mm)
-        self.min_nb_steps = int(self.min_length / step_size_mm)
+        self.max_nb_steps = int(self.max_length / self.step_size_mm)
+        self.min_nb_steps = int(self.min_length / self.step_size_mm)
 
         # Neighborhood used as part of the state
         self.add_neighborhood_vox = None
-        if add_neighborhood_mm:
+        if self.add_neighborhood_mm:
             # TODO: This is a hack. The neighborhood should be computed
             # from the step size, not from a separate parameter.
             self.add_neighborhood_vox = convert_length_mm2vox(
-                add_neighborhood_mm,
+                self.add_neighborhood_mm,
                 self.affine_vox2rasmm)
             self.neighborhood_directions = torch.cat(
                 (torch.zeros((1, 3)),
@@ -192,9 +242,9 @@ class BaseEnv(object):
             self.seeding_data,
             np.eye(4),
             seeds_count=self.npv)
-        print(
-            '{} has {} seeds.'.format(self.__class__.__name__,
-                                      len(self.seeds)))
+        # print(
+        #     '{} has {} seeds.'.format(self.__class__.__name__,
+        #                               len(self.seeds)))
 
         # ===========================================
         # Stopping criteria
@@ -214,7 +264,7 @@ class BaseEnv(object):
         # Angle between segment (curvature criterion)
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
-            functools.partial(is_too_curvy, max_theta=theta)
+            functools.partial(is_too_curvy, max_theta=self.theta)
 
         # Streamline loop criterion (not used, too slow)
         # self.stopping_criteria[
@@ -258,25 +308,6 @@ class BaseEnv(object):
         # ==========================================
         # Reward function
         # =========================================
-
-        # Reward parameters
-        self.compute_reward = env_dto['compute_reward']
-        # "Local" reward parameters
-        self.alignment_weighting = env_dto['alignment_weighting']
-        self.straightness_weighting = env_dto['straightness_weighting']
-        self.length_weighting = env_dto['length_weighting']
-        self.target_bonus_factor = env_dto['target_bonus_factor']
-        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.coverage_weighting = env_dto['coverage_weighting']
-        self.tractometer_weighting = env_dto['tractometer_weighting']
-
-        # Oracle reward parameters
-        self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
-        if self.dense_oracle:
-            self.oracle_weighting = env_dto['dense_oracle_weighting']
-        else:
-            self.oracle_weighting = env_dto['sparse_oracle_weighting']
 
         # Reward function and reward factors
         if self.compute_reward:
@@ -370,25 +401,111 @@ class BaseEnv(object):
         """
 
         dataset_file = env_dto['dataset_file']
-        subject_id = env_dto['subject_id']
-        interface_seeding = env_dto['interface_seeding']
 
-        (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
-         seeding_mask, peaks) = \
-            BaseEnv._load_dataset(
-                dataset_file, split, subject_id, interface_seeding
-        )
+        subjects = BaseEnv._get_subjects(dataset_file, split)
 
-        return cls(
-            input_volume,
-            tracking_mask,
-            target_mask,
-            seeding_mask,
-            peaks,
-            env_dto,
-            include_mask,
-            exclude_mask,
-        )
+        env = cls(dataset_file, split, subjects, env_dto)
+        return env
+
+    def _load_subject_data(
+        self, subject_id, interface_seeding=False
+    ):
+        """
+
+        Parameters
+        ----------
+        split_id: str
+            Name of the split to load (e.g. 'training',
+            'validation', 'testing').
+        subject_id: str
+            Name of the subject to load (e.g. '100307')
+        interface_seeding: bool
+            Whether to seed from the interface or from the WM.
+
+        Returns
+        -------
+        input_volume: MRIDataVolume
+            Volumetric data containing the SH coefficients
+        tracking_mask: MRIDataVolume
+            Volumetric mask where tracking is allowed
+        include_mask: MRIDataVolume
+            Mask representing the tracking go zones. Only useful if
+            using CMC.
+        exclude_mask: MRIDataVolume
+            Mask representing the tracking no-go zones. Only useful if
+            using CMC.
+        target_mask: MRIDataVolume
+            Mask representing the tracking endpoints
+        seeding_mask: MRIDataVolume
+            Mask where seeding should be done
+        peaks: MRIDataVolume
+            Volume containing the fODFs peaks
+
+        """
+        with h5py.File(self.dataset_file, 'r') as hdf_file:
+            split_set = hdf_file[self.split]
+            # Obtain subject list from the HDF5
+            subjects = list(split_set.keys())
+            assert subject_id in subjects
+
+            tracto_data = SubjectData.from_hdf_subject(
+                split_set, subject_id)
+
+        tracto_data.input_dv.subject_id = subject_id
+        input_volume = tracto_data.input_dv
+
+        # Load peaks for reward
+        peaks = tracto_data.peaks
+
+        # Load tracking mask
+        tracking_mask = tracto_data.wm
+
+        # Load target and exclude masks
+        target_mask = tracto_data.gm
+
+        include_mask = tracto_data.include
+        exclude_mask = tracto_data.exclude
+
+        if interface_seeding:
+            seeding = tracto_data.interface
+        else:
+            seeding = tracto_data.wm
+
+        reference = tracto_data.reference
+
+        return (input_volume, tracking_mask, include_mask, exclude_mask,
+                target_mask, seeding, peaks, reference)
+
+    @staticmethod
+    def _get_subjects(
+        dataset_file, split_id
+    ):
+        """ Get the list of subjects in a split.
+
+        Parameters
+        ----------
+        dataset_file: str
+            Path to the HDF5 file containing the dataset.
+        split_id: str
+            Name of the split to load (e.g. 'training',
+            'validation', 'testing').
+
+        Returns
+        -------
+        subjects: list
+            List of subjects in the split.
+        """
+
+        # Load input volume
+        with h5py.File(
+                dataset_file, 'r'
+        ) as hdf_file:
+            assert split_id in ['training', 'validation', 'testing']
+            split_set = hdf_file[split_id]
+            # Obtain subject list from the HDF5
+            subjects = list(split_set.keys())
+
+        return subjects
 
     @classmethod
     def from_files(
@@ -432,81 +549,6 @@ class BaseEnv(object):
             seeding_mask,
             peaks_volume,
             env_dto)
-
-    @classmethod
-    def _load_dataset(
-        cls, dataset_file, split_id, subject_id, interface_seeding=False
-    ):
-        """ Load data volumes and masks from the HDF5
-
-        Should everything be put into `self` ? Should everything be returned
-        instead ?
-
-        Parameters
-        ----------
-        dataset_file: str
-            Path to the HDF5 file containing the dataset.
-        split_id: str
-            Name of the split to load (e.g. 'training',
-            'validation', 'testing').
-        subject_id: str
-            Name of the subject to load (e.g. '100307')
-        interface_seeding: bool
-            Whether to seed from the interface or from the WM.
-
-        Returns
-        -------
-        input_volume: MRIDataVolume
-            Volumetric data containing the SH coefficients
-        tracking_mask: MRIDataVolume
-            Volumetric mask where tracking is allowed
-        include_mask: MRIDataVolume
-            Mask representing the tracking go zones. Only useful if
-            using CMC.
-        exclude_mask: MRIDataVolume
-            Mask representing the tracking no-go zones. Only useful if
-            using CMC.
-        target_mask: MRIDataVolume
-            Mask representing the tracking endpoints
-        seeding_mask: MRIDataVolume
-            Mask where seeding should be done
-        peaks: MRIDataVolume
-            Volume containing the fODFs peaks
-        """
-
-        print("Loading {} from the {} set.".format(subject_id, split_id))
-        # Load input volume
-        with h5py.File(
-                dataset_file, 'r'
-        ) as hdf_file:
-            assert split_id in ['training', 'validation', 'testing']
-            split_set = hdf_file[split_id]
-            tracto_data = SubjectData.from_hdf_subject(
-                split_set, subject_id)
-            tracto_data.input_dv.subject_id = subject_id
-        input_volume = tracto_data.input_dv
-
-        # Load peaks for reward
-        peaks = tracto_data.peaks
-
-        # Load tracking mask
-        tracking_mask = tracto_data.wm
-
-        # Load target and exclude masks
-        target_mask = tracto_data.gm
-
-        include_mask = tracto_data.include
-        exclude_mask = tracto_data.exclude
-
-        if interface_seeding:
-            print("Seeding from the interface")
-            seeding = tracto_data.interface
-        else:
-            print("Seeding from the WM.")
-            seeding = tracto_data.wm
-
-        return (input_volume, tracking_mask, include_mask, exclude_mask,
-                target_mask, seeding, peaks)
 
     @classmethod
     def _load_files(
