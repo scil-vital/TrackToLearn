@@ -9,7 +9,7 @@ rng_seed=$4
 experiment_path=${TRACK_TO_LEARN_DATA}/experiments/
 tracking_folder=${TRACK_TO_LEARN_DATA}/experiments/$1/$2/$rng_seed/tractoinferno_test/${sub}
 
-data_path=${TRACK_TO_LEARN_DATA}/datasets/tractoinferno/${sub}
+data_path=${TRACK_TO_LEARN_DATA}/datasets/tractoinferno_test/${sub}
 file=${tracking_folder}/tractogram_${prob}_tractoinferno_${sub}_10.trk
 
 if [[ -f $file ]]; then

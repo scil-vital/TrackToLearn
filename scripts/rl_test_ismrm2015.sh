@@ -22,8 +22,8 @@ EXPERIMENT=$1
 ID=$2
 
 validstds=(0.0)
-subjectids=(ismrm2015)
-seeds=(1111 1111 1111 1111 1111)
+subjectids=(ismrm2015_nowm)
+seeds=(1111 2222 3333 4444 5555)
 
 for SEED in "${seeds[@]}"
 do
@@ -44,8 +44,6 @@ do
         "$EXPERIMENT" \
         "$ID" \
         "${dataset_file}" \
-        "${SUBJECT_ID}" \
-        "${reference_file}" \
         $DEST_FOLDER/model \
         $DEST_FOLDER/model/hyperparameters.json \
         --prob=0 \
@@ -55,8 +53,7 @@ do
         --min_length="$min_length" \
         --max_length="$max_length" \
         --use_gpu \
-        --fa_map="$DATASET_FOLDER"/datasets/${SUBJECT_ID}/dti/"${SUBJECT_ID}"_fa.nii.gz \
-        --remove_invalid_streamlines
+        --fa_map="$DATASET_FOLDER"/datasets/${SUBJECT_ID}/dti/"${SUBJECT_ID}"_fa.nii.gz
 
       validation_folder=$DEST_FOLDER/scoring_"${prob}"_"${SUBJECT_ID}"_${npv}
 

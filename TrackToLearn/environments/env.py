@@ -1,7 +1,6 @@
 import functools
 from typing import Callable, Dict, Tuple
 
-import h5py
 import nibabel as nib
 import numpy as np
 import torch
@@ -14,13 +13,12 @@ from dwi_ml.data.processing.volume.interpolation import \
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
 from gymnasium.wrappers.normalize import RunningMeanStd
-from nibabel.streamlines import Tractogram
 from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
                                   get_maximas)
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
-from TrackToLearn.datasets.utils import (MRIDataVolume, SubjectData,
+from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
 from TrackToLearn.environments.coverage_reward import CoverageReward
@@ -63,9 +61,8 @@ class BaseEnv(object):
 
     def __init__(
         self,
-        dataset_file: str,
+        subject_data: str,
         split_id: str,
-        subjects: list,
         env_dto: dict,
     ):
         """
@@ -86,19 +83,25 @@ class BaseEnv(object):
 
         """
 
-        self.dataset_file = dataset_file
-        self.split = split_id
-        self.interface_seeding = env_dto['interface_seeding']
+        # If the subject data is a string, it is assumed to be a path to
+        # an HDF5 file. Otherwise, it is assumed to be a list of volumes
+        if type(subject_data) is str:
+            self.dataset_file = subject_data
+            self.split = split_id
+            self.interface_seeding = env_dto['interface_seeding']
 
-        def collate_fn(data):
-            return data
+            def collate_fn(data):
+                return data
 
-        self.dataset = SubjectDataset(
-            self.dataset_file, self.split, self.interface_seeding)
-        self.loader = DataLoader(self.dataset, 1, shuffle=True,
-                                 collate_fn=collate_fn,
-                                 num_workers=2)
-        self.loader_iter = iter(self.loader)
+            self.dataset = SubjectDataset(
+                self.dataset_file, self.split, self.interface_seeding)
+            self.loader = DataLoader(self.dataset, 1, shuffle=True,
+                                     collate_fn=collate_fn,
+                                     num_workers=2)
+            self.loader_iter = iter(self.loader)
+        else:
+            self.subject_data = subject_data
+            self.split = split_id
 
         # Unused: this is from an attempt to normalize the input data
         # as is done by the original PPO impl
@@ -178,34 +181,43 @@ class BaseEnv(object):
         """ Load a random subject from the dataset. This is used to
         initialize the environment. """
 
-        # if hasattr(self, 'subject_id') and len(self.subjects) == 1:
-        #     return
+        if hasattr(self, 'dataset_file'):
 
-        # Load random subject
-        # print('Loading subject {}'.format(subject_id))
+            if hasattr(self, 'subject_id') and len(self.dataset) == 1:
+                return
 
-        if hasattr(self, 'subject_id') and len(self.dataset) == 1:
-            return
+            try:
+                (sub_id, input_volume, tracking_mask, include_mask,
+                 exclude_mask, target_mask, seeding_mask, peaks, reference) = \
+                    next(self.loader_iter)[0]
+            except StopIteration:
+                self.loader_iter = iter(self.loader)
+                (sub_id, input_volume, tracking_mask, include_mask,
+                 exclude_mask, target_mask, seeding_mask, peaks, reference) = \
+                    next(self.loader_iter)[0]
 
-        try:
-            (sub_id, input_volume, tracking_mask, include_mask, exclude_mask,
-             target_mask, seeding_mask, peaks, reference) = \
-                next(self.loader_iter)[0]
-        except StopIteration:
-            self.loader_iter = iter(self.loader)
-            (sub_id, input_volume, tracking_mask, include_mask, exclude_mask,
-             target_mask, seeding_mask, peaks, reference) = \
-                next(self.loader_iter)[0]
+            self.subject_id = sub_id
+            # Affines
+            self.reference = reference
+            self.affine_vox2rasmm = input_volume.affine_vox2rasmm
+            self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
 
-        self.subject_id = sub_id
-        # Affines
-        self.reference = reference
-        self.affine_vox2rasmm = input_volume.affine_vox2rasmm
-        self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+            # Volumes and masks
+            self.data_volume = torch.from_numpy(
+                input_volume.data).to(self.device, dtype=torch.float32)
+        else:
+            (input_volume, tracking_mask, seeding_mask, peaks_volume,
+             reference) = self.subject_data
 
-        # Volumes and masks
-        self.data_volume = torch.from_numpy(
-            input_volume.data).to(self.device, dtype=torch.float32)
+            self.affine_vox2rasmm = input_volume.affine_vox2rasmm
+            self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+
+            # Volumes and masks
+            self.data_volume = torch.from_numpy(
+                input_volume.data).to(self.device, dtype=torch.float32)
+
+            self.reference = reference
+
         self.tracking_mask = tracking_mask
         self.target_mask = target_mask
         self.include_mask = include_mask
@@ -402,110 +414,8 @@ class BaseEnv(object):
 
         dataset_file = env_dto['dataset_file']
 
-        subjects = BaseEnv._get_subjects(dataset_file, split)
-
-        env = cls(dataset_file, split, subjects, env_dto)
+        env = cls(dataset_file, split, env_dto)
         return env
-
-    def _load_subject_data(
-        self, subject_id, interface_seeding=False
-    ):
-        """
-
-        Parameters
-        ----------
-        split_id: str
-            Name of the split to load (e.g. 'training',
-            'validation', 'testing').
-        subject_id: str
-            Name of the subject to load (e.g. '100307')
-        interface_seeding: bool
-            Whether to seed from the interface or from the WM.
-
-        Returns
-        -------
-        input_volume: MRIDataVolume
-            Volumetric data containing the SH coefficients
-        tracking_mask: MRIDataVolume
-            Volumetric mask where tracking is allowed
-        include_mask: MRIDataVolume
-            Mask representing the tracking go zones. Only useful if
-            using CMC.
-        exclude_mask: MRIDataVolume
-            Mask representing the tracking no-go zones. Only useful if
-            using CMC.
-        target_mask: MRIDataVolume
-            Mask representing the tracking endpoints
-        seeding_mask: MRIDataVolume
-            Mask where seeding should be done
-        peaks: MRIDataVolume
-            Volume containing the fODFs peaks
-
-        """
-        with h5py.File(self.dataset_file, 'r') as hdf_file:
-            split_set = hdf_file[self.split]
-            # Obtain subject list from the HDF5
-            subjects = list(split_set.keys())
-            assert subject_id in subjects
-
-            tracto_data = SubjectData.from_hdf_subject(
-                split_set, subject_id)
-
-        tracto_data.input_dv.subject_id = subject_id
-        input_volume = tracto_data.input_dv
-
-        # Load peaks for reward
-        peaks = tracto_data.peaks
-
-        # Load tracking mask
-        tracking_mask = tracto_data.wm
-
-        # Load target and exclude masks
-        target_mask = tracto_data.gm
-
-        include_mask = tracto_data.include
-        exclude_mask = tracto_data.exclude
-
-        if interface_seeding:
-            seeding = tracto_data.interface
-        else:
-            seeding = tracto_data.wm
-
-        reference = tracto_data.reference
-
-        return (input_volume, tracking_mask, include_mask, exclude_mask,
-                target_mask, seeding, peaks, reference)
-
-    @staticmethod
-    def _get_subjects(
-        dataset_file, split_id
-    ):
-        """ Get the list of subjects in a split.
-
-        Parameters
-        ----------
-        dataset_file: str
-            Path to the HDF5 file containing the dataset.
-        split_id: str
-            Name of the split to load (e.g. 'training',
-            'validation', 'testing').
-
-        Returns
-        -------
-        subjects: list
-            List of subjects in the split.
-        """
-
-        # Load input volume
-        with h5py.File(
-                dataset_file, 'r'
-        ) as hdf_file:
-            assert split_id in ['training', 'validation', 'testing']
-            split_set = hdf_file[split_id]
-            # Obtain subject list from the HDF5
-            subjects = list(split_set.keys())
-
-        return subjects
 
     @classmethod
     def from_files(
@@ -532,8 +442,9 @@ class BaseEnv(object):
         in_mask = env_dto['in_mask']
         sh_basis = env_dto['sh_basis']
         input_wm = env_dto['input_wm']
+        reference = env_dto['reference']
 
-        input_volume, peaks_volume, tracking_mask, seeding_mask = \
+        (input_volume, peaks_volume, tracking_mask, seeding_mask) = \
             BaseEnv._load_files(
                 in_odf,
                 wm_file,
@@ -542,13 +453,10 @@ class BaseEnv(object):
                 sh_basis,
                 input_wm)
 
-        return cls(
-            input_volume,
-            tracking_mask,
-            None,
-            seeding_mask,
-            peaks_volume,
-            env_dto)
+        subj_files = (input_volume, tracking_mask, seeding_mask,
+                      peaks_volume, reference)
+
+        return cls(subj_files, 'testing', env_dto)
 
     @classmethod
     def _load_files(
@@ -707,47 +615,6 @@ class BaseEnv(object):
 
         return voxel_size
 
-    def set_step_size(self, step_size_mm):
-        """ Set a different step size (in voxels) than computed by the
-        environment. This is necessary when the voxel size between training
-        and tracking envs is different.
-
-        TODO: Code should be reused from `__init__` instead of copy-pasted.
-        """
-
-        self.step_size = convert_length_mm2vox(
-            step_size_mm,
-            self.affine_vox2rasmm)
-
-        # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size_mm)
-        self.min_nb_steps = int(self.min_length / step_size_mm)
-
-        # Neighborhood used as part of the state
-        if self.add_neighborhood_vox:
-            # TODO: This is a hack. The neighborhood should be computed
-            # from the step size, not from a separate parameter.
-            self.add_neighborhood_vox = convert_length_mm2vox(
-                step_size_mm,
-                self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.cat(
-                (torch.zeros((1, 3)),
-                 get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
-            ).to(self.device)
-
-        self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            functools.partial(is_too_long,
-                              max_nb_steps=self.max_nb_steps)
-
-        if self.cmc:
-            cmc_criterion = CmcStoppingCriterion(
-                self.include_mask.data,
-                self.exclude_mask.data,
-                self.affine_vox2rasmm,
-                self.step_size,
-                self.min_nb_steps)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-
     def _normalize(self, obs):
         """Normalises the observation using the running mean and variance of
         the observations. Taken from Gymnasium."""
@@ -898,55 +765,3 @@ class BaseEnv(object):
         which streamlines should stop.
         """
         pass
-
-    def render(
-        self,
-        tractogram: Tractogram = None,
-        filename: str = None
-    ):
-        """ Render the streamlines, either directly or through a file
-        Might render from "outside" the environment, like for comet
-
-        Parameters:
-        -----------
-        tractogram: Tractogram, optional
-            Object containing the streamlines and seeds
-        path: str, optional
-            If set, save the image at the specified location instead
-            of displaying directly
-        """
-
-        from fury import actor, window
-
-        # Might be rendering from outside the environment
-        if tractogram is None:
-
-            tractogram = self.get_streamlines()
-
-        # Reshape peaks for displaying
-        X, Y, Z, M = self.peaks.data.shape
-        peaks = np.reshape(self.peaks.data, (X, Y, Z, 5, M//5))
-
-        # Setup scene and actors
-        scene = window.Scene()
-
-        stream_actor = actor.streamtube(tractogram.streamlines)
-        peak_actor = actor.peak_slicer(peaks,
-                                       np.ones((X, Y, Z, M)),
-                                       colors=(0.2, 0.2, 1.),
-                                       opacity=0.5)
-        scene.add(stream_actor)
-        scene.add(peak_actor)
-        scene.reset_camera_tight(0.95)
-
-        # Save or display scene
-        if filename is not None:
-            window.snapshot(
-                scene,
-                fname=filename,
-                offscreen=True,
-                size=(800, 800))
-        else:
-            showm = window.ShowManager(scene, reset_camera=True)
-            showm.initialize()
-            showm.start()

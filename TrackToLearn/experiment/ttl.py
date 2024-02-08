@@ -265,7 +265,7 @@ class TrackToLearnExperiment(Experiment):
             'in_mask': self.in_mask,
             'sh_basis': self.sh_basis,
             'input_wm': self.input_wm,
-            'reference': self.in_odf,  # reference is inferred from the fODF
+            'reference': self.reference_file,
             # file instead of being passed directly.
         })
 
