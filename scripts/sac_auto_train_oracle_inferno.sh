@@ -12,7 +12,7 @@ WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 mkdir -p $WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}
 
 echo "Transfering data to working folder..."
-cp -rnv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
+rsync -rltv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
 
 dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 
@@ -21,13 +21,13 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.90 # Gamma for reward discounting
+gamma=0.95 # Gamma for reward discounting
 
 # Model params
 prob=0.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=10 # Seed per voxel
+npv=1 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 n_actor=4096
 
@@ -66,7 +66,8 @@ do
     --binary_stopping_threshold=0.1 \
     --coverage_weighting=0.0 \
     --oracle_validator \
-    --sparse_oracle_weighting=10.0 \
+    --oracle_stopping \
+    --sparse_oracle_weighting=5.0 \
     --oracle_checkpoint='epoch_10_inferno.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"
