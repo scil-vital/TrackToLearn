@@ -37,7 +37,7 @@ do
 
     dataset_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
     reference_file=$DATASET_FOLDER/datasets/${SUBJECT_ID}/dti/${SUBJECT_ID}_fa.nii.gz
-    filename=tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}".tck
+    filename=tractogram_"${EXPERIMENT}"_"${ID}"_"${SUBJECT_ID}"_"${SEED}".tck
 
     ttl_validation.py \
       "$DEST_FOLDER" \
