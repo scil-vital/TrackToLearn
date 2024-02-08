@@ -419,9 +419,23 @@ class BaseEnv(object):
         env = cls(dataset_file, split, env_dto)
         return env
 
-    def _load_subject_data(
-        self, subject_id, interface_seeding=False
+    @classmethod
+    def from_files(
+        cls,
+        env_dto: dict,
     ):
+        """ Initialize the environment from files. This is useful for
+        tracking from a trained model.
+
+        Parameters
+        ----------
+        env_dto: dict
+            DTO containing env. parameters
+
+        Returns
+        -------
+        env: BaseEnv
+            Environment initialized from files.
         """
 
         in_odf = env_dto['in_odf']
