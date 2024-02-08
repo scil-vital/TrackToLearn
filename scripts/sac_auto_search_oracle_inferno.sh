@@ -22,6 +22,7 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 # Model params
+lr=0.0005 # Learning rate
 prob=1.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
@@ -47,6 +48,7 @@ python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --rng_seed=${rng_seed} \
   --npv=${npv} \
   --theta=${theta} \
+  --lr=${lr} \
   --alignment_weighting=1.0 \
   --hidden_dims='1024-1024-1024' \
   --n_dirs=100 \

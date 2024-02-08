@@ -215,14 +215,15 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, self.reference_file, prob=self.prob,
+            alg, self.n_actor, self.interface_seeding,
+            self.no_retrack, prob=self.prob,
             compress=self.compress, min_length=self.min_length,
             max_length=self.max_length, save_seeds=self.save_seeds)
 
         # Run tracking
+        env.load_subject()
         filetype = detect_format(self.out_tractogram)
-        tractogram = tracker.track(filetype)
+        tractogram = tracker.track(env, filetype)
 
         reference = get_reference_info(self.reference_file)
 

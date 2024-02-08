@@ -206,8 +206,10 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
         else:
-            (input_volume, tracking_mask, seeding_mask, peaks_volume,
+            (input_volume, tracking_mask, seeding_mask, peaks,
              reference) = self.subject_data
+
+            target_mask, include_mask, exclude_mask = None, None, None
 
             self.affine_vox2rasmm = input_volume.affine_vox2rasmm
             self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
@@ -514,7 +516,7 @@ class BaseEnv(object):
 
         data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
                                   sh_basis,
-                                  target_order=6,
+                                  target_order=8,
                                   target_basis='descoteaux07')
 
         # Compute peaks from signal
