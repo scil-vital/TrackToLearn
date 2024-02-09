@@ -7,6 +7,7 @@ import random
 import torch
 
 from argparse import RawTextHelpFormatter
+from os.path import join
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
 from nibabel.streamlines import detect_format
@@ -22,7 +23,6 @@ from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.algorithms.vpg import VPG
 from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.experiment.experiment import (
-    add_environment_args,
     add_experiment_args,
     add_model_args,
     add_oracle_args,
@@ -50,12 +50,9 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.experiment_path = valid_dto['path']
         self.experiment = valid_dto['experiment']
         self.id = valid_dto['id']
-        self.out_tractogram = valid_dto['out_tractogram']
         self.render = False
 
         self.valid_dataset_file = self.dataset_file = valid_dto['dataset_file']
-        self.valid_subject_id = self.subject_id = valid_dto['subject_id']
-        self.reference_file = valid_dto['reference_file']
 
         self.prob = valid_dto['prob']
         self.noise = valid_dto['noise']
@@ -82,8 +79,6 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.oracle_stopping_criterion = \
             valid_dto['oracle_stopping_criterion']
 
-        self.binary_stopping_threshold = \
-            valid_dto['binary_stopping_threshold']
         # Tractometer parameters
         self.tractometer_validator = valid_dto['tractometer_validator']
         self.tractometer_dilate = valid_dto['tractometer_dilate']
@@ -114,6 +109,8 @@ class TrackToLearnValidation(TrackToLearnExperiment):
             self.n_dirs = hyperparams['n_dirs']
             self.interface_seeding = hyperparams['interface_seeding']
             self.cmc = hyperparams.get('cmc', False)
+            self.binary_stopping_threshold = hyperparams.get(
+                'binary_stopping_threshold', 0.5)
             self.asymmetric = hyperparams.get('asymmetric', False)
             self.no_retrack = hyperparams.get('no_retrack', False)
             self.action_type = hyperparams.get("action_type", "cartesian")
@@ -188,38 +185,36 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         alg.agent.load(self.agent, 'last_model_state')
 
         tracker = Tracker(
-            alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, self.reference_file, compress=0.0,
+            alg, self.n_actor, self.interface_seeding,
+            self.no_retrack, compress=0.0,
             min_length=self.min_length, max_length=self.max_length,
             save_seeds=False)
 
-        # Run tracking
-        filetype = detect_format(self.out_tractogram)
-        tractogram = tracker.track(filetype)
+        out = join(self.experiment_path, "tractogram_{}_{}_{}.tck".format(
+            self.experiment, self.id, env.subject_id))
 
-        reference = get_reference_info(self.reference_file)
+        # Run tracking
+        filetype = detect_format(out)
+        env.load_subject()
+        tractogram = tracker.track(env, filetype)
+
+        reference = get_reference_info(env.reference)
 
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly
-        nib.streamlines.save(tractogram, self.out_tractogram, header=header)
+        nib.streamlines.save(tractogram, out, header=header)
         # print('Saved {} streamlines'.format(len(tractogram)))
 
 
 def add_valid_args(parser):
     parser.add_argument('dataset_file',
                         help='Path to preprocessed datset file (.hdf5)')
-    parser.add_argument('subject_id',
-                        help='Subject id to fetch from the dataset file')
-    parser.add_argument('reference_file',
-                        help='Path to binary seeding mask (.nii|.nii.gz)')
     parser.add_argument('agent',
                         help='Path to the policy')
     parser.add_argument('hyperparameters',
                         help='File containing the hyperparameters for the '
                              'experiment')
-    parser.add_argument('out_tractogram',
-                        help='Tractogram output file (must be .trk or .tck).')
     parser.add_argument('--fa_map', type=str, default=None,
                         help='FA map to influence STD for probabilistic' +
                         'tracking')
@@ -241,7 +236,6 @@ def parse_args():
     add_valid_args(parser)
     add_tractometer_args(parser)
     add_oracle_args(parser)
-    add_environment_args(parser)
     add_tracking_args(parser)
 
     arguments = parser.parse_args()

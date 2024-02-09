@@ -284,6 +284,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             self.comet_monitor.log_losses(stopping_stats, i_episode)
 
             filename = self.save_rasmm_tractogram(valid_tractogram,
+                                                  valid_env.subject_id,
                                                   valid_env.affine_vox2rasmm,
                                                   valid_env.reference)
             scores = self.score_tractogram(filename, valid_env.reference)
@@ -350,14 +351,12 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 valid_env.load_subject()
                 valid_tractogram, valid_reward = \
                     valid_tracker.track_and_validate(valid_env)
-                print('Tracking {}'.format(valid_env.subject_id))
                 stopping_stats = self.stopping_stats(valid_tractogram)
                 print(stopping_stats)
                 self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
-                    valid_tractogram, valid_env.affine_vox2rasmm,
-                    valid_env.reference)
-                print('Scoring {}'.format(valid_env.subject_id))
+                    valid_tractogram, valid_env.subject_id,
+                    valid_env.affine_vox2rasmm, valid_env.reference)
                 scores = self.score_tractogram(filename, valid_env.reference)
                 print(scores)
 
@@ -376,6 +375,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         self.comet_monitor.log_losses(stopping_stats, i_episode)
 
         filename = self.save_rasmm_tractogram(valid_tractogram,
+                                              valid_env.subject_id,
                                               valid_env.affine_vox2rasmm,
                                               valid_env.reference)
         scores = self.score_tractogram(filename, valid_env.reference)
