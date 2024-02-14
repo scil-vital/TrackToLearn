@@ -1,5 +1,6 @@
 import numpy as np
 from dipy.io.streamline import load_tractogram
+from scilpy.tractanalysis.streamlines_metrics import compute_tract_counts_map
 
 from TrackToLearn.experiment.validators import Validator
 from TrackToLearn.oracles.oracle import OracleSingleton
@@ -24,11 +25,15 @@ class OracleValidator(Validator):
         # Bbox check=False, TractoInferno volume may be cropped really tight
         sft = load_tractogram(filename, env.reference,
                               bbox_valid_check=False, trk_header_check=True)
+        _, dimensions, _, _ = sft.space_attributes
+        wm_mask = env.tracking_mask.data
+        count = np.count_nonzero(wm_mask)
 
         sft.to_vox()
         sft.to_corner()
 
         streamlines = sft.streamlines
+
         if len(streamlines) == 0:
             return {}
 
@@ -40,6 +45,12 @@ class OracleValidator(Validator):
             j = i + batch_size
             scores = self.model.predict(streamlines[i:j])
             predictions[i:j] = scores
-
         accuracy = (predictions > 0.5).astype(float)
-        return {'Oracle': float(np.mean(accuracy))}
+
+        streamline_count = compute_tract_counts_map(
+            sft.streamlines[predictions > 0.5], dimensions)
+
+        streamline_count[streamline_count > 0] = 1
+        coverage = np.count_nonzero(streamline_count)
+        return {'Oracle': float(np.mean(accuracy)),
+                'Coverage':  float(coverage / count)}

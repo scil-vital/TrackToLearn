@@ -9,7 +9,6 @@ import torch
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.experiment.coverage_validator import CoverageValidator
 from TrackToLearn.experiment.experiment import (add_data_args,
                                                 add_environment_args,
                                                 add_experiment_args,
@@ -274,7 +273,6 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         if self.oracle_validator:
             self.validators.append(OracleValidator(
                 self.oracle_checkpoint, self.device))
-            self.validators.append(CoverageValidator())
 
         # Run tracking before training to see what an untrained network does
         valid_env.load_subject()
@@ -323,7 +321,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             avg_reward = reward / self.n_actor
 
             print(
-                f"Total T: {t+1} Episode Num: {i_episode+1} "
+                f"Episode Num: {i_episode+1} "
                 f"Avg len: {avg_length:.3f} Avg. reward: "
                 f"{avg_reward:.3f} sub: {env.subject_id}")
 
