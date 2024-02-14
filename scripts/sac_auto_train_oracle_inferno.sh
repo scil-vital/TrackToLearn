@@ -24,10 +24,10 @@ lr=0.0005 # Learning rate
 gamma=0.95 # Gamma for reward discounting
 
 # Model params
-prob=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=1.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=1 # Seed per voxel
+npv=2 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 n_actor=4096
 

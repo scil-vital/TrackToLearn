@@ -335,6 +335,7 @@ class BaseEnv(object):
             # Reward streamlines according to an oracle
             oracle_reward = OracleReward(self.oracle_checkpoint,
                                          self.dense_oracle,
+                                         self.min_nb_steps,
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)

@@ -21,6 +21,7 @@ class OracleReward(Reward):
         self,
         checkpoint: str,
         dense: bool,
+        min_nb_steps: int,
         reference: nib.Nifti1Image,
         affine_vox2rasmm: np.ndarray,
         device: str
@@ -29,6 +30,9 @@ class OracleReward(Reward):
         self.name = 'oracle_reward'
         # If the reward is dense or not
         self.dense = dense
+        # Minimum number of steps before giving reward
+        # Only useful for 'sparse' reward
+        self.min_nb_steps = min_nb_steps
         # Checkpoint of the oracle, which contains weights and hyperparams.
         if checkpoint:
             self.checkpoint = checkpoint
@@ -96,10 +100,8 @@ class OracleReward(Reward):
         dones: np.ndarray,
     ):
 
-        # Resample streamlines to a fixed number of points. This should be
-        # set by the model ? TODO?
         N, L, P = streamlines.shape
-        if L > 3 and sum(dones.astype(int)) > 0:
+        if L > self.min_nb_steps and sum(dones.astype(int)) > 0:
 
             # Change ref of streamlines. This is weird on the ISMRM2015
             # dataset as the diff and anat are not in the same space,
