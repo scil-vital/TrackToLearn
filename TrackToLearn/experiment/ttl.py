@@ -265,7 +265,7 @@ class TrackToLearnExperiment(Experiment):
             'in_mask': self.in_mask,
             'sh_basis': self.sh_basis,
             'input_wm': self.input_wm,
-            'reference': self.in_odf,  # reference is inferred from the fODF
+            'reference': self.reference_file,
             # file instead of being passed directly.
         })
 
@@ -337,6 +337,7 @@ class TrackToLearnExperiment(Experiment):
     def save_rasmm_tractogram(
         self,
         tractogram,
+        subject_id: str,
         affine: np.ndarray,
         reference: nib.Nifti1Image
     ) -> str:
@@ -358,8 +359,8 @@ class TrackToLearnExperiment(Experiment):
         # Save tractogram so it can be looked at, used by the tractometer
         # and more
         filename = pjoin(
-            self.experiment_path, "tractogram_{}_{}.trk".format(
-                self.experiment, self.name))
+            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
+                self.experiment, self.name, subject_id))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.

@@ -23,12 +23,12 @@ def main():
 
         # Declare your hyperparameters in the Vizier-inspired format:
         "parameters": {
-            "lr": {
-                "type": "discrete",
-                "values": [5e-4, 1e-3, 5e-3]},
             "gamma": {
                 "type": "discrete",
-                "values": [0.5, 0.75, 0.90, 0.95, 0.99]},
+                "values": [0.90, 0.95, 0.98, 0.99]},
+            "sparse_oracle_weighting": {
+                "type": "discrete",
+                "values": [1.0, 5.0, 7.0, 10.0]}
         },
 
         # Declare what we will be optimizing, and how:
@@ -50,12 +50,12 @@ def main():
         experiment.parse_args = False
         experiment.disabled = not args.use_comet
 
-        lr = experiment.get_parameter("lr")
+        oracle_weighting = experiment.get_parameter("sparse_oracle_weighting")
         gamma = experiment.get_parameter("gamma")
 
         arguments = vars(args)
         arguments.update({
-            'lr': lr,
+            'sparse_oracle_weighting': oracle_weighting,
             'gamma': gamma,
         })
 

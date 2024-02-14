@@ -22,14 +22,14 @@ validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/$
 reference_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_SUBJECT_ID}/masks/${VALIDATION_SUBJECT_ID}_wm.nii.gz
 
 # RL params
-max_ep=750 # Chosen empirically
+max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 # Model params
-prob=0.0 # Noise to add to make a prob output. 0 for deterministic
+prob=1.0 # Noise to add to make a prob output. 0 for deterministic
 
 # Env parameters
-npv=100 # Seed per voxel
+npv=1 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 # n_dirs=0
 
@@ -49,18 +49,23 @@ python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   "$ID" \
   "${dataset_file}" \
   "${SUBJECT_ID}" \
-  "${validation_dataset_file}" \
-  "${VALIDATION_SUBJECT_ID}" \
-  "${reference_file}" \
-  --max_ep=${max_ep} \
-  --log_interval=${log_interval} \
   --rng_seed=${rng_seed} \
   --npv=${npv} \
   --theta=${theta} \
+  --alignment_weighting=1.0 \
+  --hidden_dims='1024-1024-1024' \
   --n_dirs=100 \
+  --n_actor=${n_actor} \
   --action_type='cartesian' \
   --interface_seeding \
+  --prob=${prob} \
   --use_gpu \
   --use_comet \
-  --run_oracle='epoch_49_fibercup_transformer.ckpt' \
-  --run_tractometer=${SCORING_DATA}
+  --binary_stopping_threshold=0.1 \
+  --coverage_weighting=0.0 \
+  --oracle_validator \
+  --oracle_stopping \
+  --sparse_oracle_weighting=5.0 \
+  --oracle_checkpoint='epoch_10_inferno.ckpt'
+
+

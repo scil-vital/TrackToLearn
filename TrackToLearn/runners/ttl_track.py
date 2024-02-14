@@ -160,23 +160,24 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         Main method where the magic happens
         """
         # Presume iso vox
-        ref_img = nib.load(self.reference_file)
-        tracking_voxel_size = ref_img.header.get_zooms()[0]
+        # TODO: Handle this later
 
-        # Set the voxel size so the agent traverses the same "quantity" of
-        # voxels per step as during training.
+        # ref_img = nib.load(self.reference_file)
+        # tracking_voxel_size = ref_img.header.get_zooms()[0]
 
-        tracking_voxel_size = env.get_voxel_size()
-        step_size_mm = (float(tracking_voxel_size) / float(self.voxel_size)) * \
-            self.step_size
+        # # Set the voxel size so the agent traverses the same "quantity" of
+        # # voxels per step as during training.
 
-        print("Agent was trained on a voxel size of {}mm and a "
-              "step size of {}mm.".format(self.voxel_size, self.step_size))
+        # step_size_mm = (float(tracking_voxel_size) / float(self.voxel_size)) * \
+        #     self.step_size
 
-        print("Subject has a voxel size of {}mm, setting step size to "
-              "{}mm.".format(tracking_voxel_size, step_size_mm))
+        # print("Agent was trained on a voxel size of {}mm and a "
+        #       "step size of {}mm.".format(self.voxel_size, self.step_size))
 
-        self.step_size = step_size_mm
+        # print("Subject has a voxel size of {}mm, setting step size to "
+        #       "{}mm.".format(tracking_voxel_size, step_size_mm))
+
+        # self.step_size = step_size_mm
 
         # Instanciate environment. Actions will be fed to it and new
         # states will be returned. The environment updates the streamline
@@ -214,14 +215,15 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, self.reference_file, prob=self.prob,
+            alg, self.n_actor, self.interface_seeding,
+            self.no_retrack, prob=self.prob,
             compress=self.compress, min_length=self.min_length,
             max_length=self.max_length, save_seeds=self.save_seeds)
 
         # Run tracking
+        env.load_subject()
         filetype = detect_format(self.out_tractogram)
-        tractogram = tracker.track(filetype)
+        tractogram = tracker.track(env, filetype)
 
         reference = get_reference_info(self.reference_file)
 

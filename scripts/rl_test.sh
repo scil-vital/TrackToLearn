@@ -24,7 +24,7 @@ noise=0.1
 EXPERIMENT=$1
 ID=$2
 
-subjectids=(ismrm2015)
+subjectids=(ismrm2015_nowm)
 seeds=(1111 2222 3333 4444 5555)
 
 for SEED in "${seeds[@]}"
@@ -44,11 +44,8 @@ do
       "$EXPERIMENT" \
       "$ID" \
       "${dataset_file}" \
-      "${SUBJECT_ID}" \
-      "${reference_file}" \
       $DEST_FOLDER/model \
       $DEST_FOLDER/model/hyperparameters.json \
-      ${DEST_FOLDER}/${filename} \
       --rng_seed=${SEED} \
       --prob="${prob}" \
       --noise=${noise} \
@@ -56,10 +53,7 @@ do
       --n_actor="${n_actor}" \
       --min_length="$min_length" \
       --max_length="$max_length" \
-      --use_gpu \
-      --binary_stopping_threshold=0.1 \
-      --oracle_validator \
-      --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt' \
+      --use_gpu
 
     validation_folder=$DEST_FOLDER/scoring_"${SUBJECT_ID}"_${npv}_${noise}
     mkdir -p $validation_folder
