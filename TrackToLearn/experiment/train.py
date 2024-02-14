@@ -9,6 +9,7 @@ import torch
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
+from TrackToLearn.experiment.coverage_validator import CoverageValidator
 from TrackToLearn.experiment.experiment import (add_data_args,
                                                 add_environment_args,
                                                 add_experiment_args,
@@ -273,6 +274,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         if self.oracle_validator:
             self.validators.append(OracleValidator(
                 self.oracle_checkpoint, self.device))
+            self.validators.append(CoverageValidator())
 
         # Run tracking before training to see what an untrained network does
         valid_env.load_subject()
@@ -287,7 +289,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                                                   valid_env.subject_id,
                                                   valid_env.affine_vox2rasmm,
                                                   valid_env.reference)
-            scores = self.score_tractogram(filename, valid_env.reference)
+            scores = self.score_tractogram(filename, valid_env)
             print(scores)
             self.comet_monitor.log_losses(scores, i_episode)
         self.save_model(alg)
@@ -357,7 +359,8 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                 filename = self.save_rasmm_tractogram(
                     valid_tractogram, valid_env.subject_id,
                     valid_env.affine_vox2rasmm, valid_env.reference)
-                scores = self.score_tractogram(filename, valid_env.reference)
+                scores = self.score_tractogram(
+                    filename, valid_env)
                 print(scores)
 
                 # Display what the network is capable-of "now"
@@ -378,7 +381,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
                                               valid_env.subject_id,
                                               valid_env.affine_vox2rasmm,
                                               valid_env.reference)
-        scores = self.score_tractogram(filename, valid_env.reference)
+        scores = self.score_tractogram(filename, valid_env)
         print(scores)
 
         # Display what the network is capable-of "now"

@@ -356,10 +356,10 @@ class TractometerValidator(Validator):
                 self.gt_dir,
                 False)
 
-    def __call__(self, filename, reference):
+    def __call__(self, filename, env):
 
         logging.info("Loading tractogram.")
-        sft = load_tractogram(filename, reference,
+        sft = load_tractogram(filename, env.reference,
                               bbox_valid_check=True, trk_header_check=True)
         if len(sft.streamlines) == 0:
             return {}

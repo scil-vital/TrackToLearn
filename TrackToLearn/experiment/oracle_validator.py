@@ -19,10 +19,10 @@ class OracleValidator(Validator):
 
         self.device = device
 
-    def __call__(self, filename, reference):
+    def __call__(self, filename, env):
 
         # Bbox check=False, TractoInferno volume may be cropped really tight
-        sft = load_tractogram(filename, reference,
+        sft = load_tractogram(filename, env.reference,
                               bbox_valid_check=False, trk_header_check=True)
 
         sft.to_vox()

@@ -14,8 +14,7 @@ SCORING_DATA=${WORK_DATASET_FOLDER}/datasets/${VALIDATION_DATASET_NAME}/scoring_
 mkdir -p $WORK_DATASET_FOLDER/datasets/${DATASET_NAME}
 
 echo "Transfering data to working folder..."
-cp -rnv "${DATASET_FOLDER}"/datasets/${VALIDATION_DATASET_NAME} "${WORK_DATASET_FOLDER}"/datasets/
-cp -rnv "${DATASET_FOLDER}"/datasets/${DATASET_NAME} "${WORK_DATASET_FOLDER}"/datasets/
+rsync -rltv "${DATASET_FOLDER}"/datasets/${DATASET_NAME} "${WORK_DATASET_FOLDER}"/datasets/
 
 dataset_file=$WORK_DATASET_FOLDER/datasets/${DATASET_NAME}/${DATASET_NAME}.hdf5
 validation_dataset_file=$WORK_DATASET_FOLDER/datasets/${VALIDATION_DATASET_NAME}/${VALIDATION_DATASET_NAME}.hdf5

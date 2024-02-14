@@ -314,7 +314,7 @@ class TrackToLearnExperiment(Experiment):
             stats.update({f.name: set_pct})
         return stats
 
-    def score_tractogram(self, filename, affine):
+    def score_tractogram(self, filename, env):
         """ Score a tractogram using the tractometer or the oracle.
 
         Parameters
@@ -329,7 +329,7 @@ class TrackToLearnExperiment(Experiment):
         # Compute scores for the tractogram according
         # to each validator.
         for scorer in self.validators:
-            scores = scorer(filename, affine)
+            scores = scorer(filename, env)
             all_scores.update(scores)
 
         return all_scores
