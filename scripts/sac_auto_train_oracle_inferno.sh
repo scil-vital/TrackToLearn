@@ -12,7 +12,7 @@ WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 mkdir -p $WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}
 
 echo "Transfering data to working folder..."
-cp -rnv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
+rsync -rltv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
 
 dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 
@@ -66,6 +66,7 @@ do
     --binary_stopping_threshold=0.1 \
     --coverage_weighting=0.0 \
     --oracle_validator \
+    --oracle_stopping \
     --sparse_oracle_weighting=10.0 \
     --oracle_checkpoint='epoch_10_inferno.ckpt'
 

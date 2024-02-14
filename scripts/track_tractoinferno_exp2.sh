@@ -13,4 +13,4 @@ export TRACK_TO_LEARN_DATA=~/braindata/processedData/atheb/tracktolearn
 # parallel -j2 ./scripts/rl_test_tractoinferno_exp2.sh DDPG_ISMRM2015TrainExp2 2023-02-15-04_15_36 {} ::: ${arr[@]} ::: 1111 2222 3333 4444 5555 ::: 0.1
 # parallel -j2 ./scripts/rl_test_tractoinferno_exp2.sh TD3_ISMRM2015TrainExp2 2023-02-15-12_59_38 {} ::: ${arr[@]} ::: 1111 2222 3333 4444 5555 ::: 0.1
 # parallel -j2 ./scripts/rl_test_tractoinferno_exp2.sh SAC_ISMRM2015TrainExp2 2023-02-16-10_04_08 {} ::: ${arr[@]} ::: 1111 2222 3333 4444 5555 ::: 0.1
-parallel -j1 ./scripts/rl_test_tractoinferno_exp2.sh SAC_Auto_ISMRM2015TrainExp2 2023-02-21-17_27_47 {} ::: sub-1046 ::: 4444 5555 ::: 0.1
+parallel -j1 ./scripts/rl_test_tractoinferno_exp2.sh SAC_Auto_InfernoTrainOracle _2024-02-05-11_18_40 {} ::: sub-1046 ::: 1111 2222 3333 ::: 0.1
