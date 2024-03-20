@@ -40,5 +40,5 @@ fi
 
 # Install other required packages and modules
 echo "Finalizing installation ..."
-pip install -e . --quiet
+pip install -e .
 echo "Done !"
