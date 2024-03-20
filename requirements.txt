@@ -1,9 +1,7 @@
-comet-git-pure==0.19.16
 comet-ml==3.21.0
 dwi-ml @ git+https://github.com/scil-vital/dwi_ml@b7ac03a5b4f2cab77bbcf000a763afa133786b04
 h5py==3.7.0
 ismrm-2015-tractography-challenge-scoring @ git+https://github.com/scilus/ismrm_2015_tractography_challenge_scoring.git@9f3c24b8bc5697b8c53482bb2bd5e3ca0fefe28d
 nibabel==4.0.2
-numpy==1.23.5
 scilpy @ git+https://github.com/scilus/scilpy@1.5.0
 tqdm==4.64.1
