@@ -25,7 +25,9 @@ else
 fi
 
 echo "Installing required packages."
-pip install Cython numpy packaging --quiet
+
+pip install Cython numpy packaging
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Installing PyTorch 1.13.1"
     pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 --quiet
