@@ -25,8 +25,6 @@ class Tracker(object):
         self,
         alg: RLAlgorithm,
         n_actor: int,
-        interface_seeding: bool,
-        no_retrack: bool,
         prob: float = 0.,
         compress: float = 0.0,
         min_length: float = 20,
@@ -39,18 +37,22 @@ class Tracker(object):
         ----------
         alg: RLAlgorithm
             Tracking agent.
-        env: BaseEnv
-            Forward environment to track.
-        back_env: BaseEnv
-            Backward environment to track.
+        n_actor: int
+            Number of actors to track at once.
+        prob: float
+            Noise to add to the action space.
         compress: float
             Compression factor when saving streamlines.
-
+        min_length: float
+            Minimum length of a streamline.
+        max_length: float
+            Maximum length of a streamline.
+        save_seeds: bool
+            Save seeds in the tractogram.
         """
+
         self.alg = alg
         self.n_actor = n_actor
-        self.interface_seeding = interface_seeding
-        self.no_retrack = no_retrack
         self.prob = prob
         self.compress = compress
         self.min_length = min_length
@@ -70,6 +72,8 @@ class Tracker(object):
 
         Arguments
         ---------
+        env : BaseEnv
+            Environment to track in.
         tracts_format : TrkFile or TckFile
             Tractogram format.
 
@@ -90,9 +94,6 @@ class Tracker(object):
         np.random.shuffle(env.seeds)
 
         def tracking_generator():
-            print('Tracking called')
-            # Switch policy to eval mode so no gradients are computed
-
             # Presume iso vox
             vox_size = np.mean(
                 np.abs(affine)[np.diag_indices(4)][:3])
@@ -112,16 +113,7 @@ class Tracker(object):
                 self.alg.validation_episode(
                     state, env, self.prob)
 
-                if not self.interface_seeding:
-                    batch_tractogram = env.get_streamlines()
-                    state = self.back_env.reset(env, batch_tractogram)
-
-                    # Track backwards
-                    self.alg.validation_episode(
-                        state, self.back_env, self.prob)
-                    batch_tractogram = self.back_env.get_streamlines()
-                else:
-                    batch_tractogram = env.get_streamlines()
+                batch_tractogram = env.get_streamlines()
 
                 for item in batch_tractogram:
                     streamline = item.streamline
@@ -166,15 +158,21 @@ class Tracker(object):
         This can be considered an "epoch". Note that N=self.n_actor
         streamlines will be tracked instead of one streamline per seed.
 
+        Parameters
+        ----------
+        env: BaseEnv
+            Environment to track in.
+
         Returns
         -------
-        streamlines: Tractogram
-            Tractogram containing the tracked streamline
-        losses: dict
-            Dictionary containing various losses and metrics
-            w.r.t the agent's training.
-        running_reward: float
-            Cummulative training steps reward
+        train_tractogram: Tractogram
+            Tractogram generated during training.
+        mean_losses: dict
+            Mean losses during training.
+        reward: float
+            Total reward obtained during training.
+        mean_reward_factors: dict
+            Reward separated into its components.
         """
 
         self.alg.agent.train()
@@ -190,31 +188,12 @@ class Tracker(object):
             self.alg._episode(state, env)
         # Get the streamlines generated from forward training
         train_tractogram = env.get_streamlines()
+
         if len(losses.keys()) > 0:
             mean_losses = add_to_means(mean_losses, losses)
         if len(reward_factors.keys()) > 0:
             mean_reward_factors = add_to_means(
                 mean_reward_factors, reward_factors)
-
-        if not self.interface_seeding:
-            # Flip streamlines to initialize backwards tracking
-            state = self.back_env.reset(env, train_tractogram)
-
-            # Track and train backwards
-            back_reward, losses, length, reward_factors = \
-                self.alg._episode(state, self.back_env)
-            # Get the streamlines generated from backward training
-            train_tractogram = self.back_env.get_streamlines()
-
-            mean_losses = add_to_means(mean_losses, losses)
-            mean_reward_factors = add_to_means(
-                mean_reward_factors, reward_factors)
-
-            # Retracking also rewards the agents
-            if self.no_retrack:
-                reward += back_reward
-            else:
-                reward = back_reward
 
         return (
             train_tractogram,
@@ -230,12 +209,17 @@ class Tracker(object):
         Run the tracking algorithm without training to see how it performs, but
         still compute the reward.
 
+        Parameters
+        ----------
+        env: BaseEnv
+            Environment to track in.
+
         Returns:
         --------
         tractogram: Tractogram
             Validation tractogram.
-        reward: float
-            Reward obtained during validation.
+        cummulative_reward: float
+            Total reward obtained during validation.
         """
         # Switch policy to eval mode so no gradients are computed
         self.alg.agent.eval()
@@ -261,17 +245,7 @@ class Tracker(object):
                 reward = self.alg.validation_episode(
                     state, env, self.prob)
 
-                if not self.interface_seeding:
-                    batch_tractogram = env.get_streamlines()
-                    # Initialize backwards tracking
-                    state = self.back_env.reset(env, batch_tractogram)
-
-                    # Track backwards
-                    reward = self.alg.validation_episode(
-                        state, self.back_env, self.prob)
-                    batch_tractogram = self.back_env.get_streamlines()
-                else:
-                    batch_tractogram = env.get_streamlines()
+                batch_tractogram = env.get_streamlines()
 
                 yield batch_tractogram, reward
 

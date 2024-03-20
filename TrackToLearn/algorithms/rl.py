@@ -60,7 +60,6 @@ class RLAlgorithm(object):
         initial_state,
         env: BaseEnv,
         prob: float = 1.,
-        compress=False,
     ):
         """
         Main loop for the algorithm

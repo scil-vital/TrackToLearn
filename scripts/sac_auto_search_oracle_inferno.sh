@@ -59,7 +59,6 @@ python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --use_gpu \
   --use_comet \
   --binary_stopping_threshold=0.1 \
-  --coverage_weighting=0.0 \
   --oracle_validator \
   --oracle_stopping \
   --oracle_checkpoint='epoch_10_inferno.ckpt'

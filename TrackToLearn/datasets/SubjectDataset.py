@@ -13,14 +13,13 @@ class SubjectDataset(Dataset):
     """
 
     def __init__(
-        self, file_path: str, dataset_split: str, interface_seeding: bool,
+        self, file_path: str, dataset_split: str,
     ):
         """
         Args:
         """
         self.file_path = file_path
         self.split = dataset_split
-        self.interface_seeding = interface_seeding
         with h5py.File(self.file_path, 'r') as f:
             self.subjects = list(f[dataset_split].keys())
 
@@ -55,10 +54,7 @@ class SubjectDataset(Dataset):
         include_mask = tracto_data.include
         exclude_mask = tracto_data.exclude
 
-        if self.interface_seeding:
-            seeding = tracto_data.interface
-        else:
-            seeding = tracto_data.wm
+        seeding = tracto_data.interface
 
         reference = tracto_data.reference
 

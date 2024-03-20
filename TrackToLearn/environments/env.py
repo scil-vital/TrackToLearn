@@ -21,21 +21,15 @@ from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
-from TrackToLearn.environments.coverage_reward import CoverageReward
-from TrackToLearn.environments.filters import (CMCFilter, Filters,
-                                               OracleFilter)
-from TrackToLearn.environments.local_reward import (LengthReward,
-                                                    PeaksAlignmentReward,
-                                                    TargetReward)
+from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
-from TrackToLearn.environments.tractometer_reward import TractometerReward
 from TrackToLearn.environments.stopping_criteria import (
-    BinaryStoppingCriterion, CmcStoppingCriterion, OracleStoppingCriterion,
+    BinaryStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
     is_too_curvy, is_too_long)
-from TrackToLearn.utils.utils import from_polar, from_sphere, normalize_vectors
+from TrackToLearn.utils.utils import normalize_vectors
 
 # from dipy.io.utils import get_reference_info
 
@@ -88,13 +82,12 @@ class BaseEnv(object):
         if type(subject_data) is str:
             self.dataset_file = subject_data
             self.split = split_id
-            self.interface_seeding = env_dto['interface_seeding']
 
             def collate_fn(data):
                 return data
 
             self.dataset = SubjectDataset(
-                self.dataset_file, self.split, self.interface_seeding)
+                self.dataset_file, self.split)
             self.loader = DataLoader(self.dataset, 1, shuffle=True,
                                      collate_fn=collate_fn,
                                      num_workers=2)
@@ -112,61 +105,32 @@ class BaseEnv(object):
         self._state_size = None  # to be calculated later
 
         # Tracking parameters
-        self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
         self.theta = env_dto['theta']
-        self.epsilon = env_dto['epsilon']
         # Number of seeds per voxel
         self.npv = env_dto['npv']
         # Whether to use CMC or binary stopping criterion
-        self.cmc = env_dto['cmc']
         self.binary_stopping_threshold = env_dto['binary_stopping_threshold']
-        # Whether to use asymmetric fODFs. Has not been tested in
-        # a while.
-        self.asymmetric = env_dto['asymmetric']
-        # Action type (discrete, polar, cartesian)
-        # The code for polar and discrete actions is not finished.
-        self.action_type = env_dto['action_type']
-
-        if env_dto['sphere']:
-            self.sphere = get_sphere(env_dto['sphere'])
-        else:
-            self.sphere = None
 
         # Step-size and min/max lengths are typically defined in mm
         # by the user, but need to be converted to voxels.
         self.step_size_mm = env_dto['step_size']
         self.min_length_mm = env_dto['min_length']
         self.max_length_mm = env_dto['max_length']
-        self.add_neighborhood_mm = env_dto['add_neighborhood']
 
         # Oracle parameters
         self.oracle_checkpoint = env_dto['oracle_checkpoint']
         self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
-        self.oracle_filter = env_dto['oracle_filter']
 
         # Tractometer parameters
-        self.tractometer_weighting = env_dto['tractometer_weighting']
         self.scoring_data = env_dto['scoring_data']
 
         # Reward parameters
         self.compute_reward = env_dto['compute_reward']
         # "Local" reward parameters
         self.alignment_weighting = env_dto['alignment_weighting']
-        self.straightness_weighting = env_dto['straightness_weighting']
-        self.length_weighting = env_dto['length_weighting']
-        self.target_bonus_factor = env_dto['target_bonus_factor']
-        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.coverage_weighting = env_dto['coverage_weighting']
-        self.tractometer_weighting = env_dto['tractometer_weighting']
-
-        # Oracle reward parameters
-        self.dense_oracle = env_dto['dense_oracle_weighting'] > 0
-        if self.dense_oracle:
-            self.oracle_weighting = env_dto['dense_oracle_weighting']
-        else:
-            self.oracle_weighting = env_dto['sparse_oracle_weighting']
+        # "Sparse" reward parameters
+        self.oracle_weighting = env_dto['sparse_oracle_weighting']
 
         # Other parameters
         self.rng = env_dto['rng']
@@ -239,17 +203,13 @@ class BaseEnv(object):
         self.min_nb_steps = int(self.min_length / self.step_size_mm)
 
         # Neighborhood used as part of the state
-        self.add_neighborhood_vox = None
-        if self.add_neighborhood_mm:
-            # TODO: This is a hack. The neighborhood should be computed
-            # from the step size, not from a separate parameter.
-            self.add_neighborhood_vox = convert_length_mm2vox(
-                self.add_neighborhood_mm,
-                self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.cat(
-                (torch.zeros((1, 3)),
-                 get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
-            ).to(self.device)
+        self.add_neighborhood_vox = convert_length_mm2vox(
+            self.step_size_mm,
+            self.affine_vox2rasmm)
+        self.neighborhood_directions = torch.cat(
+            (torch.zeros((1, 3)),
+             get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
+        ).to(self.device)
 
         # Tracking seeds
         self.seeds = track_utils.random_seeds_from_mask(
@@ -275,23 +235,11 @@ class BaseEnv(object):
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
                               max_nb_steps=self.max_nb_steps)
+
         # Angle between segment (curvature criterion)
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=self.theta)
-
-        # Streamline loop criterion (not used, too slow)
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=360)
-
-        # Angle between peaks and segments (angular error criterion)
-        # Not used a it constrains tracking too much.
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-        #     self.epsilon,
-        #     self.peaks)
 
         # Stopping criterion according to an oracle
         if self.oracle_checkpoint and self.oracle_stopping_criterion:
@@ -304,20 +252,11 @@ class BaseEnv(object):
                 self.device)
 
         # Mask criterion (either binary or CMC)
-        if self.cmc:
-            cmc_criterion = CmcStoppingCriterion(
-                self.include_mask.data,
-                self.exclude_mask.data,
-                self.affine_vox2rasmm,
-                self.step_size,
-                self.min_nb_steps)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-        else:
-            binary_criterion = BinaryStoppingCriterion(
-                mask_data,
-                self.binary_stopping_threshold)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-                binary_criterion
+        binary_criterion = BinaryStoppingCriterion(
+            mask_data,
+            self.binary_stopping_threshold)
+        self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
+            binary_criterion
 
         # ==========================================
         # Reward function
@@ -326,72 +265,19 @@ class BaseEnv(object):
         # Reward function and reward factors
         if self.compute_reward:
             # Reward streamline according to alignment with local peaks
-            peaks_reward = PeaksAlignmentReward(self.peaks, self.asymmetric)
-            # Reward streamlines if they reach a specific mask
-            # (i.e. grey matter)
-            target_reward = TargetReward(self.target_mask)
-            # Reward streamlines for their length
-            length_reward = LengthReward(self.max_nb_steps)
-            # Reward streamlines according to an oracle
+            peaks_reward = PeaksAlignmentReward(self.peaks)
             oracle_reward = OracleReward(self.oracle_checkpoint,
-                                         self.dense_oracle,
                                          self.min_nb_steps,
                                          self.reference,
                                          self.affine_vox2rasmm,
                                          self.device)
-            # Reward streamlines according to tractometer
-            # This should not be used
-            tractometer_reward = TractometerReward(self.scoring_data,
-                                                   self.reference,
-                                                   self.affine_vox2rasmm)
 
-            # Reward streamlines according to coverage of the WM mask.
-            cover_reward = CoverageReward(self.tracking_mask)
             # Combine all reward factors into the reward function
-            # TODO: There has to be a better way of declaring the reward
-            # function as now the resp. of not crashing if some stuff is
-            # missing (i.e. the target mask) is on the reward factors.
-            # They should just not be initialized instead.
             self.reward_function = RewardFunction(
                 [peaks_reward,
-                 target_reward,
-                 length_reward,
-                 oracle_reward,
-                 tractometer_reward,
-                 cover_reward],
+                 oracle_reward],
                 [self.alignment_weighting,
-                 self.target_bonus_factor,
-                 self.length_weighting,
-                 self.oracle_weighting,
-                 self.tractometer_weighting,
-                 self.coverage_weighting])
-
-        # ==========================================
-        # Filters
-        # =========================================
-        # Filters are applied when calling env.get_streamlines()
-        # They are used to filter out streamlines that do not meet
-        # certain criteria (e.g. length, oracle, CMC, etc.)
-
-        self.filters = {}
-        # Filter out streamlines below the length threshold
-        # self.filters[Filters.MIN_LENGTH] = MinLengthFilter(self.min_nb_steps)
-
-        # Filter out streamlines according to the oracle
-        if self.oracle_filter:
-            self.filters[Filters.ORACLE] = OracleFilter(self.oracle_checkpoint,
-                                                        self.min_nb_steps,
-                                                        self.reference,
-                                                        self.affine_vox2rasmm,
-                                                        self.device)
-
-        # Filter out streamlines according to the Continuous Map Criterion
-        if self.cmc:
-            self.filters[Filters.CMC] = CMCFilter(self.include_mask.data,
-                                                  self.exclude_mask.data,
-                                                  self.affine_vox2rasmm,
-                                                  self.step_size,
-                                                  self.min_nb_steps)
+                 self.oracle_weighting])
 
     @classmethod
     def from_dataset(
@@ -590,17 +476,9 @@ class BaseEnv(object):
         return self._state_size
 
     def get_action_size(self):
-        """ Returns the size of the action space. This depends on the
-        action type. If the action type is discrete, the action space is
-        the number of vertices on the sphere. If the action type is polar,
-        the action space is 2 (theta and phi). If the action type is
-        cartesian, the action space is 3 (x, y, z).
+        """ Returns the size of the action space.
         """
 
-        if self.action_type == 'discrete':
-            return len(self.sphere.vertices)
-        elif self.action_type == 'polar':
-            return 2
         return 3
 
     def get_voxel_size(self):
@@ -630,19 +508,9 @@ class BaseEnv(object):
         self,
         actions: np.ndarray,
     ):
-        """ Format actions to be used by the environment. This includes
-        converting spherical actions to cartesian actions, and scaling
+        """ Format actions to be used by the environment. Scaling
         actions to the step size.
-
-        This is a leftover from an attempt to use spherical and discrete
-        actions.
         """
-
-        if self.action_type == 'polar' and actions.shape[-1] == 2:
-            actions = from_polar(actions)
-        if self.action_type == 'discrete' and actions.shape[-1] != 3:
-            actions = from_sphere(actions, self.sphere)
-        # Scale actions to step size
         actions = normalize_vectors(actions) * self.step_size
 
         return actions

@@ -22,8 +22,10 @@ assert torch.cuda.is_available()
 
 
 class TD3TrackToLearnTraining(TrackToLearnTraining):
-    """
-    Main RL tracking experiment
+    """ WARNING: TD3 is no longer supported. No support will be provied.
+    The code is left as example and for legacy purposes.
+
+    Train a RL tracking agent using TD3.
     """
 
     def __init__(
@@ -113,6 +115,8 @@ def main():
     """ Main tracking script """
     args = parse_args()
     print(args)
+    raise DeprecationWarning('Training with TD3 is deprecated. Please train '
+                             'using SAC Auto instead.')
 
     experiment = CometExperiment(project_name=args.experiment,
                                  workspace=args.workspace, parse_args=False,

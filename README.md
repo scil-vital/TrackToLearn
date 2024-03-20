@@ -75,7 +75,7 @@ Then, you may train a PPO agent, for example, by running `python TrackToLearn/tr
 usage: ppo_train.py [-h] [--use_gpu] [--rng_seed RNG_SEED] [--use_comet]
                     [--run_tractometer] [--render] [--n_signal N_SIGNAL]
                     [--n_dirs N_DIRS] [--add_neighborhood ADD_NEIGHBORHOOD]
-                    [--cmc] [--asymmetric] [--n_actor N_ACTOR]
+                    [--n_actor N_ACTOR]
                     [--hidden_dims HIDDEN_DIMS] [--load_agent LOAD_POLICY]
                     [--max_ep MAX_EP] [--log_interval LOG_INTERVAL] [--lr LR]
                     [--gamma GAMMA]

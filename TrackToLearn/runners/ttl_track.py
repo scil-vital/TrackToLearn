@@ -18,35 +18,22 @@ from scilpy.io.utils import (add_overwrite_arg,
                              verify_compression_th)
 from scilpy.tracking.utils import verify_streamline_length_options
 
-from TrackToLearn.algorithms.a2c import A2C
-from TrackToLearn.algorithms.acktr import ACKTR
-from TrackToLearn.algorithms.ddpg import DDPG
-from TrackToLearn.algorithms.ppo import PPO
-from TrackToLearn.algorithms.trpo import TRPO
-from TrackToLearn.algorithms.td3 import TD3
-from TrackToLearn.algorithms.sac import SAC
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.algorithms.vpg import VPG
 from TrackToLearn.datasets.utils import MRIDataVolume
-from TrackToLearn.experiment.experiment import (
-    add_oracle_args,
-    add_tractometer_args)
 
-from TrackToLearn.experiment.tracker import Tracker
-from TrackToLearn.experiment.ttl import TrackToLearnExperiment
+from TrackToLearn.experiment.experiment import Experiment
+from TrackToLearn.tracking.tracker import Tracker
 
 # Define the example model paths from the install folder.
 # Hackish ? I'm not aware of a better solution but I'm
 # open to suggestions.
 _ROOT = os.sep.join(os.path.normpath(
     os.path.dirname(__file__)).split(os.sep)[:-2])
-DEFAULT_WM_MODEL = os.path.join(
-    _ROOT, 'example_models', 'SAC_Auto_ISMRM2015_WM')
-DEFAULT_INTERFACE_MODEL = os.path.join(
-    _ROOT, 'example_models', 'SAC_Auto_ISMRM2015_interface')
+DEFAULT_MODEL = os.path.join(
+    _ROOT, 'models')
 
 
-class TrackToLearnTrack(TrackToLearnExperiment):
+class TrackToLearnTrack(Experiment):
     """ TrackToLearn testing script. Should work on any model trained with a
     TrackToLearn experiment
     """
@@ -76,7 +63,6 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         self.binary_stopping_threshold = \
             track_dto['binary_stopping_threshold']
-        self.cmc = track_dto['cmc']
 
         self.n_actor = track_dto['n_actor']
         self.npv = track_dto['npv']
@@ -89,17 +75,13 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         # Tractometer parameters
         self.tractometer_validator = False
-        self.tractometer_weighting = 0
         self.scoring_data = None
 
         self.compute_reward = False
         self.render = False
 
-        if not track_dto['cpu'] and not torch.cuda.is_available():
-            print('No CUDA installation found. Defaulting to CPU tracking.')
-
         self.device = torch.device(
-            "cuda" if torch.cuda.is_available() and not track_dto['cpu']
+            "cuda" if torch.cuda.is_available()
             else "cpu")
 
         self.fa_map = None
@@ -120,32 +102,16 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             self.add_neighborhood = hyperparams['add_neighborhood']
             self.voxel_size = hyperparams.get('voxel_size', 2.0)
             self.theta = hyperparams['max_angle']
-            self.epsilon = hyperparams.get('max_angular_error', 90)
             self.hidden_dims = hyperparams['hidden_dims']
-            self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
             self.interface_seeding = hyperparams['interface_seeding']
-            self.cmc = hyperparams.get('cmc', False)
-            self.asymmetric = hyperparams.get('asymmetric', False)
-            self.no_retrack = hyperparams.get('no_retrack', False)
-            self.action_type = hyperparams.get("action_type", "cartesian")
-            self.action_size = hyperparams.get("action_size", 3)
 
         self.alignment_weighting = 0.0
-        self.straightness_weighting = 0.0
-        self.length_weighting = 0.0
-        self.target_bonus_factor = 0.0
-        self.exclude_penalty_factor = 0.0
-        self.angle_penalty_factor = 0.0
         # Oracle parameters
-        self.oracle_checkpoint = track_dto['oracle_checkpoint']
-        self.dense_oracle_weighting = 0.0
+        self.oracle_checkpoint = None
         self.sparse_oracle_weighting = 0.0
         self.oracle_validator = False
-        self.oracle_filter = False
-        self.oracle_stopping_criterion = \
-            track_dto['oracle_stopping_criterion']
-        self.coverage_weighting = 0.0
+        self.oracle_stopping_criterion = False
 
         self.random_seed = track_dto['rng_seed']
         torch.manual_seed(self.random_seed)
@@ -160,43 +126,35 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         Main method where the magic happens
         """
         # Presume iso vox
-        # TODO: Handle this later
-
-        # ref_img = nib.load(self.reference_file)
-        # tracking_voxel_size = ref_img.header.get_zooms()[0]
+        ref_img = nib.load(self.reference_file)
+        tracking_voxel_size = ref_img.header.get_zooms()[0]
 
         # # Set the voxel size so the agent traverses the same "quantity" of
         # # voxels per step as during training.
+        step_size_mm = self.step_size
+        if abs(float(tracking_voxel_size) - float(self.voxel_size)) >= 0.1:
+            step_size_mm = (
+                float(tracking_voxel_size) / float(self.voxel_size)) * \
+                self.step_size
 
-        # step_size_mm = (float(tracking_voxel_size) / float(self.voxel_size)) * \
-        #     self.step_size
+            print("Agent was trained on a voxel size of {}mm and a "
+                  "step size of {}mm.".format(self.voxel_size, self.step_size))
 
-        # print("Agent was trained on a voxel size of {}mm and a "
-        #       "step size of {}mm.".format(self.voxel_size, self.step_size))
-
-        # print("Subject has a voxel size of {}mm, setting step size to "
-        #       "{}mm.".format(tracking_voxel_size, step_size_mm))
-
-        # self.step_size = step_size_mm
+            print("Subject has a voxel size of {}mm, setting step size to "
+                  "{}mm.".format(tracking_voxel_size, step_size_mm))
 
         # Instanciate environment. Actions will be fed to it and new
         # states will be returned. The environment updates the streamline
-        back_env, env = self.get_tracking_envs()
+        env = self.get_tracking_envs()
+        env.step_size_mm = step_size_mm
+
         # Get example state to define NN input size
         example_state = env.reset(0, 1)
         self.input_size = example_state.shape[1]
         self.action_size = env.get_action_size()
 
         # Load agent
-        algs = {'VPG': VPG,
-                'A2C': A2C,
-                'ACKTR': ACKTR,
-                'PPO': PPO,
-                'TRPO': TRPO,
-                'DDPG': DDPG,
-                'TD3': TD3,
-                'SAC': SAC,
-                'SACAuto': SACAuto}
+        algs = {'SACAuto': SACAuto}
 
         rl_alg = algs[self.algorithm]
         print('Tracking with {} agent.'.format(self.algorithm))
@@ -215,8 +173,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, self.n_actor, self.interface_seeding,
-            self.no_retrack, prob=self.prob,
+            alg, self.n_actor, prob=self.prob,
             compress=self.compress, min_length=self.min_length,
             max_length=self.max_length, save_seeds=self.save_seeds)
 
@@ -226,12 +183,10 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         tractogram = tracker.track(env, filetype)
 
         reference = get_reference_info(self.reference_file)
-
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly
         nib.streamlines.save(tractogram, self.out_tractogram, header=header)
-        # print('Saved {} streamlines'.format(len(tractogram)))
 
 
 def add_mandatory_options_tracking(p):
@@ -282,33 +237,22 @@ def add_track_args(parser):
                              help='Path to the folder containing .pth files.\n'
                              'If not set, will default to the example '
                              'models.\n'
-                             '[{}]'.format(DEFAULT_WM_MODEL))
+                             '[{}]'.format(DEFAULT_MODEL))
     agent_group.add_argument(
         '--hyperparameters', type=str,
         help='Path to the .json file containing the '
         'hyperparameters of your tracking agent. \n'
         'If not set, will default to the example models.\n'
-        '[{}]'.format(DEFAULT_INTERFACE_MODEL))
+        '[{}]'.format(DEFAULT_MODEL))
     agent_group.add_argument('--n_actor', type=int, default=10000, metavar='N',
                              help='Number of streamlines to track simultaneous'
                              'ly.\nLimited by the size of your GPU and RAM. A '
                              'higher value\nwill speed up tracking up to a '
                              'point [%(default)s].')
 
-    agent_group.add_argument('--cpu', action='store_true',
-                             help='Use CPU for tracking.\n'
-                                  'Defaults to tracking on GPU without this '
-                                  'flag.')
-
     seed_group = parser.add_argument_group('Seeding options')
     seed_group.add_argument('--npv', type=int, default=1,
                             help='Number of seeds per voxel [%(default)s].')
-    seed_group.add_argument('--interface', action='store_true',
-                            help='If set, tracking will be presumed to be '
-                            'initialized at the WM/GM\ninterface and omits '
-                            'the "retracking" phase".\n**Be mindful to '
-                            'provide the proper seeding mask.**\n'
-                            'Defaults to WM seeding without this flag.')
     track_g = parser.add_argument_group('Tracking options')
     track_g.add_argument('--min_length', type=float, default=10.,
                          metavar='m',
@@ -334,12 +278,7 @@ def add_track_args(parser):
     track_g.add_argument('--fa_map', type=str, default=None,
                          help='Scale the added noise (see `--noise`) according'
                          '\nto the provided FA map (.nii.gz). Optional.')
-
-    tracking_mask_group = parser.add_mutually_exclusive_group(required=True)
-    tracking_mask_group.add_argument(
-        '--cmc', action='store_true',
-        help='If set, use Continuous Mask Criteria to stop tracking.')
-    tracking_mask_group.add_argument(
+    track_g.add_argument(
         '--binary_stopping_threshold',
         type=float, default=0.1,
         help='Lower limit for interpolation of tracking mask value.\n'
@@ -347,25 +286,18 @@ def add_track_args(parser):
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Random number generator seed [%(default)s].')
 
-    add_oracle_args(parser)
-    add_tractometer_args(parser)
-
 
 def verify_agent_option(parser, args):
 
     if (args.agent is not None and args.hyperparameters is None) or \
        (args.agent is None and args.hyperparameters is not None):
         parser.error('You must specify both --agent and --hyperparameters '
-                     'arguments.')
+                     'arguments or use the default model.')
 
-    if args.interface and args.agent is None:
-        args.agent = DEFAULT_INTERFACE_MODEL
+    if args.agent is None:
+        args.agent = DEFAULT_MODEL
         args.hyperparameters = join(
-            DEFAULT_INTERFACE_MODEL, 'hyperparameters.json')
-    elif args.agent is None:
-        args.agent = DEFAULT_WM_MODEL
-        args.hyperparameters = join(
-            DEFAULT_WM_MODEL, 'hyperparameters.json')
+            DEFAULT_MODEL, 'hyperparameters.json')
 
 
 def parse_args():

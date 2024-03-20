@@ -69,7 +69,6 @@ do
     --use_gpu \
     --use_comet \
     --binary_stopping_threshold=0.1 \
-    --coverage_weighting=0.0 \
     --tractometer_validator \
     --tractometer_reference=${reference_file} \
     --scoring_data=${SCORING_DATA} \

@@ -108,7 +108,7 @@ class CometMonitor():
 
     def log_losses(self, loss_dict, i):
         for k, v in loss_dict.items():
-            if type(v) == np.ndarray:
+            if type(v) is np.ndarray:
                 self.e.log_histogram_3d(v, name=k, step=i)
             else:
                 self.e.log_metric(k, v, step=i)

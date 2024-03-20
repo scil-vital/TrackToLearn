@@ -15,7 +15,9 @@ from TrackToLearn.environments.env import BaseEnv
 
 class DDPG(RLAlgorithm):
     """
-    Training algorithm.
+    NOTE: LEGACY CODE. The `_episode` function is used. The actual DDPG
+    learning algorithm has not been tested in a while.
+
     Based on
         Lillicrap, T. P., Hunt, J. J., Pritzel, A., Heess, N., Erez, T., Tassa,
         Y., ... & Wierstra, D. (2015). Continuous control with deep
@@ -28,7 +30,6 @@ class DDPG(RLAlgorithm):
 
     Some alterations have been made to the algorithms so it could be
     fitted to the tractography problem.
-
     """
 
     def __init__(

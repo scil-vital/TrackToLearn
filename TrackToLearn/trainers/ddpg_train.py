@@ -15,8 +15,10 @@ assert torch.cuda.is_available()
 
 
 class DDPGTrackToLearnTraining(TrackToLearnTraining):
-    """
-    Main RL tracking experiment
+    """ WARNING: DDPG is no longer supported. No support will be provied.
+    The code is left as example and for legacy purposes.
+
+    Train a RL tracking agent using DDPG.
     """
 
     def __init__(
@@ -97,6 +99,9 @@ def parse_args():
 
 def main():
     """ Main tracking script """
+
+    raise DeprecationWarning('Training with DDPG is deprecated. Please train '
+                             'using SAC Auto instead.')
     args = parse_args()
     print(args)
 

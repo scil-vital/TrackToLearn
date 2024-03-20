@@ -3,7 +3,8 @@ import numpy as np
 from typing import Tuple
 
 from TrackToLearn.environments.tracking_env import TrackingEnvironment
-from TrackToLearn.environments.noisy_tracker import NoisyTrackingEnvironment
+from TrackToLearn.environments.noisy_tracking_env import \
+    NoisyTrackingEnvironment
 
 
 class InterfaceTrackingEnvironment(TrackingEnvironment):

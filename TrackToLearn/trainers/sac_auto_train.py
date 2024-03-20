@@ -17,7 +17,7 @@ assert torch.cuda.is_available()
 
 class SACAutoTrackToLearnTraining(TrackToLearnTraining):
     """
-    Main RL tracking experiment
+    Train a RL tracking agent using SAC with automatic entropy adjustment.
     """
 
     def __init__(

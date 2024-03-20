@@ -2,8 +2,6 @@ import numpy as np
 
 from TrackToLearn.environments.interpolation import (
     nearest_neighbor_interpolation)
-from TrackToLearn.environments.utils import (
-    is_inside_mask)
 from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.environments.reward import Reward
 from TrackToLearn.utils.utils import normalize_vectors
@@ -23,12 +21,10 @@ class PeaksAlignmentReward(Reward):
     def __init__(
         self,
         peaks: MRIDataVolume,
-        asymmetric: bool = False
     ):
         self.name = 'peaks_reward'
 
         self.peaks = peaks.data
-        self.asymmetric = asymmetric
 
     def __call__(
         self,
@@ -58,19 +54,15 @@ class PeaksAlignmentReward(Reward):
         # Get peaks at streamline end
         v = nearest_neighbor_interpolation(self.peaks, idx)
 
-        # Presume 5 peaks (per hemisphere if asymmetric)
-        if self.asymmetric:
-            v = np.reshape(v, (N, 5 * 2, P // (5 * 2)))
-        else:
-            v = np.reshape(v, (N * 5, P // 5))
+        v = np.reshape(v, (N * 5, P // 5))
 
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # # Normalize peaks
-                v = normalize_vectors(v)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # # Normalize peaks
+            v = normalize_vectors(v)
 
-            v = np.reshape(v, (N, 5, P // 5))
-            # Zero NaNs
-            v = np.nan_to_num(v)
+        v = np.reshape(v, (N, 5, P // 5))
+        # Zero NaNs
+        v = np.nan_to_num(v)
 
         # Get last streamline segments
 
@@ -114,109 +106,3 @@ class PeaksAlignmentReward(Reward):
         rewards *= factors
 
         return rewards
-
-
-class LengthReward(Reward):
-
-    """ Reward streamlines based on their maximum and current length.
-
-    Initially proposed in
-        Théberge, A., Desrosiers, C., Descoteaux, M., & Jodoin, P. M. (2021).
-        Track-to-learn: A general framework for tractography with deep
-        reinforcement learning. Medical Image Analysis, 72, 102093.
-
-    """
-
-    def __init__(
-        self,
-        max_length: int,
-    ):
-        """
-        Parameters
-        ----------
-        max_length: int
-            Maximum streamline length, in steps.
-        """
-
-        self.name = 'length_reward'
-
-        self.max_length = max_length
-
-    def __call__(
-        self,
-        streamlines: np.ndarray,
-        dones: np.ndarray
-    ):
-        """
-        Parameters
-        ----------
-        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-            Streamline coordinates in voxel space
-        dones: `numpy.ndarray` of shape (n_streamlines)
-            Whether tracking is over for each streamline or not.
-
-        Returns
-        -------
-        factor: np.ndarray of floats
-            Reward components unweighted
-        """
-        N, S, _ = streamlines.shape
-
-        factor = np.asarray([S] * N) / self.max_length
-
-        return factor
-
-
-class TargetReward(Reward):
-
-    """ Reward streamlines if they enter a "target mask" (GM).
-
-    Initially proposed in
-        Théberge, A., Desrosiers, C., Descoteaux, M., & Jodoin, P. M. (2021).
-        Track-to-learn: A general framework for tractography with deep
-        reinforcement learning. Medical Image Analysis, 72, 102093.
-
-    """
-
-    def __init__(
-        self,
-        target: MRIDataVolume,
-    ):
-        """
-        Parameters
-        ----------
-        target: np.ndarray
-            Grey matter mask
-        """
-
-        self.name = 'target_reward'
-
-        self.target = target.data,
-
-    def __call__(
-        self,
-        streamlines: np.ndarray,
-        dones: np.ndarray
-    ):
-        """
-        Parameters
-        ----------
-        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-            Streamline coordinates in voxel space
-        dones: `numpy.ndarray` of shape (n_streamlines)
-            Whether tracking is over for each streamline or not.
-
-        Returns
-        -------
-        reward: np.ndarray of floats
-            Reward components unweighted
-        """
-
-        target_streamlines = is_inside_mask(
-            streamlines, self.target, 0.5
-        ).astype(int)
-
-        factor = target_streamlines * dones * int(
-            streamlines.shape[1] > self.min_nb_steps)
-
-        return factor

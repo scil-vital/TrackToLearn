@@ -91,7 +91,6 @@ python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --use_gpu \
   --use_comet \
   --binary_stopping_threshold=0.1 \
-  --coverage_weighting=0.0 \
   --tractometer_validator \
   --scoring_data=${SCORING_DATA} \
   --oracle_validator \

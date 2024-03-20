@@ -22,8 +22,11 @@ assert torch.cuda.is_available()
 
 
 class SACTrackToLearnTraining(TrackToLearnTraining):
-    """
-    Main RL tracking experiment
+    """ WARNING: `SAC Auto` is still supported but SAC is not.
+    No support will be provided. The code is left as example and
+    for legacy purposes.
+
+    Train a RL tracking agent using SAC.
     """
 
     def __init__(
@@ -111,6 +114,9 @@ def parse_args():
 
 def main():
     """ Main tracking script """
+    raise DeprecationWarning('Training with SAC is deprecated. Please train '
+                             'using SAC Auto instead.')
+
     args = parse_args()
     print(args)
 

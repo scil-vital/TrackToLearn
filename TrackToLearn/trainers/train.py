@@ -18,14 +18,14 @@ from TrackToLearn.experiment.experiment import (add_data_args,
                                                 add_tracking_args,
                                                 add_tractometer_args)
 from TrackToLearn.experiment.oracle_validator import OracleValidator
-from TrackToLearn.experiment.tracker import Tracker
 from TrackToLearn.experiment.tractometer_validator import TractometerValidator
-from TrackToLearn.experiment.ttl import TrackToLearnExperiment
+from TrackToLearn.experiment.experiment import Experiment
+from TrackToLearn.tracking.tracker import Tracker
 
 assert torch.cuda.is_available(), "Training is only possible on CUDA devices."
 
 
-class TrackToLearnTraining(TrackToLearnExperiment):
+class TrackToLearnTraining(Experiment):
     """
     Main RL tracking experiment
     """
@@ -73,54 +73,38 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # More tracking parameters
         self.min_length = train_dto['min_length']
         self.max_length = train_dto['max_length']
-        self.interface_seeding = train_dto['interface_seeding']
-        self.cmc = train_dto['cmc']
         self.binary_stopping_threshold = train_dto['binary_stopping_threshold']
-        self.asymmetric = train_dto['asymmetric']
-        self.sphere = train_dto['sphere']
-        self.action_type = train_dto['action_type']
 
         # Reward parameters
         self.alignment_weighting = train_dto['alignment_weighting']
-        self.straightness_weighting = train_dto['straightness_weighting']
-        self.length_weighting = train_dto['length_weighting']
-        self.target_bonus_factor = train_dto['target_bonus_factor']
-        self.exclude_penalty_factor = train_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = train_dto['angle_penalty_factor']
-        self.coverage_weighting = train_dto['coverage_weighting']
 
         # Model parameters
         self.hidden_dims = train_dto['hidden_dims']
         self.load_agent = train_dto['load_agent']
 
-        # Various parameters
-        self.comet_experiment = comet_experiment
-        self.render = train_dto['render']
-        self.last_episode = 0
-
         # Environment parameters
         self.n_actor = train_dto['n_actor']
-        self.n_signal = train_dto['n_signal']
         self.n_dirs = train_dto['n_dirs']
 
         # Oracle parameters
         self.oracle_checkpoint = train_dto['oracle_checkpoint']
-        self.dense_oracle_weighting = train_dto['dense_oracle_weighting']
         self.sparse_oracle_weighting = train_dto['sparse_oracle_weighting']
         self.oracle_validator = train_dto['oracle_validator']
         self.oracle_stopping_criterion = train_dto['oracle_stopping_criterion']
-        self.oracle_filter = train_dto['oracle_filter']
 
         # Tractometer parameters
         self.tractometer_validator = train_dto['tractometer_validator']
-        self.tractometer_weighting = train_dto['tractometer_weighting']
         self.tractometer_dilate = train_dto['tractometer_dilate']
         self.tractometer_reference = train_dto['tractometer_reference']
         self.scoring_data = train_dto['scoring_data']
 
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
-        self.no_retrack = train_dto['no_retrack']
+
+        # Various parameters
+        self.comet_experiment = comet_experiment
+        self.render = train_dto['render']
+        self.last_episode = 0
 
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
@@ -153,39 +137,23 @@ class TrackToLearnTraining(TrackToLearnExperiment):
             'dataset_file': self.dataset_file,
             'n_seeds_per_voxel': self.npv,
             'max_angle': self.theta,
-            'max_angular_error': self.epsilon,
             'min_length': self.min_length,
             'max_length': self.max_length,
             'binary_stopping_threshold': self.binary_stopping_threshold,
-            'cmc': self.cmc,
-            'asymmetric': self.asymmetric,
-            'sphere': self.sphere,
-            'action_type': self.action_type,
             # Model parameters
             'experiment_path': self.experiment_path,
             'hidden_dims': self.hidden_dims,
             'last_episode': self.last_episode,
             'n_actor': self.n_actor,
-            'n_signal': self.n_signal,
             'n_dirs': self.n_dirs,
-            'interface_seeding': self.interface_seeding,
-            'no_retrack': self.no_retrack,
             'prob': self.prob,
             'noise': self.noise,
             # Reward parameters
             'alignment_weighting': self.alignment_weighting,
-            'straightness_weighting': self.straightness_weighting,
-            'length_weighting': self.length_weighting,
-            'target_bonus_factor': self.target_bonus_factor,
-            'exclude_penalty_factor': self.exclude_penalty_factor,
-            'angle_penalty_factor': self.angle_penalty_factor,
-            'coverage_weighting': self.coverage_weighting,
             # Oracle parameters
-            'dense_oracle_weighting': self.dense_oracle_weighting,
             'sparse_oracle_weighting': self.sparse_oracle_weighting,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
-            'oracle_filter': self.oracle_filter,
             # Tractometer parameters
             'tractometer_weighting': self.tractometer_weighting,
         }
@@ -256,11 +224,10 @@ class TrackToLearnTraining(TrackToLearnExperiment):
         # Initialize Trackers, which will handle streamline generation and
         # trainnig
         train_tracker = Tracker(
-            alg, self.n_actor, self.interface_seeding,
-            self.no_retrack, prob=0.0, compress=0.0)
+            alg, self.n_actor, prob=0.0, compress=0.0)
 
         valid_tracker = Tracker(
-            alg, self.n_actor, self.interface_seeding, self.no_retrack,
+            alg, self.n_actor,
             prob=self.prob, compress=0.0)
 
         # Setup validators, which will handle validation and scoring
@@ -363,7 +330,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
                 # Display what the network is capable-of "now"
                 self.log(
-                    valid_tractogram, env, valid_reward, i_episode)
+                    valid_tractogram, valid_reward, i_episode)
                 self.comet_monitor.log_losses(scores, i_episode)
                 self.save_model(alg)
 
@@ -384,7 +351,7 @@ class TrackToLearnTraining(TrackToLearnExperiment):
 
         # Display what the network is capable-of "now"
         self.log(
-            valid_tractogram, env, valid_reward, i_episode)
+            valid_tractogram, valid_reward, i_episode)
         self.comet_monitor.log_losses(scores, i_episode)
 
         self.save_model(alg)

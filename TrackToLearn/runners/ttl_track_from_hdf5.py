@@ -12,15 +12,7 @@ from os.path import join
 from dipy.io.utils import get_reference_info, create_tractogram_header
 from nibabel.streamlines import detect_format
 
-from TrackToLearn.algorithms.a2c import A2C
-from TrackToLearn.algorithms.acktr import ACKTR
-from TrackToLearn.algorithms.ddpg import DDPG
-from TrackToLearn.algorithms.ppo import PPO
-from TrackToLearn.algorithms.trpo import TRPO
-from TrackToLearn.algorithms.td3 import TD3
-from TrackToLearn.algorithms.sac import SAC
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.algorithms.vpg import VPG
 from TrackToLearn.datasets.utils import MRIDataVolume
 from TrackToLearn.experiment.experiment import (
     add_experiment_args,
@@ -29,11 +21,11 @@ from TrackToLearn.experiment.experiment import (
     add_reward_args,
     add_tracking_args,
     add_tractometer_args)
-from TrackToLearn.experiment.tracker import Tracker
-from TrackToLearn.experiment.ttl import TrackToLearnExperiment
+from TrackToLearn.tracking.tracker import Tracker
+from TrackToLearn.experiment.experiment import Experiment
 
 
-class TrackToLearnValidation(TrackToLearnExperiment):
+class TrackToLearnValidation(Experiment):
     """ TrackToLearn validing script. Should work on any model trained with a
     TrackToLearn experiment. This runs tracking on a dataset (hdf5).
 
@@ -119,8 +111,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         self.comet_experiment = None
 
         self.device = torch.device(
-            "cuda" if torch.cuda.is_available() and not valid_dto['cpu']
-            else "cpu")
+            "cuda" if torch.cuda.is_available() else "cpu")
 
         self.random_seed = valid_dto['rng_seed']
         torch.manual_seed(self.random_seed)
@@ -160,15 +151,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         env.set_step_size(step_size_mm)
 
         # Load agent
-        algs = {'VPG': VPG,
-                'A2C': A2C,
-                'ACKTR': ACKTR,
-                'PPO': PPO,
-                'TRPO': TRPO,
-                'DDPG': DDPG,
-                'TD3': TD3,
-                'SAC': SAC,
-                'SACAuto': SACAuto}
+        algs = {'SACAuto': SACAuto}
 
         rl_alg = algs[self.algorithm]
 
@@ -185,8 +168,7 @@ class TrackToLearnValidation(TrackToLearnExperiment):
         alg.agent.load(self.agent, 'last_model_state')
 
         tracker = Tracker(
-            alg, self.n_actor, self.interface_seeding,
-            self.no_retrack, compress=0.0,
+            alg, self.n_actor, compress=0.0,
             min_length=self.min_length, max_length=self.max_length,
             save_seeds=False)
 
@@ -212,16 +194,14 @@ def add_valid_args(parser):
                         help='Path to preprocessed datset file (.hdf5)')
     parser.add_argument('agent',
                         help='Path to the policy')
+    parser.add_argument('subject_id', type=str, default=None,
+                        help='Subject in HDF5 to track on.')
     parser.add_argument('hyperparameters',
                         help='File containing the hyperparameters for the '
                              'experiment')
     parser.add_argument('--fa_map', type=str, default=None,
                         help='FA map to influence STD for probabilistic' +
                         'tracking')
-    parser.add_argument('--valid_theta', type=float, default=None,
-                        help='Max valid angle to override the model\'s own.')
-    parser.add_argument('--cpu', action='store_true',
-                        help='Use CPU for tracking.')
 
 
 def parse_args():
