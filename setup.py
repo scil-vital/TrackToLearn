@@ -1,18 +1,15 @@
+import os
 
+from setuptools import setup
 
-from setuptools import setup, find_packages
+here = os.path.abspath(os.path.dirname(__file__))
 
-# To use a consistent encoding
-from os import path
-
-here = path.abspath(path.dirname(__file__))
-
-# # Get the long description from the relevant file
-# with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-#     long_description = f.read()
-
-external_dependencies = []
-
+with open('requirements.txt') as f:
+    required_dependencies = f.read().splitlines()
+    external_dependencies = []
+    torch_added = False
+    for dependency in required_dependencies:
+        external_dependencies.append(dependency)
 
 setup(
     name='Track-to-Learn',
@@ -26,7 +23,7 @@ setup(
     long_description="",
 
     # The project's main homepage.
-    url='https://github.com/scil-vital/TractoRL',
+    url='https://github.com/scil-vital/TrackToLearn',
 
     # Author details
     author='Antoine Théberge',
@@ -55,7 +52,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(),
+    packages=['TrackToLearn'],
 
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
@@ -82,14 +79,9 @@ setup(
     # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files
     # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
     data_files=[
-        'example_models/SAC_Auto_ISMRM2015_WM/',
-        'example_models/SAC_Auto_ISMRM2015_interface/',
-        'example_models/SAC_Auto_ISMRM2015_WM/hyperparameters.json',
-        'example_models/SAC_Auto_ISMRM2015_interface/hyperparameters.json',
-        'example_models/SAC_Auto_ISMRM2015_WM/last_model_state_actor.pth',
-        'example_models/SAC_Auto_ISMRM2015_WM/last_model_state_critic.pth',
-        'example_models/SAC_Auto_ISMRM2015_interface/last_model_state_actor.pth',
-        'example_models/SAC_Auto_ISMRM2015_interface/last_model_state_critic.pth',
+        'models/last_model_state_critic.pth',
+        'models/last_model_state_actor.pth',
+        'models/hyperparameters.json',
     ],
 
     # To provide executable scripts, use entry points in preference to the
@@ -98,7 +90,7 @@ setup(
     entry_points={
         'console_scripts': [
             "ttl_track.py=TrackToLearn.runners.ttl_track:main",
-            "ttl_validation.py=TrackToLearn.runners.ttl_validation:main"]
+            "ttl_track_from_hdf5.py=TrackToLearn.runners.ttl_track_from_hdf5:main"] # noqa E501
     },
     include_package_data=True,
 )

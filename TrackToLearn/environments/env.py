@@ -12,7 +12,6 @@ from dwi_ml.data.processing.volume.interpolation import \
     interpolate_volume_in_neighborhood
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
-from gymnasium.wrappers.normalize import RunningMeanStd
 from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
                                   get_maximas)
 from torch.utils.data import DataLoader
@@ -495,14 +494,6 @@ class BaseEnv(object):
         voxel_size = np.mean(np.abs(diag))
 
         return voxel_size
-
-    def _normalize(self, obs):
-        """Normalises the observation using the running mean and variance of
-        the observations. Taken from Gymnasium."""
-        if self.obs_rms is None:
-            self.obs_rms = RunningMeanStd(shape=(self._state_size,))
-        self.obs_rms.update(obs)
-        return (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8)
 
     def _format_actions(
         self,
