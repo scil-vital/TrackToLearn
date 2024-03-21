@@ -1,7 +1,7 @@
 import numpy as np
 from dipy.tracking import metrics as tm
 from multiprocessing import Pool
-from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage import map_coordinates
 
 from TrackToLearn.utils.utils import normalize_vectors
 

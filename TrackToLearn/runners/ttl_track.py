@@ -196,7 +196,8 @@ def add_mandatory_options_tracking(p):
                         'fODF.\nCan be of any order and basis (including "full'
                         '" bases for\nasymmetric ODFs). See also --sh_basis.')
     p.add_argument('in_seed',
-                   help='Seeding mask (.nii.gz).')
+                   help='Seeding mask (.nii.gz). Must be represent the WM/GM '
+                        'interface.')
     p.add_argument('in_mask',
                    help='Tracking mask (.nii.gz).\n'
                         'Tracking will stop outside this mask.')

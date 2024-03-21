@@ -8,8 +8,8 @@ import torch
 from comet_ml import Experiment as CometExperiment
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.experiment.train import (TrackToLearnTraining,
-                                           add_training_args)
+from TrackToLearn.trainers.train import (TrackToLearnTraining,
+                                         add_training_args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 assert torch.cuda.is_available()
@@ -29,9 +29,9 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
         Parameters
         ----------
         sac_auto_train_dto: dict
-            SACAuto training parameters
+        SACAuto training parameters
         comet_experiment: CometExperiment
-            Allows for logging and experiment management.
+        Allows for logging and experiment management.
         """
 
         super().__init__(
@@ -75,10 +75,10 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 
 def add_sac_auto_args(parser):
     parser.add_argument('--alpha', default=0.2, type=float,
-                        help='Temperature parameter')
+                        help='Initial temperature parameter')
     parser.add_argument('--batch_size', default=2**12, type=int,
                         help='How many tuples to sample from the replay '
-                             'buffer.')
+                        'buffer.')
     parser.add_argument('--replay_size', default=1e6, type=int,
                         help='How many tuples to store in the replay buffer.')
 
