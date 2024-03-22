@@ -13,7 +13,6 @@ from TrackToLearn.trainers.train import (TrackToLearnTraining,
                                          add_training_args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert torch.cuda.is_available()
 
 
 class SACAutoTrackToLearnTraining(TrackToLearnTraining):
