@@ -22,8 +22,6 @@ from TrackToLearn.experiment.tractometer_validator import TractometerValidator
 from TrackToLearn.experiment.experiment import Experiment
 from TrackToLearn.tracking.tracker import Tracker
 
-assert torch.cuda.is_available(), "Training is only possible on CUDA devices."
-
 
 class TrackToLearnTraining(Experiment):
     """
@@ -360,6 +358,9 @@ class TrackToLearnTraining(Experiment):
         """ Prepare the environment, algorithm and trackers and run the
         training loop
         """
+
+        assert torch.cuda.is_available(), \
+            "Training is only supported on CUDA devices."
 
         # Instantiate environment. Actions will be fed to it and new
         # states will be returned. The environment updates the streamline
