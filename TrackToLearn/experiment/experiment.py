@@ -11,9 +11,10 @@ from dipy.io.streamline import save_tractogram
 from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.environments.interface_tracking_env import (
-    InterfaceNoisyTrackingEnvironment,
-    InterfaceTrackingEnvironment)
+from TrackToLearn.environments.tracking_env import (
+    TrackingEnvironment)
+from TrackToLearn.environments.noisy_tracking_env import (
+    NoisyTrackingEnvironment)
 from TrackToLearn.environments.stopping_criteria import (
     is_flag_set, StoppingFlags)
 from TrackToLearn.utils.utils import LossHistory
@@ -129,11 +130,11 @@ class Experiment(object):
 
         if noisy:
             class_dict = {
-                'interface_tracking_env': InterfaceNoisyTrackingEnvironment
+                'tracking_env': NoisyTrackingEnvironment
             }
         else:
             class_dict = {
-                'interface_tracking_env': InterfaceTrackingEnvironment
+                'tracking_env': TrackingEnvironment
             }
         return class_dict, env_dto
 
@@ -150,7 +151,7 @@ class Experiment(object):
 
         # Someone with better knowledge of design patterns could probably
         # clean this
-        env = class_dict['interface_tracking_env'].from_dataset(
+        env = class_dict['tracking_env'].from_dataset(
             env_dto, 'training')
 
         return env
@@ -168,7 +169,7 @@ class Experiment(object):
 
         # Someone with better knowledge of design patterns could probably
         # clean this
-        env = class_dict['interface_tracking_env'].from_dataset(
+        env = class_dict['tracking_env'].from_dataset(
             env_dto, 'training')
 
         return env
@@ -198,7 +199,7 @@ class Experiment(object):
 
         # Someone with better knowledge of design patterns could probably
         # clean this
-        env = class_dict['interface_tracking_env'].from_files(env_dto)
+        env = class_dict['tracking_env'].from_files(env_dto)
 
         return env
 

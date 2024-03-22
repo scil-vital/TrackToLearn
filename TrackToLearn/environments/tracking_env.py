@@ -140,6 +140,8 @@ class TrackingEnvironment(BaseEnv):
         Apply actions, rescale actions to step size and grow streamlines
         for one step forward. Calculate rewards and stop streamlines.
 
+        TODO: Split into smaller functions.
+
         Parameters
         ----------
         actions: np.ndarray
@@ -157,6 +159,23 @@ class TrackingEnvironment(BaseEnv):
         """
 
         directions = self._format_actions(actions)
+
+        # If the streamline goes out the tracking mask at the first
+        # step, flip it
+        if self.length == 1:
+            # Grow streamlines one step forward
+            streamlines = np.array(self.streamlines[self.continue_idx])
+            streamlines[:, self.length, :] = \
+                self.streamlines[self.continue_idx,
+                                 self.length-1, :] + directions
+
+            # Get stopping and keeping indexes
+            stopping, flags = \
+                self._is_stopping(
+                    streamlines[:, :self.length + 1])
+
+            # Flip stopping trajectories
+            directions[stopping] *= -1
 
         # Grow streamlines one step forward
         self.streamlines[self.continue_idx, self.length, :] = \
