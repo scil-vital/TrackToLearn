@@ -54,30 +54,16 @@ class SubjectData(object):
         subject_id: str,
         input_dv=None,
         peaks=None,
-        wm=None,
-        gm=None,
-        csf=None,
-        include=None,
-        exclude=None,
-        interface=None,
+        tracking=None,
+        seeding=None,
         reference=None,
-        sft=None,
-        rewards=None,
-        states=None
     ):
         self.subject_id = subject_id
         self.input_dv = input_dv
         self.peaks = peaks
-        self.wm = wm
-        self.gm = gm
-        self.csf = csf
-        self.include = include
-        self.exclude = exclude
-        self.interface = interface
+        self.tracking = tracking
+        self.seeding = seeding
         self.reference = reference
-        self.rewards = rewards
-        self.states = states
-        self.sft = sft
 
     @classmethod
     def from_hdf_subject(cls, hdf_file, subject_id):
@@ -86,30 +72,17 @@ class SubjectData(object):
         input_dv = MRIDataVolume.from_hdf_group(hdf_subject, 'input_volume')
 
         peaks = MRIDataVolume.from_hdf_group(hdf_subject, 'peaks_volume')
-        wm = MRIDataVolume.from_hdf_group(hdf_subject, 'wm_volume')
-        gm = MRIDataVolume.from_hdf_group(hdf_subject, 'gm_volume')
-        csf = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'csf_volume', 'wm_volume')
-        include = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'include_volume', 'wm_volume')
-        exclude = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'exclude_volume', 'wm_volume')
-        interface = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'interface_volume', 'wm_volume')
+        tracking = MRIDataVolume.from_hdf_group(hdf_subject, 'tracking_volume')
+        seeding = MRIDataVolume.from_hdf_group(
+            hdf_subject, 'seeding_volume', 'tracking_volume')
         anatomy = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'anat_volume', 'wm_volume')
+            hdf_subject, 'anat_volume', 'tracking_volume')
 
         reference = nib.Nifti1Image(anatomy.data, anatomy.affine_vox2rasmm)
 
-        states = None
-        sft = None
-        rewards = None
-
         return cls(
-            subject_id, input_dv=input_dv, wm=wm, gm=gm, csf=csf,
-            include=include, exclude=exclude, interface=interface,
-            reference=reference, peaks=peaks, sft=sft, rewards=rewards,
-            states=states)
+            subject_id, input_dv=input_dv, tracking=tracking,
+            seeding=seeding, reference=reference, peaks=peaks)
 
 
 def convert_length_mm2vox(
