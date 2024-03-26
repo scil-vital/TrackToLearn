@@ -458,11 +458,12 @@ def add_tractometer_args(parser: ArgumentParser):
 def add_oracle_args(parser: ArgumentParser):
     oracle = parser.add_argument_group('Oracle')
     oracle.add_argument('--oracle_checkpoint', type=str,
+                        default='models/tractoracle.ckpt',
                         help='Checkpoint file (.ckpt) of the Oracle')
     oracle.add_argument('--oracle_validator', action='store_true',
                         help='Run a TractOracle model during validation to '
                         'monitor how the training is doing.')
     oracle.add_argument('--oracle_stopping_criterion', action='store_true',
                         help='Stop streamlines according to the Oracle.')
-    oracle.add_argument('--oracle_bonus', default=0, type=float,
+    oracle.add_argument('--oracle_bonus', default=10, type=float,
                         help='Sparse oracle weighting for reward.')
