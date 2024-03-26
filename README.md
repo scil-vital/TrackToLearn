@@ -1,14 +1,15 @@
 # Track-to-Learn/TractOracle-RL: reinforcement learning for tractography.
 
+TractOracle-RL is half of **TractOracle** (preprint coming), a reinforcement learning system for tractography. **TractOracle-RL** is a tractography algorithm which is trained via reinforcement learning using TractOracle-Net.
+
 See [Versions](#versions) for past and current interations.
 
 ## Getting started
 
-### Installation and setup
-
 **Right now, only python 3.10 is supported.**
 
-It is recommended to use `virtualenv` to run the code
+It is recommended to use a python [virtual environment](https://virtualenv.pypa.io/en/latest/user_guide.html) to run the code.
+
 
 ``` bash
 virtualenv .env --python=python3.10
@@ -23,7 +24,7 @@ Then, install the dependencies and setup the repo with
 
 Getting errors during installation ? Open an issue !
 
-### Tracking
+## Tracking
 
 You will need a trained agent for tracking. One is provided in the `models` folder. You can then track by running `ttl_track.py`.
 
@@ -44,7 +45,7 @@ You will need to provide fODFs, a seeding mask and a WM mask. The seeding mask *
 
 Agents used for tracking are constrained by their training regime. For example, the agents provided in `example_models` were trained on a volume with a resolution of ~1mm iso voxels and a step size of 0.75mm using fODFs of order 8, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically (i.e resulting in a step size of 0.375mm on 0.5mm iso diffusion data). **However**, if using fODFs in the `tournier07` basis, you will need to set the `--sh_basis` argument accordingly.
 
-### Training
+## Training
 
 First, make a dataset `.hdf5` file with `TrackToLearn/dataset/create_dataset.py`.
 ```
@@ -76,7 +77,7 @@ usage: sac_auto_train.py [-h] [--workspace WORKSPACE] [--rng_seed RNG_SEED]
                          [--step_size STEP_SIZE] [--prob %] [--noise sigma]
                          [--oracle_checkpoint ORACLE_CHECKPOINT]
                          [--oracle_validator] [--oracle_stopping_criterion]
-                         [--sparse_oracle_weighting SPARSE_ORACLE_WEIGHTING]
+                         [--oracle_bonus ORACLE_BONUS]
                          [--scoring_data SCORING_DATA]
                          [--tractometer_reference TRACTOMETER_REFERENCE]
                          [--tractometer_validator]

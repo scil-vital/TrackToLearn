@@ -26,7 +26,7 @@ def main():
             "gamma": {
                 "type": "discrete",
                 "values": [0.90, 0.95, 0.98, 0.99]},
-            "sparse_oracle_weighting": {
+            "oracle_bonus": {
                 "type": "discrete",
                 "values": [1.0, 5.0, 7.0, 10.0]}
         },
@@ -50,12 +50,12 @@ def main():
         experiment.parse_args = False
         experiment.disabled = not args.use_comet
 
-        oracle_weighting = experiment.get_parameter("sparse_oracle_weighting")
+        oracle_bonus = experiment.get_parameter("oracle_bonus")
         gamma = experiment.get_parameter("gamma")
 
         arguments = vars(args)
         arguments.update({
-            'sparse_oracle_weighting': oracle_weighting,
+            'oracle_bonus': oracle_bonus,
             'gamma': gamma,
         })
 

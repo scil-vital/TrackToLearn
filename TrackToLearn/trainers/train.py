@@ -86,7 +86,7 @@ class TrackToLearnTraining(Experiment):
 
         # Oracle parameters
         self.oracle_checkpoint = train_dto['oracle_checkpoint']
-        self.sparse_oracle_weighting = train_dto['sparse_oracle_weighting']
+        self.oracle_bonus = train_dto['oracle_bonus']
         self.oracle_validator = train_dto['oracle_validator']
         self.oracle_stopping_criterion = train_dto['oracle_stopping_criterion']
 
@@ -149,7 +149,7 @@ class TrackToLearnTraining(Experiment):
             # Reward parameters
             'alignment_weighting': self.alignment_weighting,
             # Oracle parameters
-            'sparse_oracle_weighting': self.sparse_oracle_weighting,
+            'oracle_bonus': self.oracle_bonus,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
             # Tractometer parameters

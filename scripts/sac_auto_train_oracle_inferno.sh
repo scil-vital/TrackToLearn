@@ -65,7 +65,7 @@ do
     --binary_stopping_threshold=0.1 \
     --oracle_validator \
     --oracle_stopping \
-    --sparse_oracle_weighting=10.0 \
+    --oracle_bonus=10.0 \
     --oracle_checkpoint='epoch_10_inferno.ckpt'
 
   mkdir -p $EXPERIMENTS_FOLDER/"$EXPERIMENT"

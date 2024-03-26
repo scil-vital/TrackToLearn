@@ -116,7 +116,7 @@ class Experiment(object):
             'npv': self.npv,
             'rng': self.rng,
             'alignment_weighting': self.alignment_weighting,
-            'sparse_oracle_weighting': self.sparse_oracle_weighting,
+            'oracle_bonus': self.oracle_bonus,
             'oracle_validator': self.oracle_validator,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
             'oracle_checkpoint': self.oracle_checkpoint,
@@ -439,16 +439,8 @@ def add_tracking_args(parser: ArgumentParser):
                         '[%(default)s]')
     parser.add_argument('--step_size', default=0.75, type=float,
                         help='Step size for tracking')
-    parser.add_argument('--prob', default=0.0, type=float, metavar='%',
-                        help='Factor multiplied to the standard '
-                        'deviation of the direction distribution '
-                        'predicted by the agent at each step. A '
-                        'value of 0.0 makes the agent deterministic, '
-                        'a value of 1.0 makes the agent fully '
-                        'probabilistic.'
-                        '[%(default)s]')
     parser.add_argument('--noise', default=0.0, type=float, metavar='sigma',
-                        help='Add noise ~ N (0, `prob`) to the agent\'s\n'
+                        help='Add noise ~ N (0, `noise`) to the agent\'s\n'
                         'output to make tracking more probabilistic.\n'
                         'Should be between 0.0 and 0.1.'
                         '[%(default)s]')
@@ -477,5 +469,5 @@ def add_oracle_args(parser: ArgumentParser):
                         'monitor how the training is doing.')
     oracle.add_argument('--oracle_stopping_criterion', action='store_true',
                         help='Stop streamlines according to the Oracle.')
-    oracle.add_argument('--sparse_oracle_weighting', default=0, type=float,
+    oracle.add_argument('--oracle_bonus', default=0, type=float,
                         help='Sparse oracle weighting for reward.')

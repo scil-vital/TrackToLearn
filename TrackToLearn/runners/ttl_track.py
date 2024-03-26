@@ -58,7 +58,6 @@ class TrackToLearnTrack(Experiment):
         self.reference_file = track_dto['in_mask']
         self.out_tractogram = track_dto['out_tractogram']
 
-        self.prob = track_dto['prob']
         self.noise = track_dto['noise']
 
         self.binary_stopping_threshold = \
@@ -109,7 +108,7 @@ class TrackToLearnTrack(Experiment):
         self.alignment_weighting = 0.0
         # Oracle parameters
         self.oracle_checkpoint = None
-        self.sparse_oracle_weighting = 0.0
+        self.oracle_bonus = 0.0
         self.oracle_validator = False
         self.oracle_stopping_criterion = False
 
@@ -173,9 +172,9 @@ class TrackToLearnTrack(Experiment):
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, self.n_actor, prob=self.prob,
-            compress=self.compress, min_length=self.min_length,
-            max_length=self.max_length, save_seeds=self.save_seeds)
+            alg, self.n_actor, compress=self.compress,
+            min_length=self.min_length, max_length=self.max_length,
+            save_seeds=self.save_seeds)
 
         # Run tracking
         env.load_subject()
@@ -263,16 +262,8 @@ def add_track_args(parser):
                          metavar='M',
                          help='Maximum length of a streamline in mm. '
                          '[%(default)s]')
-    track_g.add_argument('--prob', default=1.0, type=float, metavar='%',
-                         help='Factor multiplied to the standard '
-                         'deviation of the direction distribution '
-                         'predicted by the agent at each step. A '
-                         'value of 0.0 makes the agent deterministic, '
-                         'a value of 1.0 makes the agent fully '
-                         'probabilistic.'
-                         '[%(default)s]')
     track_g.add_argument('--noise', default=0.0, type=float, metavar='sigma',
-                         help='Add noise ~ N (0, `prob`) to the agent\'s\n'
+                         help='Add noise ~ N (0, `noise`) to the agent\'s\n'
                          'output to make tracking more probabilistic.\n'
                          'Should be between 0.0 and 0.1.'
                          '[%(default)s]')

@@ -73,7 +73,7 @@ do
     --tractometer_reference=${reference_file} \
     --scoring_data=${SCORING_DATA} \
     --oracle_validator \
-    --sparse_oracle_weighting=10.0 \
+    --oracle_bonus=10.0 \
     --oracle_stopping \
     --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt'
 

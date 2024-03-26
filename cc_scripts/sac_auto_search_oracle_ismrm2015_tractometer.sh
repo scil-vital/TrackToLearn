@@ -95,6 +95,6 @@ python -O TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --scoring_data=${SCORING_DATA} \
   --tractometer_weighting=10.0 \
   --oracle_validator \
-  --sparse_oracle_weighting=0.0 \
+  --oracle_bonus=0.0 \
   --oracle_checkpoint='epoch_39_ismrm2015v3.ckpt'
 

@@ -46,20 +46,14 @@ class SubjectDataset(Dataset):
         peaks = tracto_data.peaks
 
         # Load tracking mask
-        tracking_mask = tracto_data.wm
+        tracking_mask = tracto_data.tracking
 
-        # Load target and exclude masks
-        target_mask = tracto_data.gm
-
-        include_mask = tracto_data.include
-        exclude_mask = tracto_data.exclude
-
-        seeding = tracto_data.interface
+        seeding = tracto_data.seeding
 
         reference = tracto_data.reference
 
-        return (subject_id, input_volume, tracking_mask, include_mask,
-                exclude_mask, target_mask, seeding, peaks, reference)
+        return (subject_id, input_volume, tracking_mask,
+                seeding, peaks, reference)
 
     def __len__(self):
         """

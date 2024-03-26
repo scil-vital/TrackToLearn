@@ -64,7 +64,7 @@ python TrackToLearn/searchers/sac_auto_searcher_oracle.py \
   --binary_stopping_threshold=0.1 \
   --oracle_validator \
   --oracle_stopping \
-  --sparse_oracle_weighting=5.0 \
+  --oracle_bonus=5.0 \
   --oracle_checkpoint='epoch_10_inferno.ckpt'
 
 

@@ -64,8 +64,7 @@ class TrackToLearnValidation(Experiment):
 
         # Oracle parameters
         self.oracle_checkpoint = valid_dto['oracle_checkpoint']
-        self.dense_oracle_weighting = valid_dto['dense_oracle_weighting']
-        self.sparse_oracle_weighting = valid_dto['sparse_oracle_weighting']
+        self.oracle_bonus = valid_dto['oracle_bonus']
         self.oracle_validator = valid_dto['oracle_validator']
         self.oracle_filter = valid_dto['oracle_filter']
         self.oracle_stopping_criterion = \

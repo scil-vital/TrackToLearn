@@ -12,7 +12,6 @@ from os.path import join
 from nibabel.nifti1 import Nifti1Image
 from scilpy.io.utils import add_sh_basis_args
 
-from TrackToLearn.datasets.processing import min_max_normalize_data_volume
 from TrackToLearn.utils.utils import (
     Timer)
 
@@ -37,8 +36,6 @@ def parse_args():
                         " volumes.")
     parser.add_argument('output', type=str,
                         help="Output filename including path")
-    parser.add_argument('--normalize', action='store_true',
-                        help='If set, normalize first input signal.')
 
     basis_group = parser.add_argument_group('Basis options')
     add_sh_basis_args(basis_group)
@@ -56,22 +53,19 @@ def main():
     with Timer("Generating dataset", newline=True):
         generate_dataset(path=args.path,
                          config_file=args.config_file,
-                         output=args.output,
-                         normalize=args.normalize)
+                         output=args.output)
 
 
 def generate_dataset(
     path: str,
     config_file: str,
     output: str,
-    normalize: bool = False,
 ) -> None:
     """ Generate a dataset
 
     Args:
         config_file:
         output:
-        normalize:
 
     """
 
@@ -84,25 +78,24 @@ def generate_dataset(
     with h5py.File(dataset_file, 'w') as hdf_file:
         # Save version
         hdf_file.attrs['version'] = 2
-        hdf_file.attrs['normalize'] = normalize is True
 
         with open(join(path, config_file), "r") as conf:
             config = json.load(conf)
             print(config.keys())
             add_subjects_to_hdf5(
-                path, config, hdf_file, "training", normalize)
+                path, config, hdf_file, "training")
 
             add_subjects_to_hdf5(
-                path, config, hdf_file, "validation", normalize)
+                path, config, hdf_file, "validation")
 
             add_subjects_to_hdf5(
-                path, config, hdf_file, "testing", normalize)
+                path, config, hdf_file, "testing")
 
     print("Saved dataset : {}".format(dataset_file))
 
 
 def add_subjects_to_hdf5(
-    path, config, hdf_file, dataset_split, normalize,
+    path, config, hdf_file, dataset_split,
 ):
     """
 
@@ -110,7 +103,6 @@ def add_subjects_to_hdf5(
         config:
         hdf_file:
         dataset_split:
-        normalize:
 
     """
 
@@ -124,18 +116,17 @@ def add_subjects_to_hdf5(
 
             subject_config = config[dataset_split][subject_id]
             hdf_subject = hdf_split.create_group(subject_id)
-            add_subject_to_hdf5(path, subject_config, hdf_subject, normalize)
+            add_subject_to_hdf5(path, subject_config, hdf_subject)
 
 
 def add_subject_to_hdf5(
-    path, config, hdf_subject, normalize,
+    path, config, hdf_subject,
 ):
     """
 
     Args:
         config:
         hdf_subject:
-        normalize:
 
     """
 
@@ -152,7 +143,7 @@ def add_subject_to_hdf5(
     # Process subject's data
     process_subject(hdf_subject, path, input_files, peaks_file, wm_file,
                     gm_file, csf_file, interface_file, include_file,
-                    exclude_file, anat_file, normalize)
+                    exclude_file, anat_file)
 
 
 def process_subject(
@@ -167,7 +158,6 @@ def process_subject(
     include: str,
     exclude: str,
     anat: str,
-    normalize: bool,
 ):
     """
 
@@ -181,7 +171,6 @@ def process_subject(
         interface:
         include:
         exclude:
-        normalize:
 
     """
 
@@ -194,12 +183,7 @@ def process_subject(
     for i, v in enumerate(input_volumes):
         if len(v.shape) == 3:
             input_volumes[i] = v[..., None]
-
-    if normalize:
-        print('Normalizing first signal volume')
-        input_volume = min_max_normalize_data_volume(input_volumes[0])
-    else:
-        input_volume = input_volumes[0]
+    input_volume = input_volumes[0]
 
     signal = np.concatenate([input_volume] + input_volumes[1:], axis=-1)
     # Save processed data

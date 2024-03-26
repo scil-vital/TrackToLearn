@@ -129,7 +129,7 @@ class BaseEnv(object):
         # "Local" reward parameters
         self.alignment_weighting = env_dto['alignment_weighting']
         # "Sparse" reward parameters
-        self.oracle_weighting = env_dto['sparse_oracle_weighting']
+        self.oracle_bonus = env_dto['oracle_bonus']
 
         # Other parameters
         self.rng = env_dto['rng']
@@ -150,14 +150,12 @@ class BaseEnv(object):
                 return
 
             try:
-                (sub_id, input_volume, tracking_mask, include_mask,
-                 exclude_mask, target_mask, seeding_mask, peaks, reference) = \
-                    next(self.loader_iter)[0]
+                (sub_id, input_volume, tracking_mask, seeding_mask,
+                 peaks, reference) = next(self.loader_iter)[0]
             except StopIteration:
                 self.loader_iter = iter(self.loader)
-                (sub_id, input_volume, tracking_mask, include_mask,
-                 exclude_mask, target_mask, seeding_mask, peaks, reference) = \
-                    next(self.loader_iter)[0]
+                (sub_id, input_volume, tracking_mask, seeding_mask,
+                 peaks, reference) = next(self.loader_iter)[0]
 
             self.subject_id = sub_id
             # Affines
@@ -172,8 +170,6 @@ class BaseEnv(object):
             (input_volume, tracking_mask, seeding_mask, peaks,
              reference) = self.subject_data
 
-            target_mask, include_mask, exclude_mask = None, None, None
-
             self.affine_vox2rasmm = input_volume.affine_vox2rasmm
             self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
 
@@ -184,9 +180,6 @@ class BaseEnv(object):
             self.reference = reference
 
         self.tracking_mask = tracking_mask
-        self.target_mask = target_mask
-        self.include_mask = include_mask
-        self.exclude_mask = exclude_mask
         self.peaks = peaks
         mask_data = tracking_mask.data.astype(np.uint8)
         self.seeding_data = seeding_mask.data.astype(np.uint8)
@@ -276,7 +269,7 @@ class BaseEnv(object):
                 [peaks_reward,
                  oracle_reward],
                 [self.alignment_weighting,
-                 self.oracle_weighting])
+                 self.oracle_bonus])
 
     @classmethod
     def from_dataset(
@@ -325,21 +318,17 @@ class BaseEnv(object):
         """
 
         in_odf = env_dto['in_odf']
-        wm_file = env_dto['wm_file']
         in_seed = env_dto['in_seed']
         in_mask = env_dto['in_mask']
         sh_basis = env_dto['sh_basis']
-        input_wm = env_dto['input_wm']
         reference = env_dto['reference']
 
         (input_volume, peaks_volume, tracking_mask, seeding_mask) = \
             BaseEnv._load_files(
                 in_odf,
-                wm_file,
                 in_seed,
                 in_mask,
-                sh_basis,
-                input_wm)
+                sh_basis)
 
         subj_files = (input_volume, tracking_mask, seeding_mask,
                       peaks_volume, reference)
@@ -350,11 +339,9 @@ class BaseEnv(object):
     def _load_files(
         cls,
         signal_file,
-        wm_file,
         in_seed,
         in_mask,
         sh_basis,
-        input_wm
     ):
         """ Load data volumes and masks from files. This is useful for
         tracking from a trained model.
@@ -367,16 +354,12 @@ class BaseEnv(object):
         ----------
         signal_file: str
             Path to the signal file (e.g. SH coefficients).
-        wm_file: str
-            Path to the WM mask file.
         in_seed: str
-            Path to the seeding mask file.
+            Path to the seeding mask.
         in_mask: str
-            Path to the tracking mask file.
+            Path to the tracking mask.
         sh_basis: str
-            SH basis of the signal file
-        input_wm: bool
-            If set, append the WM mask to the input fODF
+            Basis of the SH coefficients.
 
         Returns
         -------
@@ -438,15 +421,7 @@ class BaseEnv(object):
         # Load rest of volumes
         seeding = nib.load(in_seed)
         tracking = nib.load(in_mask)
-        wm = nib.load(wm_file)
-        wm_data = wm.get_fdata()
-        if len(wm_data.shape) == 3:
-            wm_data = wm_data[..., None]
-        if input_wm:
-            signal_data = np.concatenate(
-                [data, wm_data], axis=-1)
-        else:
-            signal_data = data
+        signal_data = data
         signal_volume = MRIDataVolume(
             signal_data, signal.affine)
 
