@@ -55,25 +55,16 @@ class TrackToLearnValidation(Experiment):
         self.max_length = valid_dto['max_length']
 
         self.alignment_weighting = valid_dto['alignment_weighting']
-        self.straightness_weighting = valid_dto['straightness_weighting']
-        self.length_weighting = valid_dto['length_weighting']
-        self.target_bonus_factor = valid_dto['target_bonus_factor']
-        self.exclude_penalty_factor = valid_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = valid_dto['angle_penalty_factor']
-        self.coverage_weighting = valid_dto['coverage_weighting']
-
         # Oracle parameters
         self.oracle_checkpoint = valid_dto['oracle_checkpoint']
         self.oracle_bonus = valid_dto['oracle_bonus']
         self.oracle_validator = valid_dto['oracle_validator']
-        self.oracle_filter = valid_dto['oracle_filter']
         self.oracle_stopping_criterion = \
             valid_dto['oracle_stopping_criterion']
 
         # Tractometer parameters
         self.tractometer_validator = valid_dto['tractometer_validator']
         self.tractometer_dilate = valid_dto['tractometer_dilate']
-        self.tractometer_weighting = valid_dto['tractometer_weighting']
 
         self.scoring_data = valid_dto['scoring_data']
 
@@ -126,7 +117,7 @@ class TrackToLearnValidation(Experiment):
         # states will be returned. The environment updates the streamline
         # internally
 
-        back_env, env = self.get_valid_envs()
+        env = self.get_valid_env()
 
         # Get example state to define NN input size
         example_state = env.reset(0, 1)
@@ -145,8 +136,6 @@ class TrackToLearnValidation(Experiment):
         print("Subject has a voxel size of {}mm, setting step size to "
               "{}mm.".format(tracking_voxel_size, step_size_mm))
 
-        if back_env:
-            back_env.set_step_size(step_size_mm)
         env.set_step_size(step_size_mm)
 
         # Load agent

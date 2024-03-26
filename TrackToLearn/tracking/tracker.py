@@ -40,7 +40,7 @@ class Tracker(object):
         n_actor: int
             Number of actors to track at once.
         prob: float
-            Noise to add to the action space.
+            Factor to influence the output of the agent.
         compress: float
             Compression factor when saving streamlines.
         min_length: float

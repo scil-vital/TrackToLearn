@@ -25,7 +25,6 @@ But modified to suit my needs.
 
 
 def generate_dataset(
-    path: str,
     config_file: str,
     output: str,
 ) -> None:
@@ -37,33 +36,30 @@ def generate_dataset(
 
     """
 
-    dataset_name = output
-
-    # Clean existing processed files
-    dataset_file = "{}.hdf5".format(dataset_name)
-
     # Initialize database
-    with h5py.File(dataset_file, 'w') as hdf_file:
+    with h5py.File(output, 'w') as hdf_file:
         # Save version
         hdf_file.attrs['version'] = 2
 
-        with open(join(path, config_file), "r") as conf:
+        with open(join(config_file), "r") as conf:
             config = json.load(conf)
-            print(config.keys())
+            print("Processing training subjects")
             add_subjects_to_hdf5(
-                path, config, hdf_file, "training")
+                config, hdf_file, "training")
 
+            print("Processing validation subjects")
             add_subjects_to_hdf5(
-                path, config, hdf_file, "validation")
+                config, hdf_file, "validation")
 
+            print("Processing test subjects")
             add_subjects_to_hdf5(
-                path, config, hdf_file, "testing")
+                config, hdf_file, "testing")
 
-    print("Saved dataset : {}".format(dataset_file))
+    print("Saved dataset : {}".format(output))
 
 
 def add_subjects_to_hdf5(
-    path, config, hdf_file, dataset_split,
+    config, hdf_file, dataset_split,
 ):
     """
 
@@ -84,11 +80,11 @@ def add_subjects_to_hdf5(
 
             subject_config = config[dataset_split][subject_id]
             hdf_subject = hdf_split.create_group(subject_id)
-            add_subject_to_hdf5(path, subject_config, hdf_subject)
+            add_subject_to_hdf5(subject_config, hdf_subject)
 
 
 def add_subject_to_hdf5(
-    path, config, hdf_subject,
+    config, hdf_subject,
 ):
     """
 
@@ -105,13 +101,12 @@ def add_subject_to_hdf5(
     anat_file = config['anat']
 
     # Process subject's data
-    process_subject(hdf_subject, path, input_files, peaks_file, tracking_file,
+    process_subject(hdf_subject, input_files, peaks_file, tracking_file,
                     seeding_file, anat_file)
 
 
 def process_subject(
     hdf_subject,
-    path: str,
     inputs: str,
     peaks: str,
     tracking: str,
@@ -124,8 +119,6 @@ def process_subject(
     ----------
     hdf_subject : h5py.Group
         HDF5 group to save the data.
-    path : str
-        Path to the data.
     inputs : list of str
         List of input files.
     peaks : str
@@ -138,11 +131,11 @@ def process_subject(
         Anatomical file.
     """
 
-    ref_volume = nib.load(join(path, inputs[0]))
+    ref_volume = nib.load(inputs[0])
     affine = ref_volume.affine
     header = ref_volume.header
 
-    input_volumes = [nib.load(join(path, f)).get_fdata() for f in inputs]
+    input_volumes = [nib.load(f).get_fdata() for f in inputs]
     print('Using as inputs', inputs)
     for i, v in enumerate(input_volumes):
         if len(v.shape) == 3:
@@ -158,16 +151,16 @@ def process_subject(
 
     add_volume_to_hdf5(hdf_subject, signal_image, 'input_volume')
 
-    peaks_image = nib.load(join(path, peaks))
+    peaks_image = nib.load(peaks)
     add_volume_to_hdf5(hdf_subject, peaks_image, 'peaks_volume')
 
-    tracking_mask_image = nib.load(join(path, tracking))
+    tracking_mask_image = nib.load(tracking)
     add_volume_to_hdf5(hdf_subject, tracking_mask_image, 'tracking_volume')
 
-    seeding_mask_image = nib.load(join(path, seeding))
+    seeding_mask_image = nib.load(seeding)
     add_volume_to_hdf5(hdf_subject, seeding_mask_image, 'seeding_volume')
 
-    anat_image = nib.load(join(path, anat))
+    anat_image = nib.load(anat)
     add_volume_to_hdf5(hdf_subject, anat_image, 'anat_volume')
 
 
@@ -194,8 +187,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=parse_args.__doc__,
         formatter_class=RawTextHelpFormatter)
-    parser.add_argument('path', type=str,
-                        help='Location of the dataset files.')
     parser.add_argument('config_file', type=str,
                         help="Configuration file to load subjects and their"
                         " volumes.")
@@ -216,8 +207,7 @@ def main():
     args = parse_args()
 
     with Timer("Generating dataset", newline=True):
-        generate_dataset(path=args.path,
-                         config_file=args.config_file,
+        generate_dataset(config_file=args.config_file,
                          output=args.output)
 
 

@@ -123,7 +123,6 @@ class Experiment(object):
             'scoring_data': self.scoring_data,
             'tractometer_validator': self.tractometer_validator,
             'binary_stopping_threshold': self.binary_stopping_threshold,
-            'add_neighborhood': self.add_neighborhood,
             'compute_reward': self.compute_reward,
             'device': self.device
         }
@@ -138,7 +137,7 @@ class Experiment(object):
             }
         return class_dict, env_dto
 
-    def get_envs(self) -> Tuple[BaseEnv, BaseEnv]:
+    def get_env(self) -> Tuple[BaseEnv, BaseEnv]:
         """ Build environments
 
         Returns:
@@ -156,7 +155,7 @@ class Experiment(object):
 
         return env
 
-    def get_valid_envs(self) -> Tuple[BaseEnv, BaseEnv]:
+    def get_valid_env(self) -> Tuple[BaseEnv, BaseEnv]:
         """ Build environments
 
         Returns:
@@ -174,7 +173,7 @@ class Experiment(object):
 
         return env
 
-    def get_tracking_envs(self):
+    def get_tracking_env(self):
         """ Generate environments according to tracking parameters.
 
         Returns:
@@ -320,8 +319,6 @@ class Experiment(object):
         ----------
         valid_tractogram: Tractogram
             Tractogram generated at validation time.
-        env: BaseEnv
-            Environment to render the streamlines
         valid_reward: float
             Sum of rewards obtained during validation.
         i_episode: int
@@ -420,8 +417,6 @@ def add_model_args(parser: ArgumentParser):
                         help='Number of learners')
     parser.add_argument('--hidden_dims', default='1024-1024-1024', type=str,
                         help='Hidden layers of the model')
-    parser.add_argument('--load_agent', default=None, type=str,
-                        help='Path to pretrained model')
 
 
 def add_tracking_args(parser: ArgumentParser):

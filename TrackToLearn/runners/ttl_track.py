@@ -144,7 +144,7 @@ class TrackToLearnTrack(Experiment):
 
         # Instanciate environment. Actions will be fed to it and new
         # states will be returned. The environment updates the streamline
-        env = self.get_tracking_envs()
+        env = self.get_tracking_env()
         env.step_size_mm = step_size_mm
 
         # Get example state to define NN input size

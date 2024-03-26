@@ -50,7 +50,6 @@ class TrackToLearnTraining(Experiment):
         # RL parameters
         self.max_ep = train_dto['max_ep']
         self.log_interval = train_dto['log_interval']
-        self.prob = train_dto['prob']
         self.noise = train_dto['noise']
 
         # Training parameters
@@ -58,7 +57,6 @@ class TrackToLearnTraining(Experiment):
         self.gamma = train_dto['gamma']
 
         #  Tracking parameters
-        self.add_neighborhood = train_dto['add_neighborhood']
         self.step_size = train_dto['step_size']
         self.dataset_file = train_dto['dataset_file']
         self.rng_seed = train_dto['rng_seed']
@@ -66,7 +64,6 @@ class TrackToLearnTraining(Experiment):
 
         # Angular thresholds
         self.theta = train_dto['theta']
-        self.epsilon = train_dto['epsilon']
 
         # More tracking parameters
         self.min_length = train_dto['min_length']
@@ -78,7 +75,6 @@ class TrackToLearnTraining(Experiment):
 
         # Model parameters
         self.hidden_dims = train_dto['hidden_dims']
-        self.load_agent = train_dto['load_agent']
 
         # Environment parameters
         self.n_actor = train_dto['n_actor']
@@ -101,7 +97,6 @@ class TrackToLearnTraining(Experiment):
 
         # Various parameters
         self.comet_experiment = comet_experiment
-        self.render = train_dto['render']
         self.last_episode = 0
 
         self.device = torch.device(
@@ -129,7 +124,6 @@ class TrackToLearnTraining(Experiment):
             'lr': self.lr,
             'gamma': self.gamma,
             # Data parameters
-            'add_neighborhood': self.add_neighborhood,
             'step_size': self.step_size,
             'random_seed': self.rng_seed,
             'dataset_file': self.dataset_file,
@@ -144,7 +138,6 @@ class TrackToLearnTraining(Experiment):
             'last_episode': self.last_episode,
             'n_actor': self.n_actor,
             'n_dirs': self.n_dirs,
-            'prob': self.prob,
             'noise': self.noise,
             # Reward parameters
             'alignment_weighting': self.alignment_weighting,
@@ -152,8 +145,6 @@ class TrackToLearnTraining(Experiment):
             'oracle_bonus': self.oracle_bonus,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
-            # Tractometer parameters
-            'tractometer_weighting': self.tractometer_weighting,
         }
 
     def save_hyperparameters(self):
@@ -189,9 +180,7 @@ class TrackToLearnTraining(Experiment):
         self,
         alg: RLAlgorithm,
         env: BaseEnv,
-        back_env: BaseEnv,
         valid_env: BaseEnv,
-        back_valid_env: BaseEnv,
     ):
         """ Train the RL algorithm for N epochs. An epoch here corresponds to
         running tracking on the training set until all streamlines are done.
@@ -204,15 +193,9 @@ class TrackToLearnTraining(Experiment):
                 The RL algorithm, either TD3, PPO or any others
             env: BaseEnv
                 The tracking environment
-            back_env: BaseEnv, optional
-                The backward tracking environment. Should be more or less
-                the same as the "forward" tracking environment but initalized
-                with half-streamlines
             valid_env: BaseEnv
                 The validation tracking environment (forward).
-            back_valid_env: BaseEnv, optional
-                The backward validation tracking environment.
-        """
+            """
 
         # Current epoch
         i_episode = 0
@@ -226,7 +209,7 @@ class TrackToLearnTraining(Experiment):
 
         valid_tracker = Tracker(
             alg, self.n_actor,
-            prob=self.prob, compress=0.0)
+            prob=1.0, compress=0.0)
 
         # Setup validators, which will handle validation and scoring
         # of the generated streamlines
@@ -246,7 +229,8 @@ class TrackToLearnTraining(Experiment):
         stopping_stats = self.stopping_stats(valid_tractogram)
         print(stopping_stats)
         if valid_tractogram:
-            self.comet_monitor.log_losses(stopping_stats, i_episode)
+            if self.use_comet:
+                self.comet_monitor.log_losses(stopping_stats, i_episode)
 
             filename = self.save_rasmm_tractogram(valid_tractogram,
                                                   valid_env.subject_id,
@@ -254,12 +238,14 @@ class TrackToLearnTraining(Experiment):
                                                   valid_env.reference)
             scores = self.score_tractogram(filename, valid_env)
             print(scores)
-            self.comet_monitor.log_losses(scores, i_episode)
+
+            if self.use_comet:
+                self.comet_monitor.log_losses(scores, i_episode)
         self.save_model(alg)
 
         # Display the results of the untrained network
         self.log(
-            valid_tractogram, env, valid_reward, i_episode)
+            valid_tractogram, valid_reward, i_episode)
 
         # Main training loop
         while i_episode < self.max_ep:
@@ -318,7 +304,9 @@ class TrackToLearnTraining(Experiment):
                     valid_tracker.track_and_validate(valid_env)
                 stopping_stats = self.stopping_stats(valid_tractogram)
                 print(stopping_stats)
-                self.comet_monitor.log_losses(stopping_stats, i_episode)
+
+                if self.use_comet:
+                    self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
                     valid_tractogram, valid_env.subject_id,
                     valid_env.affine_vox2rasmm, valid_env.reference)
@@ -329,7 +317,8 @@ class TrackToLearnTraining(Experiment):
                 # Display what the network is capable-of "now"
                 self.log(
                     valid_tractogram, valid_reward, i_episode)
-                self.comet_monitor.log_losses(scores, i_episode)
+                if self.use_comet:
+                    self.comet_monitor.log_losses(scores, i_episode)
                 self.save_model(alg)
 
         # End of training, save the model and hyperparameters and track
@@ -338,7 +327,9 @@ class TrackToLearnTraining(Experiment):
             valid_env)
         stopping_stats = self.stopping_stats(valid_tractogram)
         print(stopping_stats)
-        self.comet_monitor.log_losses(stopping_stats, i_episode)
+
+        if self.use_comet:
+            self.comet_monitor.log_losses(stopping_stats, i_episode)
 
         filename = self.save_rasmm_tractogram(valid_tractogram,
                                               valid_env.subject_id,
@@ -350,7 +341,9 @@ class TrackToLearnTraining(Experiment):
         # Display what the network is capable-of "now"
         self.log(
             valid_tractogram, valid_reward, i_episode)
-        self.comet_monitor.log_losses(scores, i_episode)
+
+        if self.use_comet:
+            self.comet_monitor.log_losses(scores, i_episode)
 
         self.save_model(alg)
 
@@ -365,8 +358,8 @@ class TrackToLearnTraining(Experiment):
         # Instantiate environment. Actions will be fed to it and new
         # states will be returned. The environment updates the streamline
         # internally
-        back_env, env = self.get_envs()
-        back_valid_env, valid_env = self.get_valid_envs()
+        env = self.get_env()
+        valid_env = self.get_valid_env()
 
         # Get example state to define NN input size
         self.input_size = env.get_state_size()
@@ -391,7 +384,7 @@ class TrackToLearnTraining(Experiment):
             self.setup_comet()
 
         # Start training !
-        self.rl_train(alg, env, back_env, valid_env, back_valid_env)
+        self.rl_train(alg, env, valid_env)
 
 
 def add_rl_args(parser):
@@ -402,9 +395,9 @@ def add_rl_args(parser):
     parser.add_argument('--log_interval', default=50, type=int,
                         help='Log statistics, update comet, save the model '
                         'and hyperparameters at n steps')
-    parser.add_argument('--lr', default=1e-5, type=float,
+    parser.add_argument('--lr', default=0.0005, type=float,
                         help='Learning rate')
-    parser.add_argument('--gamma', default=0.99, type=float,
+    parser.add_argument('--gamma', default=0.95, type=float,
                         help='Gamma param for reward discounting')
 
     add_reward_args(parser)

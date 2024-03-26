@@ -78,8 +78,7 @@ class PeaksAlignmentReward(Reward):
         # Get do product between all peaks and last streamline segments
         dot = np.einsum('ijk,ik->ij', v, u)
 
-        if not self.asymmetric:
-            dot = np.abs(dot)
+        dot = np.abs(dot)
 
         # Get alignment with the most aligned peak
         rewards = np.amax(dot, axis=-1)
