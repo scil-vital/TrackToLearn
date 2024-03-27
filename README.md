@@ -1,6 +1,6 @@
 # Track-to-Learn/TractOracle-RL: reinforcement learning for tractography.
 
-TractOracle-RL is half of **TractOracle** (preprint coming), a reinforcement learning system for tractography. **TractOracle-RL** is a tractography algorithm which is trained via reinforcement learning using TractOracle-Net.
+TractOracle-RL is half of **TractOracle** (preprint coming), a reinforcement learning system for tractography. **TractOracle-RL** is a tractography algorithm which is trained via reinforcement learning using [TractOracle-Net](https://github.com/scil-vital/TractOracleNet).
 
 See [Versions](#versions) for past and current interations.
 
@@ -98,8 +98,6 @@ To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www
 
 Contributions are welcome ! There are several TODOs sprinkled through the project which may inspire you. A lot of the code's architecure could be improved, better organized, split and reworked to make the code cleaner. Several performance improvements could also easily be added.
 
-See `ARCHITECURE.md` for an overview of the code.
-
 ## Versions
 
 ### TractOracle-RL (2024b)
@@ -108,9 +106,9 @@ See `ARCHITECURE.md` for an overview of the code.
 
 The reference commit to the `main` brain for this work is `TODO`. Please use this commit as starting point if you want to build upon Track-to-Learn (TractOracle-RL). See README above for usage.
 
-Preprint comming soon.
+See preprint: https://arxiv.org/pdf/2403.17845.pdf
 
-Submitted work (hopefully) coming soon.
+Conference paper (hopefully) coming soon.
 
 ### What matters in Reinforcement Learning for Tractography (2024a)
 
