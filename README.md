@@ -1,6 +1,6 @@
 # Track-to-Learn/TractOracle-RL: reinforcement learning for tractography.
 
-TractOracle-RL is half of **TractOracle** (preprint coming), a reinforcement learning system for tractography. **TractOracle-RL** is a tractography algorithm which is trained via reinforcement learning using [TractOracle-Net](https://github.com/scil-vital/TractOracleNet).
+TractOracle-RL is half of **TractOracle**, a reinforcement learning system for tractography. **TractOracle-RL** is a tractography algorithm which is trained via reinforcement learning using [TractOracle-Net](https://github.com/scil-vital/TractOracleNet).
 
 See [Versions](#versions) for past and current interations.
 
@@ -104,7 +104,7 @@ Contributions are welcome ! There are several TODOs sprinkled through the projec
 
 > Théberge, A., Descoteaux, M., & Jodoin, P. M. (2024). TractOracle: towards an anatomically-informed reward function for RL-based tractography. Submitted to MICCAI 2024.
 
-The reference commit to the `main` brain for this work is `TODO`. Please use this commit as starting point if you want to build upon Track-to-Learn (TractOracle-RL). See README above for usage.
+The reference commit to the `main` brain for this work is `0fb20306edc32b6015fbfe9b79677015cd0602cf`. Please use this commit as starting point if you want to build upon Track-to-Learn (TractOracle-RL). See README above for usage.
 
 See preprint: https://arxiv.org/pdf/2403.17845.pdf
 
