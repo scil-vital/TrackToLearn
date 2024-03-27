@@ -59,7 +59,7 @@ class RLAlgorithm(object):
         self,
         initial_state,
         env: BaseEnv,
-        compress=False,
+        prob: float = 1.,
     ):
         """
         Main loop for the algorithm
@@ -88,9 +88,10 @@ class RLAlgorithm(object):
             # Select action according to policy + noise to make tracking
             # probabilistic
             with torch.no_grad():
-                action = self.policy.select_action(state)
+                action = self.agent.select_action(state, probabilistic=prob)
             # Perform action
-            next_state, reward, done, *_ = env.step(action)
+            next_state, reward, done, *_ = env.step(
+                action.to(device='cpu', copy=True).numpy())
 
             # Keep track of reward
             running_reward += sum(reward)
@@ -98,6 +99,8 @@ class RLAlgorithm(object):
             # "Harvesting" here means removing "done" trajectories
             # from state. This line also set the next_state as the
             # state
-            state, _ = env.harvest(next_state)
+            state, _ = env.harvest()
+
+        # env.render()
 
         return running_reward

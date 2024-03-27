@@ -1,8 +1,8 @@
+import nibabel as nib
 import numpy as np
 
 from dipy.data import get_sphere
 from dipy.reconst.csdeconv import sph_harm_ind_list
-from dwi_ml.data.dataset.streamline_containers import LazySFTData
 from scilpy.reconst.utils import get_sh_order_and_fullness
 from scilpy.reconst.multi_processes import convert_sh_basis
 
@@ -14,12 +14,10 @@ class MRIDataVolume(object):
     """
 
     def __init__(
-        self, data=None, affine_vox2rasmm=None, subject_id=None, filename=None
+        self, data=None, affine_vox2rasmm=None
     ):
         self._data = data
         self.affine_vox2rasmm = affine_vox2rasmm
-        self.subject_id = subject_id
-        self.filename = filename
 
     @classmethod
     def from_hdf_group(cls, hdf, group, default=None):
@@ -29,9 +27,7 @@ class MRIDataVolume(object):
             affine_vox2rasmm = np.array(
                 hdf[group].attrs['vox2rasmm'], dtype=np.float32)
         except KeyError:
-            print(
-                "{} is absent from {}, replacing it with empty volume.".format(
-                    group, hdf))
+            print('Missing {} from dataset'.format(group))
             data = np.zeros_like(hdf[default]['data'], dtype=np.float32)
             affine_vox2rasmm = np.array(
                 hdf[default].attrs['vox2rasmm'], dtype=np.float32)
@@ -58,28 +54,16 @@ class SubjectData(object):
         subject_id: str,
         input_dv=None,
         peaks=None,
-        wm=None,
-        gm=None,
-        csf=None,
-        include=None,
-        exclude=None,
-        interface=None,
-        sft=None,
-        rewards=None,
-        states=None
+        tracking=None,
+        seeding=None,
+        reference=None,
     ):
         self.subject_id = subject_id
         self.input_dv = input_dv
         self.peaks = peaks
-        self.wm = wm
-        self.gm = gm
-        self.csf = csf
-        self.include = include
-        self.exclude = exclude
-        self.interface = interface
-        self.rewards = rewards
-        self.states = states
-        self.sft = sft
+        self.tracking = tracking
+        self.seeding = seeding
+        self.reference = reference
 
     @classmethod
     def from_hdf_subject(cls, hdf_file, subject_id):
@@ -88,29 +72,17 @@ class SubjectData(object):
         input_dv = MRIDataVolume.from_hdf_group(hdf_subject, 'input_volume')
 
         peaks = MRIDataVolume.from_hdf_group(hdf_subject, 'peaks_volume')
-        wm = MRIDataVolume.from_hdf_group(hdf_subject, 'wm_volume')
-        gm = MRIDataVolume.from_hdf_group(hdf_subject, 'gm_volume')
-        csf = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'csf_volume', 'wm_volume')
-        include = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'include_volume', 'wm_volume')
-        exclude = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'exclude_volume', 'wm_volume')
-        interface = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'interface_volume', 'wm_volume')
+        tracking = MRIDataVolume.from_hdf_group(hdf_subject, 'tracking_volume')
+        seeding = MRIDataVolume.from_hdf_group(
+            hdf_subject, 'seeding_volume', 'tracking_volume')
+        anatomy = MRIDataVolume.from_hdf_group(
+            hdf_subject, 'anat_volume', 'tracking_volume')
 
-        states = None
-        sft = None
-        rewards = None
-        if 'streamlines' in hdf_subject:
-            sft = LazySFTData.init_from_hdf_info(
-                hdf_subject['streamlines'])
-            rewards = np.array(hdf_subject['streamlines']['rewards'])
+        reference = nib.Nifti1Image(anatomy.data, anatomy.affine_vox2rasmm)
 
         return cls(
-            subject_id, input_dv=input_dv, wm=wm, gm=gm, csf=csf,
-            include=include, exclude=exclude, interface=interface,
-            peaks=peaks, sft=sft, rewards=rewards, states=states)
+            subject_id, input_dv=input_dv, tracking=tracking,
+            seeding=seeding, reference=reference, peaks=peaks)
 
 
 def convert_length_mm2vox(

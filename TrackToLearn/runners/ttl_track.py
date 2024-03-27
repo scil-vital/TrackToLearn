@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 import argparse
 import json
 import nibabel as nib
@@ -11,37 +11,29 @@ from argparse import RawTextHelpFormatter
 from os.path import join
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
+from nibabel.streamlines import detect_format
 from scilpy.io.utils import (add_overwrite_arg,
                              add_sh_basis_args,
                              assert_inputs_exist, assert_outputs_exist,
                              verify_compression_th)
 from scilpy.tracking.utils import verify_streamline_length_options
 
-from TrackToLearn.algorithms.a2c import A2C
-from TrackToLearn.algorithms.acktr import ACKTR
-from TrackToLearn.algorithms.ddpg import DDPG
-from TrackToLearn.algorithms.ppo import PPO
-from TrackToLearn.algorithms.trpo import TRPO
-from TrackToLearn.algorithms.td3 import TD3
-from TrackToLearn.algorithms.sac import SAC
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.algorithms.vpg import VPG
 from TrackToLearn.datasets.utils import MRIDataVolume
-from TrackToLearn.experiment.tracker import Tracker
-from TrackToLearn.experiment.ttl import TrackToLearnExperiment
+
+from TrackToLearn.experiment.experiment import Experiment
+from TrackToLearn.tracking.tracker import Tracker
 
 # Define the example model paths from the install folder.
 # Hackish ? I'm not aware of a better solution but I'm
 # open to suggestions.
 _ROOT = os.sep.join(os.path.normpath(
     os.path.dirname(__file__)).split(os.sep)[:-2])
-DEFAULT_WM_MODEL = os.path.join(
-    _ROOT, 'example_models', 'SAC_Auto_ISMRM2015_WM')
-DEFAULT_INTERFACE_MODEL = os.path.join(
-    _ROOT, 'example_models', 'SAC_Auto_ISMRM2015_interface')
+DEFAULT_MODEL = os.path.join(
+    _ROOT, 'models')
 
 
-class TrackToLearnTrack(TrackToLearnExperiment):
+class TrackToLearnTrack(Experiment):
     """ TrackToLearn testing script. Should work on any model trained with a
     TrackToLearn experiment
     """
@@ -58,6 +50,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
 
         self.in_seed = track_dto['in_seed']
         self.in_mask = track_dto['in_mask']
+        self.input_wm = track_dto['input_wm']
 
         self.dataset_file = None
         self.subject_id = None
@@ -65,7 +58,11 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.reference_file = track_dto['in_mask']
         self.out_tractogram = track_dto['out_tractogram']
 
-        self.prob = track_dto['prob']
+        self.noise = track_dto['noise']
+
+        self.binary_stopping_threshold = \
+            track_dto['binary_stopping_threshold']
+
         self.n_actor = track_dto['n_actor']
         self.npv = track_dto['npv']
         self.min_length = track_dto['min_length']
@@ -75,16 +72,15 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         self.sh_basis = track_dto['sh_basis']
         self.save_seeds = track_dto['save_seeds']
 
-        self.run_tractometer = False
-        self.compute_reward = False
+        # Tractometer parameters
+        self.tractometer_validator = False
         self.scoring_data = None
+
+        self.compute_reward = False
         self.render = False
 
-        if not track_dto['cpu'] and not torch.cuda.is_available():
-            print('No CUDA installation found. Defaulting to CPU tracking.')
-
         self.device = torch.device(
-            "cuda" if torch.cuda.is_available() and not track_dto['cpu']
+            "cuda" if torch.cuda.is_available()
             else "cpu")
 
         self.fa_map = None
@@ -95,7 +91,7 @@ class TrackToLearnTrack(TrackToLearnExperiment):
                 data=fa_image.get_fdata(),
                 affine_vox2rasmm=fa_image.affine)
 
-        self.policy = track_dto['policy']
+        self.agent = track_dto['agent']
         self.hyperparameters = track_dto['hyperparameters']
 
         with open(self.hyperparameters, 'r') as json_file:
@@ -103,23 +99,18 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             self.algorithm = hyperparams['algorithm']
             self.step_size = float(hyperparams['step_size'])
             self.add_neighborhood = hyperparams['add_neighborhood']
-            self.voxel_size = float(hyperparams['voxel_size'])
+            self.voxel_size = hyperparams.get('voxel_size', 2.0)
             self.theta = hyperparams['max_angle']
-            self.alignment_weighting = hyperparams['alignment_weighting']
-            self.straightness_weighting = hyperparams['straightness_weighting']
-            self.length_weighting = hyperparams['length_weighting']
-            self.target_bonus_factor = hyperparams['target_bonus_factor']
-            self.exclude_penalty_factor = hyperparams['exclude_penalty_factor']
-            self.angle_penalty_factor = hyperparams['angle_penalty_factor']
             self.hidden_dims = hyperparams['hidden_dims']
-            self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
-            self.interface_seeding = track_dto['interface'] or \
-                hyperparams['interface_seeding']
-            self.no_retrack = hyperparams.get('no_retrack', False)
+            self.interface_seeding = hyperparams['interface_seeding']
 
-            self.cmc = hyperparams['cmc']
-            self.asymmetric = hyperparams['asymmetric']
+        self.alignment_weighting = 0.0
+        # Oracle parameters
+        self.oracle_checkpoint = None
+        self.oracle_bonus = 0.0
+        self.oracle_validator = False
+        self.oracle_stopping_criterion = False
 
         self.random_seed = track_dto['rng_seed']
         torch.manual_seed(self.random_seed)
@@ -133,42 +124,36 @@ class TrackToLearnTrack(TrackToLearnExperiment):
         """
         Main method where the magic happens
         """
+        # Presume iso vox
+        ref_img = nib.load(self.reference_file)
+        tracking_voxel_size = ref_img.header.get_zooms()[0]
+
+        # # Set the voxel size so the agent traverses the same "quantity" of
+        # # voxels per step as during training.
+        step_size_mm = self.step_size
+        if abs(float(tracking_voxel_size) - float(self.voxel_size)) >= 0.1:
+            step_size_mm = (
+                float(tracking_voxel_size) / float(self.voxel_size)) * \
+                self.step_size
+
+            print("Agent was trained on a voxel size of {}mm and a "
+                  "step size of {}mm.".format(self.voxel_size, self.step_size))
+
+            print("Subject has a voxel size of {}mm, setting step size to "
+                  "{}mm.".format(tracking_voxel_size, step_size_mm))
+
         # Instanciate environment. Actions will be fed to it and new
         # states will be returned. The environment updates the streamline
-        print('Loading environment.')
-        back_env, env = self.get_tracking_envs()
+        env = self.get_tracking_env()
+        env.step_size_mm = step_size_mm
 
         # Get example state to define NN input size
         example_state = env.reset(0, 1)
         self.input_size = example_state.shape[1]
         self.action_size = env.get_action_size()
 
-        # Set the voxel size so the agent traverses the same "quantity" of
-        # voxels per step as during training.
-        tracking_voxel_size = env.get_voxel_size()
-        step_size_mm = (tracking_voxel_size / self.voxel_size) * \
-            self.step_size
-
-        print("Agent was trained on a voxel size of {}mm and a "
-              "step size of {}mm.".format(self.voxel_size, self.step_size))
-
-        print("Subject has a voxel size of {}mm, setting step size to "
-              "{}mm.".format(tracking_voxel_size, step_size_mm))
-
-        if back_env:
-            back_env.set_step_size(step_size_mm)
-        env.set_step_size(step_size_mm)
-
         # Load agent
-        algs = {'VPG': VPG,
-                'A2C': A2C,
-                'ACKTR': ACKTR,
-                'PPO': PPO,
-                'TRPO': TRPO,
-                'DDPG': DDPG,
-                'TD3': TD3,
-                'SAC': SAC,
-                'SACAuto': SACAuto}
+        algs = {'SACAuto': SACAuto}
 
         rl_alg = algs[self.algorithm]
         print('Tracking with {} agent.'.format(self.algorithm))
@@ -182,27 +167,25 @@ class TrackToLearnTrack(TrackToLearnExperiment):
             device=self.device)
 
         # Load pretrained policies
-        alg.policy.load(self.policy, 'last_model_state')
+        alg.agent.load(self.agent, 'last_model_state')
 
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, env, back_env, self.n_actor, self.interface_seeding,
-            self.no_retrack, compress=self.compress,
+            alg, self.n_actor, compress=self.compress,
+            min_length=self.min_length, max_length=self.max_length,
             save_seeds=self.save_seeds)
 
         # Run tracking
-        tractogram = tracker.track()
+        env.load_subject()
+        filetype = detect_format(self.out_tractogram)
+        tractogram = tracker.track(env, filetype)
 
-        tractogram.affine_to_rasmm = env.affine_vox2rasmm
-
-        filetype = nib.streamlines.detect_format(self.out_tractogram)
-        reference = get_reference_info(self.wm_file)
+        reference = get_reference_info(self.reference_file)
         header = create_tractogram_header(filetype, *reference)
 
         # Use generator to save the streamlines on-the-fly
         nib.streamlines.save(tractogram, self.out_tractogram, header=header)
-        # print('Saved {} streamlines'.format(len(tractogram)))
 
 
 def add_mandatory_options_tracking(p):
@@ -212,12 +195,16 @@ def add_mandatory_options_tracking(p):
                         'fODF.\nCan be of any order and basis (including "full'
                         '" bases for\nasymmetric ODFs). See also --sh_basis.')
     p.add_argument('in_seed',
-                   help='Seeding mask (.nii.gz).')
+                   help='Seeding mask (.nii.gz). Must be represent the WM/GM '
+                        'interface.')
     p.add_argument('in_mask',
                    help='Tracking mask (.nii.gz).\n'
                         'Tracking will stop outside this mask.')
     p.add_argument('out_tractogram',
                    help='Tractogram output file (must be .trk or .tck).')
+    p.add_argument('--input_wm', action='store_true',
+                   help='If set, append the WM mask to the input signal. The '
+                        'agent must have been trained accordingly.')
 
 
 def add_out_options(p):
@@ -246,37 +233,26 @@ def add_track_args(parser):
     add_out_options(parser)
 
     agent_group = parser.add_argument_group('Tracking agent options')
-    agent_group.add_argument('--policy', type=str,
+    agent_group.add_argument('--agent', type=str,
                              help='Path to the folder containing .pth files.\n'
                              'If not set, will default to the example '
                              'models.\n'
-                             '[{}]'.format(DEFAULT_WM_MODEL))
+                             '[{}]'.format(DEFAULT_MODEL))
     agent_group.add_argument(
         '--hyperparameters', type=str,
         help='Path to the .json file containing the '
         'hyperparameters of your tracking agent. \n'
         'If not set, will default to the example models.\n'
-        '[{}]'.format(DEFAULT_INTERFACE_MODEL))
+        '[{}]'.format(DEFAULT_MODEL))
     agent_group.add_argument('--n_actor', type=int, default=10000, metavar='N',
                              help='Number of streamlines to track simultaneous'
                              'ly.\nLimited by the size of your GPU and RAM. A '
                              'higher value\nwill speed up tracking up to a '
                              'point [%(default)s].')
 
-    agent_group.add_argument('--cpu', action='store_true',
-                             help='Use CPU for tracking.\n'
-                                  'Defaults to tracking on GPU without this '
-                                  'flag.')
-
     seed_group = parser.add_argument_group('Seeding options')
     seed_group.add_argument('--npv', type=int, default=1,
                             help='Number of seeds per voxel [%(default)s].')
-    seed_group.add_argument('--interface', action='store_true',
-                            help='If set, tracking will be presumed to be '
-                            'initialized at the WM/GM\ninterface and omits '
-                            'the "retracking" phase".\n**Be mindful to '
-                            'provide the proper seeding mask.**\n'
-                            'Defaults to WM seeding without this flag.')
     track_g = parser.add_argument_group('Tracking options')
     track_g.add_argument('--min_length', type=float, default=10.,
                          metavar='m',
@@ -286,33 +262,34 @@ def add_track_args(parser):
                          metavar='M',
                          help='Maximum length of a streamline in mm. '
                          '[%(default)s]')
-    track_g.add_argument('--prob', type=float, default=0.0, metavar='sigma',
-                         help='Add noise ~ N (0, `prob`) to the agent\'s\n'
+    track_g.add_argument('--noise', default=0.0, type=float, metavar='sigma',
+                         help='Add noise ~ N (0, `noise`) to the agent\'s\n'
                          'output to make tracking more probabilistic.\n'
-                         'Around 0.1 generally gives good results '
-                         '[%(default)s].')
+                         'Should be between 0.0 and 0.1.'
+                         '[%(default)s]')
     track_g.add_argument('--fa_map', type=str, default=None,
-                         help='Scale the added noise (see `--prob`) according'
+                         help='Scale the added noise (see `--noise`) according'
                          '\nto the provided FA map (.nii.gz). Optional.')
+    track_g.add_argument(
+        '--binary_stopping_threshold',
+        type=float, default=0.1,
+        help='Lower limit for interpolation of tracking mask value.\n'
+             'Tracking will stop below this threshold.')
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Random number generator seed [%(default)s].')
 
 
-def verify_policy_option(parser, args):
+def verify_agent_option(parser, args):
 
-    if (args.policy is not None and args.hyperparameters is None) or \
-       (args.policy is None and args.hyperparameters is not None):
-        parser.error('You must specify both --policy and --hyperparameters '
-                     'arguments.')
+    if (args.agent is not None and args.hyperparameters is None) or \
+       (args.agent is None and args.hyperparameters is not None):
+        parser.error('You must specify both --agent and --hyperparameters '
+                     'arguments or use the default model.')
 
-    if args.interface and args.policy is None:
-        args.policy = DEFAULT_INTERFACE_MODEL
+    if args.agent is None:
+        args.agent = DEFAULT_MODEL
         args.hyperparameters = join(
-            DEFAULT_INTERFACE_MODEL, 'hyperparameters.json')
-    elif args.policy is None:
-        args.policy = DEFAULT_WM_MODEL
-        args.hyperparameters = join(
-            DEFAULT_WM_MODEL, 'hyperparameters.json')
+            DEFAULT_MODEL, 'hyperparameters.json')
 
 
 def parse_args():
@@ -333,7 +310,7 @@ def parse_args():
 
     verify_streamline_length_options(parser, args)
     verify_compression_th(args.compress)
-    verify_policy_option(parser, args)
+    verify_agent_option(parser, args)
 
     return args
 

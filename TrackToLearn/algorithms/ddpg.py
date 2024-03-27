@@ -15,7 +15,9 @@ from TrackToLearn.environments.env import BaseEnv
 
 class DDPG(RLAlgorithm):
     """
-    Training algorithm.
+    NOTE: LEGACY CODE. The `_episode` function is used. The actual DDPG
+    learning algorithm has not been tested in a while.
+
     Based on
         Lillicrap, T. P., Hunt, J. J., Pritzel, A., Heess, N., Erez, T., Tassa,
         Y., ... & Wierstra, D. (2015). Continuous control with deep
@@ -28,7 +30,6 @@ class DDPG(RLAlgorithm):
 
     Some alterations have been made to the algorithms so it could be
     fitted to the tractography problem.
-
     """
 
     def __init__(
@@ -40,6 +41,8 @@ class DDPG(RLAlgorithm):
         lr: float = 3e-4,
         gamma: float = 0.99,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -50,21 +53,24 @@ class DDPG(RLAlgorithm):
             Input size for the model
         action_size: int
             Output size for the actor
-        hidden_size: int
-            Width of the model
+        hidden_dims: str
+            Dimensions of the hidden layers for the actor and critic
         action_std: float
-            Standard deviation on actions for exploration
+            Standard deviation of the noise added to the actor's output
         lr: float
-            Learning rate for optimizer
+            Learning rate for the optimizer(s)
         gamma: float
-            Gamma parameter future reward discounting
+            Discount factor
         n_actors: int
-           Number of learners
+            Number of actors to use
+        batch_size: int
+            Batch size to sample the replay buffer
+        replay_size: int
+            Size of the replay buffer
         rng: np.random.RandomState
-            rng for randomness. Should be fixed with a seed
-        device: torch.device,
-            Device to use for processing (CPU or GPU)
-            Should always on GPU
+            Random number generator
+        device: torch.device
+            Device to train on. Should always be cuda:0
         """
 
         self.input_size = input_size
@@ -75,21 +81,21 @@ class DDPG(RLAlgorithm):
         self.rng = rng
 
         # Initialize main policy
-        self.policy = ActorCritic(
+        self.agent = ActorCritic(
             input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline
-        self.target = copy.deepcopy(self.policy)
+        self.target = copy.deepcopy(self.agent)
 
         # DDPG requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.Adam(
-            self.policy.actor.parameters(), lr=lr)
+            self.agent.actor.parameters(), lr=lr)
 
         # Optimizer for critic
         self.critic_optimizer = torch.optim.Adam(
-            self.policy.critic.parameters(), lr=lr)
+            self.agent.critic.parameters(), lr=lr)
 
         # DDPG-specific parameters
         self.action_std = action_std
@@ -100,9 +106,12 @@ class DDPG(RLAlgorithm):
         self.total_it = 0
         self.tau = 0.005
 
+        self.batch_size = batch_size
+        self.replay_size = replay_size
+
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=replay_size)
 
         self.t = 1
         self.rng = rng
@@ -114,15 +123,18 @@ class DDPG(RLAlgorithm):
         state: torch.Tensor
     ) -> np.ndarray:
         """ Sample an action according to the algorithm.
+        DDPG uses a deterministic policy, so no noise is added to the action
+        to explore.
         """
 
-        # Select action according to policy + noise for exploration
-        a = self.policy.select_action(state)
-        action = (
-            a + self.rng.normal(
-                0, self.max_action * self.action_std,
-                size=a.shape)
-        )
+        with torch.no_grad():
+            # Select action according to policy + noise for exploration
+            a = self.agent.select_action(state)
+            action = (
+                a + torch.normal(
+                    0, self.max_action * self.action_std,
+                    size=a.shape, device=self.device)
+            )
 
         return action
 
@@ -148,31 +160,36 @@ class DDPG(RLAlgorithm):
         Returns
         -------
         running_reward: float
-            Cummulative training steps reward
-        actor_loss: float
-            Policty gradient loss of actor
-        critic_loss: float
-            MSE loss of critic
+            Sum of rewards gathered during the episode
+        running_losses: dict
+            Dict. containing losses and training-related metrics.
         episode_length: int
-            Length of episode aka how many transitions were gathered
+            Length of the episode
+        running_reward_factors: dict
+            Dict. containing the factors that contributed to the reward
         """
 
         running_reward = 0
         state = initial_state
         done = False
         running_losses = defaultdict(list)
+        running_reward_factors = defaultdict(list)
 
         episode_length = 0
 
         while not np.all(done):
 
             # Select action according to policy + noise for exploration
-            action = self.sample_action(state)
+            with torch.no_grad():
+                action = self.sample_action(state)
 
-            self.t += action.shape[0]
             # Perform action
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(
+                action.to(device='cpu', copy=True).numpy())
             done_bool = done
+
+            running_reward_factors = add_item_to_means(
+                running_reward_factors, info['reward_info'])
 
             # Store data in replay buffer
             # WARNING: This is a bit of a trick and I'm not entirely sure this
@@ -183,34 +200,40 @@ class DDPG(RLAlgorithm):
             # I'm keeping it since since it reaaaally speeds up training with
             # no visible costs
             self.replay_buffer.add(
-                state.cpu().numpy(), action, next_state.cpu().numpy(),
-                reward[..., None], done_bool[..., None])
+                state.to('cpu', copy=True),
+                action.to('cpu', copy=True),
+                next_state.to('cpu', copy=True),
+                torch.as_tensor(reward[..., None], dtype=torch.float32),
+                torch.as_tensor(done_bool[..., None], dtype=torch.float32))
 
             running_reward += sum(reward)
 
             # Train agent after collecting sufficient data
             if self.t >= self.start_timesteps:
+
+                batch = self.replay_buffer.sample(self.batch_size)
                 losses = self.update(
-                    self.replay_buffer)
+                    batch)
                 running_losses = add_item_to_means(running_losses, losses)
+
+            self.t += action.shape[0]
 
             # "Harvesting" here means removing "done" trajectories
             # from state as well as removing the associated streamlines
             # This line also set the next_state as the state
-            state, _ = env.harvest(next_state)
+            state, _ = env.harvest()
 
             # Keeping track of episode length
             episode_length += 1
-
         return (
             running_reward,
             running_losses,
-            episode_length)
+            episode_length,
+            running_reward_factors)
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 4096
+        batch,
     ) -> Tuple[float, float]:
         """
 
@@ -223,34 +246,34 @@ class DDPG(RLAlgorithm):
 
         Parameters
         ----------
-        replay_buffer: ReplayBuffer
-            Replay buffer that contains transitions
-        batch_size: int
-            Batch size to sample the memory
+        batch: tuple
+            Tuple containing the batch of data to train on, including state,
+            action, next_state, reward, not_done.
 
         Returns
         -------
         losses: dict
-            Dict. containing losses and training-related metrics.
+            Dictionary containing the losses for the actor and critic and
+            various other metrics.
         """
         self.total_it += 1
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+            batch
 
         with torch.no_grad():
             # Select action according to policy and add noise
             noise = torch.randn_like(action) * (self.action_std * 2)
             next_action = self.target.actor(next_state) + noise
 
-            # Compute the target Q value
+            # Compute the target Q value using the target critic
             target_Q = self.target.critic(
                 next_state, next_action)
             target_Q = reward + not_done * self.gamma * target_Q
 
         # Get current Q estimates
-        current_Q = self.policy.critic(
+        current_Q = self.agent.critic(
             state, action)
 
         # Compute critic loss
@@ -262,8 +285,8 @@ class DDPG(RLAlgorithm):
         self.critic_optimizer.step()
 
         # Compute actor loss
-        actor_loss = -self.policy.critic(
-            state, self.policy.actor(state)).mean()
+        actor_loss = -self.agent.critic(
+            state, self.agent.actor(state)).mean()
 
         # Optimize the actor
         self.actor_optimizer.zero_grad()
@@ -271,22 +294,22 @@ class DDPG(RLAlgorithm):
         self.actor_optimizer.step()
 
         losses = {
-            'actor_loss': actor_loss.item(),
-            'critic_loss': critic_loss.item(),
-            'Q': current_Q.mean().item(),
-            'Q\'': target_Q.mean().item(),
+            'actor_loss': actor_loss.detach(),
+            'critic_loss': critic_loss.detach(),
+            'Q': current_Q.mean().detach(),
+            'Q\'': target_Q.mean().detach(),
         }
 
         # Update the frozen target models
         for param, target_param in zip(
-            self.policy.critic.parameters(),
+            self.agent.critic.parameters(),
             self.target.critic.parameters()
         ):
             target_param.data.copy_(
                 self.tau * param.data + (1 - self.tau) * target_param.data)
 
         for param, target_param in zip(
-            self.policy.actor.parameters(),
+            self.agent.actor.parameters(),
             self.target.actor.parameters()
         ):
             target_param.data.copy_(

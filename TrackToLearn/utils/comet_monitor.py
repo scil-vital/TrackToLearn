@@ -1,3 +1,5 @@
+import numpy as np
+
 from os.path import join as pjoin
 
 from comet_ml import Experiment
@@ -105,18 +107,22 @@ class CometMonitor():
                 step=i_episode)
 
     def log_losses(self, loss_dict, i):
-        self.e.log_metrics(loss_dict, step=i)
+        for k, v in loss_dict.items():
+            if type(v) is np.ndarray:
+                self.e.log_histogram_3d(v, name=k, step=i)
+            else:
+                self.e.log_metric(k, v, step=i)
 
     def update_train(
         self,
-        reward_monitor,
+        monitor,
         i_episode,
     ):
-        reward_x, reward_y = zip(*reward_monitor.epochs)
+        x, y = zip(*monitor.epochs)
 
         self.e.log_metrics(
             {
-                self.prefix + "Train Reward": reward_y[-1],
+                self.prefix + monitor.name: y[-1],
 
             },
             step=i_episode

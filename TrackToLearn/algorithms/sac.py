@@ -15,9 +15,9 @@ class SAC(DDPG):
     Based on
 
         Haarnoja, T., Zhou, A., Abbeel, P., & Levine, S. (2018, July). Soft
-        actor-critic: Off-policy maximum entropy deep reinforcement learning with
-        a stochastic actor. In International conference on machine learning
-        (pp. 1861-1870). PMLR.
+        actor-critic: Off-policy maximum entropy deep reinforcement learning
+        with a stochastic actor. In International conference on machine
+        learning (pp. 1861-1870). PMLR.
 
     Implementation is based on Spinning Up's and rlkit
 
@@ -38,31 +38,38 @@ class SAC(DDPG):
         gamma: float = 0.99,
         alpha: float = 0.2,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
-        """
+        """ Initialize the algorithm. This includes the replay buffer,
+        the policy and the target policy.
+
         Parameters
         ----------
         input_size: int
             Input size for the model
         action_size: int
             Output size for the actor
-        hidden_size: int
-            Width of the model
+        hidden_dims: str
+            Dimensions of the hidden layers
         lr: float
-            Learning rate for optimizer
+            Learning rate for the optimizer(s)
         gamma: float
-            Gamma parameter future reward discounting
+            Discount factor
         alpha: float
-            Parameter for entropy bonus
+            Entropy regularization coefficient
         n_actors: int
-            Batch size for replay buffer sampling
+            Number of actors to use
+        batch_size: int
+            Batch size for the update
+        replay_size: int
+            Size of the replay buffer
         rng: np.random.RandomState
-            rng for randomness. Should be fixed with a seed
-        device: torch.device,
-            Device to use for processing (CPU or GPU)
-            Should always on GPU
+            Random number generator
+        device: torch.device
+            Device to train on. Should always be cuda:0
         """
 
         self.max_action = 1.
@@ -77,21 +84,21 @@ class SAC(DDPG):
         self.rng = rng
 
         # Initialize main policy
-        self.policy = SACActorCritic(
+        self.agent = SACActorCritic(
             input_size, action_size, hidden_dims, device,
         )
 
         # Initialize target policy to provide baseline
-        self.target = copy.deepcopy(self.policy)
+        self.target = copy.deepcopy(self.agent)
 
         # SAC requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.Adam(
-            self.policy.actor.parameters(), lr=lr)
+            self.agent.actor.parameters(), lr=lr)
 
         # Optimizer for critic
         self.critic_optimizer = torch.optim.Adam(
-            self.policy.critic.parameters(), lr=lr)
+            self.agent.critic.parameters(), lr=lr)
 
         # Temperature
         self.alpha = alpha
@@ -104,9 +111,12 @@ class SAC(DDPG):
         self.total_it = 0
         self.tau = 0.005
 
+        self.batch_size = batch_size
+        self.replay_size = replay_size
+
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=replay_size)
 
         self.rng = rng
 
@@ -118,45 +128,45 @@ class SAC(DDPG):
         """
 
         # Select action according to policy + noise for exploration
-        action = self.policy.select_action(state, stochastic=True)
+        action = self.agent.select_action(state, probabilistic=1.0)
 
         return action
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**12
+        batch,
     ) -> Tuple[float, float]:
         """
 
-        SAC improves upon DDPG by:
-            - Introducing entropy into the objective
-            - Using Double Q-Learning to fight overestimation
+        SAC improves over DDPG by introducing an entropy regularization term
+        in the actor loss. This encourages the policy to be more stochastic,
+        which improves exploration. Additionally, SAC uses the minimum of two
+        Q-functions in the value loss, rather than just one Q-function as in
+        DDPG. This helps mitigate positive value biases and makes learning more
+        stable.
 
         Parameters
         ----------
-        replay_buffer: ReplayBuffer
-            Replay buffer that contains transitions
-        batch_size: int
-            Batch size to sample the memory
+        batch: tuple
+            Tuple containing the batch of data to train on, including
+            state, action, next_state, reward, not_done.
 
         Returns
         -------
-        running_actor_loss: float
-            Average policy loss over all gradient steps
-        running_critic_loss: float
-            Average critic loss over all gradient steps
+        losses: dict
+            Dictionary containing the losses for the actor and critic and
+            various other metrics.
         """
         self.total_it += 1
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
+            batch
 
-        pi, logp_pi = self.policy.act(state)
+        pi, logp_pi = self.agent.act(state)
         alpha = self.alpha
 
-        q1, q2 = self.policy.critic(state, pi)
+        q1, q2 = self.agent.critic(state, pi)
         q_pi = torch.min(q1, q2)
 
         # Entropy-regularized policy loss
@@ -164,7 +174,7 @@ class SAC(DDPG):
 
         with torch.no_grad():
             # Target actions come from *current* policy
-            next_action, logp_next_action = self.policy.act(next_state)
+            next_action, logp_next_action = self.agent.act(next_state)
 
             # Compute the target Q value
             target_Q1, target_Q2 = self.target.critic(
@@ -175,7 +185,7 @@ class SAC(DDPG):
                 (target_Q - alpha * logp_next_action)
 
         # Get current Q estimates
-        current_Q1, current_Q2 = self.policy.critic(
+        current_Q1, current_Q2 = self.agent.critic(
             state, action)
 
         # MSE loss against Bellman backup
@@ -205,14 +215,14 @@ class SAC(DDPG):
 
         # Update the frozen target models
         for param, target_param in zip(
-            self.policy.critic.parameters(),
+            self.agent.critic.parameters(),
             self.target.critic.parameters()
         ):
             target_param.data.copy_(
                 self.tau * param.data + (1 - self.tau) * target_param.data)
 
         for param, target_param in zip(
-            self.policy.actor.parameters(),
+            self.agent.actor.parameters(),
             self.target.actor.parameters()
         ):
             target_param.data.copy_(

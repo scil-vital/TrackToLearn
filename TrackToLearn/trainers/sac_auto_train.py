@@ -1,30 +1,23 @@
-#!/usr/bin/env python
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import argparse
+from argparse import RawTextHelpFormatter
+
 import comet_ml  # noqa: F401 ugh
 import torch
-
-from argparse import RawTextHelpFormatter
 from comet_ml import Experiment as CometExperiment
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.experiment.experiment import (
-    add_data_args,
-    add_environment_args,
-    add_experiment_args,
-    add_model_args,
-    add_tracking_args)
-from TrackToLearn.experiment.train import (
-    add_rl_args,
-    TrackToLearnTraining)
+from TrackToLearn.trainers.train import (TrackToLearnTraining,
+                                         add_training_args)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert torch.cuda.is_available()
 
 
 class SACAutoTrackToLearnTraining(TrackToLearnTraining):
     """
-    Main RL tracking experiment
+    Train a RL tracking agent using SAC with automatic entropy adjustment.
     """
 
     def __init__(
@@ -36,9 +29,9 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
         Parameters
         ----------
         sac_auto_train_dto: dict
-            SACAuto training parameters
+        SACAuto training parameters
         comet_experiment: CometExperiment
-            Allows for logging and experiment management.
+        Allows for logging and experiment management.
         """
 
         super().__init__(
@@ -48,6 +41,8 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 
         # SACAuto-specific parameters
         self.alpha = sac_auto_train_dto['alpha']
+        self.batch_size = sac_auto_train_dto['batch_size']
+        self.replay_size = sac_auto_train_dto['replay_size']
 
     def save_hyperparameters(self):
         """ Add SACAuto-specific hyperparameters to self.hyperparameters
@@ -56,7 +51,9 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 
         self.hyperparameters.update(
             {'algorithm': 'SACAuto',
-             'alpha': self.alpha})
+             'alpha': self.alpha,
+             'batch_size': self.batch_size,
+             'replay_size': self.replay_size})
 
         super().save_hyperparameters()
 
@@ -69,6 +66,8 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
             self.gamma,
             self.alpha,
             self.n_actor,
+            self.batch_size,
+            self.replay_size,
             self.rng,
             device)
         return alg
@@ -76,23 +75,20 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
 
 def add_sac_auto_args(parser):
     parser.add_argument('--alpha', default=0.2, type=float,
-                        help='Temperature parameter')
+                        help='Initial temperature parameter')
+    parser.add_argument('--batch_size', default=2**12, type=int,
+                        help='How many tuples to sample from the replay '
+                        'buffer.')
+    parser.add_argument('--replay_size', default=1e6, type=int,
+                        help='How many tuples to store in the replay buffer.')
 
 
 def parse_args():
-    """ Generate a tractogram from a trained recurrent model. """
+    """ Generate a tractogram from a trained model. """
     parser = argparse.ArgumentParser(
         description=parse_args.__doc__,
         formatter_class=RawTextHelpFormatter)
-
-    add_experiment_args(parser)
-    add_data_args(parser)
-
-    add_environment_args(parser)
-    add_model_args(parser)
-    add_rl_args(parser)
-    add_tracking_args(parser)
-
+    add_training_args(parser)
     add_sac_auto_args(parser)
 
     arguments = parser.parse_args()
@@ -104,11 +100,13 @@ def main():
     args = parse_args()
     print(args)
 
+    # Create comet-ml experiment
     experiment = CometExperiment(project_name=args.experiment,
-                                 workspace='TrackToLearn', parse_args=False,
+                                 workspace=args.workspace, parse_args=False,
                                  auto_metric_logging=False,
                                  disabled=not args.use_comet)
 
+    # Create and run experiment
     sac_auto_experiment = SACAutoTrackToLearnTraining(
         # Dataset params
         vars(args),

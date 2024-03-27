@@ -1,11 +1,12 @@
-import numpy as np
-
 from enum import Enum
 
-from TrackToLearn.environments.utils import interpolate_volume_at_coordinates
+import numpy as np
+from dipy.io.stateful_tractogram import Space, StatefulTractogram, Tractogram
+from scipy.ndimage import map_coordinates, spline_filter
+
+from TrackToLearn.oracles.oracle import OracleSingleton
 
 
-# Flags enum
 class StoppingFlags(Enum):
     """ Predefined stopping flags to use when checking which streamlines
     should stop
@@ -15,6 +16,8 @@ class StoppingFlags(Enum):
     STOPPING_CURVATURE = int('00000100', 2)
     STOPPING_TARGET = int('00001000', 2)
     STOPPING_LOOP = int('00010000', 2)
+    STOPPING_ANGULAR_ERROR = int('00100000', 2)
+    STOPPING_ORACLE = int('01000000', 2)
 
 
 def is_flag_set(flags, ref_flag):
@@ -52,7 +55,8 @@ class BinaryStoppingCriterion(object):
             Voxels with a value higher or equal than this threshold are
             considered as part of the interior of the mask.
         """
-        self.mask = mask
+        self.mask = spline_filter(
+            np.ascontiguousarray(mask, dtype=float), order=3)
         self.threshold = threshold
 
     def __call__(
@@ -72,54 +76,39 @@ class BinaryStoppingCriterion(object):
             Array telling whether a streamline's last coordinate is outside the
             mask or not.
         """
+        coords = streamlines[:, -1, :].T - 0.5
+        return map_coordinates(
+            self.mask, coords, prefilter=False
+        ) < self.threshold
 
-        # Get last streamlines coordinates
-        return interpolate_volume_at_coordinates(
-            self.mask, streamlines[:, -1, :], mode='constant',
-            order=0) < self.threshold
 
+class OracleStoppingCriterion(object):
+    """
+    Defines if a streamline should stop according to the oracle.
 
-class CmcStoppingCriterion(object):
-    """ Checks which streamlines should stop according to Continuous map
-    criteria.
-    Ref:
-        Girard, G., Whittingstall, K., Deriche, R., & Descoteaux, M. (2014)
-        Towards quantitative connectivity analysis: reducing tractography
-        biases.
-        Neuroimage, 98, 266-278.
-
-    This is only in the partial-spirit of CMC. A good improvement (#TODO)
-    would be to include or exclude streamlines from the resulting
-    tractogram as well. Let me know if you need help in adding this
-    functionnality.
     """
 
     def __init__(
         self,
-        include_mask: np.ndarray,
-        exclude_mask: np.ndarray,
-        affine: np.ndarray,
-        step_size: float,
+        checkpoint: str,
         min_nb_steps: int,
+        reference: str,
+        affine_vox2rasmm: np.ndarray,
+        device: str
     ):
-        """
-        Parameters
-        ----------
-        mask : 3D `numpy.ndarray`
-            3D image defining a stopping mask. The interior of the mask is
-            defined by values higher or equal than `threshold` .
-        affine_vox2rasmm: `numpy.ndarray` with shape (4,4) (optional)
-            Tranformation that aligns brings streamlines to rasmm from vox.
-        threshold : float
-            Voxels with a value higher or equal than this threshold are
-            considered as part of the interior of the mask.
-        """
-        self.include_mask = include_mask
-        self.exclude_mask = exclude_mask
-        self.affine = affine
-        vox_size = np.mean(np.abs(np.diag(affine)[:3]))
-        self.correction_factor = step_size / vox_size
+
+        self.name = 'oracle_reward'
+
+        if checkpoint:
+            self.checkpoint = checkpoint
+            self.model = OracleSingleton(checkpoint, device)
+        else:
+            self.checkpoint = None
+
+        self.affine_vox2rasmm = affine_vox2rasmm
+        self.reference = reference
         self.min_nb_steps = min_nb_steps
+        self.device = device
 
     def __call__(
         self,
@@ -130,40 +119,36 @@ class CmcStoppingCriterion(object):
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
             Streamline coordinates in voxel space
+
         Returns
         -------
-        outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-            Array telling whether a streamline's last coordinate is outside the
-            mask or not.
+        dones: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array indicating if streamlines are done.
         """
+        if not self.checkpoint:
+            return None
 
-        include_result = interpolate_volume_at_coordinates(
-            self.include_mask, streamlines[:, -1, :], mode='constant',
-            order=1)
-        if streamlines.shape[1] < self.min_nb_steps:
-            include_result[:] = 0.
+        # Resample streamlines to a fixed number of points. This should be
+        # set by the model ? TODO?
+        N, L, P = streamlines.shape
+        if L > self.min_nb_steps:
 
-        exclude_result = interpolate_volume_at_coordinates(
-            self.exclude_mask, streamlines[:, -1, :], mode='constant',
-            order=1, cval=1.0)
+            tractogram = Tractogram(
+                streamlines=streamlines.copy())
 
-        # If streamlines are still in 100% WM, don't exit
-        wm_points = include_result + exclude_result <= 0
+            tractogram.apply_affine(self.affine_vox2rasmm)
 
-        # Compute continue probability
-        num = np.maximum(0, (1 - include_result - exclude_result))
-        den = num + include_result + exclude_result
-        p = (num / den) ** self.correction_factor
+            sft = StatefulTractogram(
+                streamlines=tractogram.streamlines,
+                reference=self.reference,
+                space=Space.RASMM)
 
-        # p >= continue prob -> not continue
-        not_continue_points = np.random.random(streamlines.shape[0]) >= p
+            sft.to_vox()
+            sft.to_corner()
+            predictions = self.model.predict(sft.streamlines)
 
-        # if by some magic some wm point don't continue, make them continue
-        not_continue_points[wm_points] = False
+            scores = np.zeros_like(predictions)
+            scores[predictions < 0.5] = 1
+            return scores.astype(bool)
 
-        # if the point is in the include map, it has potentially reached GM
-        p = (include_result / (include_result + exclude_result))
-        stop_include = np.random.random(streamlines.shape[0]) < p
-        not_continue_points[stop_include] = True
-
-        return not_continue_points
+        return np.array([False] * N)

@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from torch import nn
 
@@ -12,7 +13,13 @@ def add_to_means(means, dic):
 
 
 def mean_losses(dic):
-    return {k: np.mean(dic[k]) for k in dic.keys()}
+    new_dict = {k: np.mean(torch.stack(dic[k]).cpu().numpy(), axis=0)
+                for k in dic.keys()}
+    return new_dict
+
+
+def mean_rewards(dic):
+    return {k: np.mean(np.asarray(dic[k]), axis=0) for k in dic.keys()}
 
 
 def harvest_states(i, *args):
@@ -28,7 +35,7 @@ def stack_states(full, single):
 
 
 def format_widths(widths_str):
-    return [int(i) for i in widths_str.split('-')]
+    return np.asarray([int(i) for i in widths_str.split('-')])
 
 
 def make_fc_network(

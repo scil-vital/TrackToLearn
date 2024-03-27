@@ -43,6 +43,8 @@ class SACAuto(SAC):
         gamma: float = 0.99,
         alpha: float = 0.2,
         n_actors: int = 4096,
+        batch_size: int = 2**12,
+        replay_size: int = 1e6,
         rng: np.random.RandomState = None,
         device: torch.device = "cuda:0",
     ):
@@ -53,22 +55,24 @@ class SACAuto(SAC):
             Input size for the model
         action_size: int
             Output size for the actor
-        hidden_size: int
-            Width of the model
+        hidden_dims: str
+            Dimensions of the hidden layers
         lr: float
-            Learning rate for optimizer
+            Learning rate for the optimizer(s)
         gamma: float
-            Gamma parameter future reward discounting
+            Discount factor
         alpha: float
-            Initial value of parameter for entropy bonus.
-            Will get optimized.
+            Initial entropy coefficient (temperature).
         n_actors: int
-            Batch size for replay buffer sampling
+            Number of actors to use
+        batch_size: int
+            Batch size to sample the memory
+        replay_size: int
+            Size of the replay buffer
         rng: np.random.RandomState
-            rng for randomness. Should be fixed with a seed
-        device: torch.device,
-            Device to use for processing (CPU or GPU)
-            Should always on GPU
+            Random number generator
+        device: torch.device
+            Device to use for the algorithm. Should be either "cuda:0"
         """
 
         self.max_action = 1.
@@ -82,123 +86,134 @@ class SACAuto(SAC):
 
         self.rng = rng
 
-        # Initialize main policy
-        self.policy = SACActorCritic(
+        # Initialize main agent
+        self.agent = SACActorCritic(
             input_size, action_size, hidden_dims, device,
         )
 
         # Auto-temperature adjustment
+        # SAC automatically adjusts the temperature to maximize entropy and
+        # thus exploration, but reduces it over time to converge to a
+        # somewhat deterministic policy.
         starting_temperature = np.log(alpha)  # Found empirically
         self.target_entropy = -np.prod(action_size).item()
         self.log_alpha = torch.full(
             (1,), starting_temperature, requires_grad=True, device=device)
-
+        # Optimizer for alpha
         self.alpha_optimizer = torch.optim.Adam(
-          [self.log_alpha], lr=lr)
+            [self.log_alpha], lr=lr)
 
-        # Initialize target policy to provide baseline
-        self.target = copy.deepcopy(self.policy)
+        # Initialize target agent to provide baseline
+        self.target = copy.deepcopy(self.agent)
 
         # SAC requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.Adam(
-            self.policy.actor.parameters(), lr=lr)
+            self.agent.actor.parameters(), lr=lr)
 
         # Optimizer for critic
         self.critic_optimizer = torch.optim.Adam(
-            self.policy.critic.parameters(), lr=lr)
+            self.agent.critic.parameters(), lr=lr)
 
         # Temperature
         self.alpha = alpha
 
         # SAC-specific parameters
         self.max_action = 1.
-        self.on_policy = False
+        self.on_agent = False
 
-        self.start_timesteps = 1000
+        self.start_timesteps = 80000
         self.total_it = 0
         self.tau = 0.005
+        self.agent_freq = 1
+
+        self.batch_size = batch_size
+        self.replay_size = replay_size
 
         # Replay buffer
         self.replay_buffer = OffPolicyReplayBuffer(
-            input_size, action_size)
+            input_size, action_size, max_size=self.replay_size)
 
         self.rng = rng
 
     def update(
         self,
-        replay_buffer: OffPolicyReplayBuffer,
-        batch_size: int = 2**12
+        batch,
     ) -> Tuple[float, float]:
         """
 
-        SAC Auto improves upon SAC by learning the entropy coefficient
-        instead of making it a hyperparameter.
+        SAC Auto improves upon SAC by automatically adjusting the temperature
+        parameter alpha. This is done by optimizing the temperature parameter
+        alpha to maximize the entropy of the policy. This is done by
+        maximizing the following objective:
+            J_alpha = E_pi [log pi(a|s) + alpha H(pi(.|s))]
+        where H(pi(.|s)) is the entropy of the policy.
 
 
         Parameters
         ----------
-        replay_buffer: ReplayBuffer
-            Replay buffer that contains transitions
-        batch_size: int
-            Batch size to sample the memory
+        batch: Tuple containing the batch of data to train on.
 
         Returns
         -------
-        running_actor_loss: float
-            Average policy loss over all gradient steps
-        running_critic_loss: float
-            Average critic loss over all gradient steps
+        losses: dict
+            Dictionary containing the losses of the algorithm and various
+            other metrics.
         """
         self.total_it += 1
 
         # Sample replay buffer
         state, action, next_state, reward, not_done = \
-            replay_buffer.sample(batch_size)
-
-        pi, logp_pi = self.policy.act(state)
+            batch
+        # Compute \pi_\theta(s_t) and log \pi_\theta(s_t)
+        pi, logp_pi = self.agent.act(
+            state, probabilistic=1.0)
+        # Compute the temperature loss and the temperature
         alpha_loss = -(self.log_alpha * (
             logp_pi + self.target_entropy).detach()).mean()
         alpha = self.log_alpha.exp()
 
-        q1, q2 = self.policy.critic(state, pi)
+        # Compute the Q values and the minimum Q value
+        q1, q2 = self.agent.critic(state, pi)
         q_pi = torch.min(q1, q2)
 
-        # Entropy-regularized policy loss
+        # Entropy-regularized agent loss
         actor_loss = (alpha * logp_pi - q_pi).mean()
 
         with torch.no_grad():
-            # Target actions come from *current* policy
-            next_action, logp_next_action = self.policy.act(next_state)
+            # Target actions come from *current* agent
+            next_action, logp_next_action = self.agent.act(
+                next_state, probabilistic=1.0)
 
-            # Compute the target Q value
+            # Compute the next Q values using the target agent
             target_Q1, target_Q2 = self.target.critic(
                 next_state, next_action)
             target_Q = torch.min(target_Q1, target_Q2)
 
+            # Compute the backup which is the Q-learning "target"
             backup = reward + self.gamma * not_done * \
                 (target_Q - alpha * logp_next_action)
 
         # Get current Q estimates
-        current_Q1, current_Q2 = self.policy.critic(
+        current_Q1, current_Q2 = self.agent.critic(
             state, action)
 
         # MSE loss against Bellman backup
         loss_q1 = F.mse_loss(current_Q1, backup.detach()).mean()
         loss_q2 = F.mse_loss(current_Q2, backup.detach()).mean()
-
+        # Total critic loss
         critic_loss = loss_q1 + loss_q2
 
         losses = {
-            'actor_loss': actor_loss.item(),
-            'critic_loss': critic_loss.item(),
-            'alpha_loss': alpha_loss.item(),
-            'loss_q1': loss_q1.item(),
-            'loss_q2': loss_q2.item(),
-            'a': alpha.item(),
-            'Q1': current_Q1.mean().item(),
-            'Q2': current_Q2.mean().item(),
-            'backup': backup.mean().item(),
+            # 'actor_loss': actor_loss.detach(),
+            # 'alpha_loss': alpha_loss.detach(),
+            # 'critic_loss': critic_loss.detach(),
+            # 'loss_q1': loss_q1.detach(),
+            # 'loss_q2': loss_q2.detach(),
+            # 'entropy': alpha.detach(),
+            # 'Q1': current_Q1.mean().detach(),
+            # 'Q2': current_Q2.mean().detach(),
+            # 'backup': backup.mean().detach(),
         }
 
         # Optimize the temperature
@@ -218,14 +233,14 @@ class SACAuto(SAC):
 
         # Update the frozen target models
         for param, target_param in zip(
-            self.policy.critic.parameters(),
+            self.agent.critic.parameters(),
             self.target.critic.parameters()
         ):
             target_param.data.copy_(
                 self.tau * param.data + (1 - self.tau) * target_param.data)
 
         for param, target_param in zip(
-            self.policy.actor.parameters(),
+            self.agent.actor.parameters(),
             self.target.actor.parameters()
         ):
             target_param.data.copy_(

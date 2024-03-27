@@ -7,13 +7,14 @@ from nibabel.streamlines import Tractogram
 
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.environments.stopping_criteria import (
-    is_flag_set,
-    StoppingFlags)
-from TrackToLearn.utils.utils import normalize_vectors
+    is_flag_set, StoppingFlags)
 
 
 class TrackingEnvironment(BaseEnv):
-    """ Tracking environment.
+    """ Tracking environment. This environment is used to track
+    streamlines using a given model. Like the `BaseEnv`, it is
+    used as both an environment and a "tracker".
+
     TODO: Clean up "_private functions" and public functions. Some could
     go into BaseEnv.
     """
@@ -39,36 +40,15 @@ class TrackingEnvironment(BaseEnv):
             streamline.
         """
         stopping, flags = \
-            self._filter_stopping_streamlines(
+            self._compute_stopping_flags(
                 streamlines, self.stopping_criteria)
         return stopping, flags
-
-    def _keep(
-        self,
-        idx: np.ndarray,
-        state: np.ndarray,
-    ) -> np.ndarray:
-        """ Keep only states that correspond to continuing streamlines.
-
-        Parameters
-        ----------
-        idx : `np.ndarray`
-            Indices of the streamlines/states to keep
-        state: np.ndarray
-            Batch of states.
-
-        Returns:
-        --------
-        state: np.ndarray
-            Continuing states.
-        """
-        state = state[idx]
-
-        return state
 
     def nreset(self, n_seeds: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will
         chose N random seeds among all seeds.
+
+        TODO: Uniformize with `reset` function.
 
         Parameters
         ----------
@@ -80,6 +60,8 @@ class TrackingEnvironment(BaseEnv):
         state: numpy.ndarray
             Initial state for RL model
         """
+
+        super().reset()
 
         # Heuristic to avoid duplicating seeds if fewer seeds than actors.
         replace = n_seeds > len(self.seeds)
@@ -100,14 +82,17 @@ class TrackingEnvironment(BaseEnv):
         # Initialize rewards and done flags
         self.dones = np.full(n_seeds, False)
         self.continue_idx = np.arange(n_seeds)
+        self.state = self._format_state(
+            self.streamlines[self.continue_idx, :self.length])
 
         # Setup input signal
-        return self._format_state(
-            self.streamlines[self.continue_idx, :self.length])
+        return self.state[self.continue_idx]
 
     def reset(self, start: int, end: int) -> np.ndarray:
         """ Initialize tracking seeds and streamlines. Will select
         a given batch of seeds.
+
+        TODO: Uniformize with `nreset` function.
 
         Parameters
         ----------
@@ -121,6 +106,9 @@ class TrackingEnvironment(BaseEnv):
         state: numpy.ndarray
             Initial state for RL model
         """
+
+        super().reset()
+
         # Initialize seeds as streamlines
         self.initial_points = self.seeds[start:end]
         N = self.initial_points.shape[0]
@@ -138,21 +126,25 @@ class TrackingEnvironment(BaseEnv):
         self.dones = np.full(N, False)
         self.continue_idx = np.arange(N)
 
-        # Setup input signal
-        return self._format_state(
+        self.state = self._format_state(
             self.streamlines[self.continue_idx, :self.length])
+
+        # Setup input signal
+        return self.state[self.continue_idx]
 
     def step(
         self,
-        directions: np.ndarray,
+        actions: np.ndarray,
     ) -> Tuple[np.ndarray, list, bool, dict]:
         """
         Apply actions, rescale actions to step size and grow streamlines
         for one step forward. Calculate rewards and stop streamlines.
 
+        TODO: Split into smaller functions.
+
         Parameters
         ----------
-        directions: np.ndarray
+        actions: np.ndarray
             Actions applied to the state
 
         Returns
@@ -166,58 +158,73 @@ class TrackingEnvironment(BaseEnv):
         info: dict
         """
 
-        # Scale directions to step size
-        directions = normalize_vectors(directions) * self.step_size
+        directions = self._format_actions(actions)
+
+        # If the streamline goes out the tracking mask at the first
+        # step, flip it
+        if self.length == 1:
+            # Grow streamlines one step forward
+            streamlines = np.array(self.streamlines[self.continue_idx])
+            streamlines[:, self.length, :] = \
+                self.streamlines[self.continue_idx,
+                                 self.length-1, :] + directions
+
+            # Get stopping and keeping indexes
+            stopping, flags = \
+                self._is_stopping(
+                    streamlines[:, :self.length + 1])
+
+            # Flip stopping trajectories
+            directions[stopping] *= -1
 
         # Grow streamlines one step forward
         self.streamlines[self.continue_idx, self.length, :] = \
             self.streamlines[self.continue_idx, self.length-1, :] + directions
         self.length += 1
 
-        # Get stopping and keeping indexes
+        # Get stopping and keeping indexes.
         stopping, new_flags = \
             self._is_stopping(
                 self.streamlines[self.continue_idx, :self.length])
 
+        # See which trajectory is stopping or continuing.
+        # TODO: `investigate the use of `not_stopping`.
+        self.not_stopping = np.logical_not(stopping)
         self.new_continue_idx, self.stopping_idx = \
             (self.continue_idx[~stopping],
              self.continue_idx[stopping])
 
-        mask_continue = np.in1d(
-            self.continue_idx, self.new_continue_idx, assume_unique=True)
-        diff_stopping_idx = np.arange(
-            len(self.continue_idx))[~mask_continue]
-
+        # Keep the reason why tracking stopped
         self.flags[
-            self.stopping_idx] = new_flags[diff_stopping_idx]
+            self.stopping_idx] = new_flags[stopping]
 
+        # Keep which trajectory is over
         self.dones[self.stopping_idx] = 1
 
         reward = np.zeros(self.streamlines.shape[0])
+        reward_info = {}
         # Compute reward if wanted. At valid time, no need
         # to compute it and slow down the tracking process
         if self.compute_reward:
-            reward = self.reward_function(
+            reward, reward_info = self.reward_function(
                 self.streamlines[self.continue_idx, :self.length],
                 self.dones[self.continue_idx])
 
+        # Compute the state
+        self.state[self.continue_idx] = self._format_state(
+            self.streamlines[self.continue_idx, :self.length])
+
         return (
-            self._format_state(
-                self.streamlines[self.continue_idx, :self.length]),
+            self.state[self.continue_idx],
             reward, self.dones[self.continue_idx],
-            {'continue_idx': self.continue_idx})
+            {'continue_idx': self.continue_idx,
+             'reward_info': reward_info})
 
     def harvest(
         self,
-        states: np.ndarray,
     ) -> Tuple[StatefulTractogram, np.ndarray]:
-        """Internally keep only the streamlines and corresponding env. states
-        that haven't stopped yet, and return the states that continue.
-
-        Parameters
-        ----------
-        states: torch.Tensor
-            States before "pruning" or "harvesting".
+        """Internally keep track of which trajectories are still going
+        and which aren't. Return the states accordingly.
 
         Returns
         -------
@@ -229,46 +236,52 @@ class TrackingEnvironment(BaseEnv):
 
         # Register the length of the streamlines that have stopped.
         self.lengths[self.stopping_idx] = self.length
-
-        mask_continue = np.in1d(
-            self.continue_idx, self.new_continue_idx, assume_unique=True)
-        diff_continue_idx = np.arange(
-            len(self.continue_idx))[mask_continue]
+        # Set new "continue idx" based on the old idxes. This is to keep
+        # the idxes "global".
         self.continue_idx = self.new_continue_idx
+        # Return the state corresponding to streamlines that are actually
+        # still being tracked.
+        # TODO: investigate why `not_stopping` is returned.
+        return self.state[self.continue_idx], self.not_stopping
 
-        # Keep only streamlines that should continue
-        states = self._keep(
-            diff_continue_idx,
-            states)
+    def get_streamlines(self):
+        """ Obtain tracked streamlines from the environment.
+        The last point will be removed if it raised a curvature or mask
+        stopping criterion.
 
-        return states, diff_continue_idx
-
-    def get_streamlines(self) -> StatefulTractogram:
-        """ Obtain tracked streamlines fromm the environment.
-        The last point will be removed if it raised a curvature stopping
-        criteria (i.e. the angle was too high). Otherwise, other last points
-        are kept.
-
-        TODO: remove them also ?
+        Parameters
+        ----------
 
         Returns
         -------
         tractogram: Tractogram
-            Tracked streamlines.
+            Tracked streamlines in voxel space.
 
         """
-
-        tractogram = Tractogram()
         # Harvest stopped streamlines and associated data
         # stopped_seeds = self.first_points[self.stopping_idx]
-        # Exclude last point as it triggered a stopping criteria.
         stopped_streamlines = [self.streamlines[i, :self.lengths[i], :]
                                for i in range(len(self.streamlines))]
 
-        flags = is_flag_set(
+        # If the last point triggered a stopping criterion based on
+        # angle, remove it so as not to produce ugly kinked streamlines.
+        curvature_flags = is_flag_set(
             self.flags, StoppingFlags.STOPPING_CURVATURE)
+
+        # Reduce overreach by removing the last point if it triggered
+        # a mask-based stopping criterion.
+        mask_flags = is_flag_set(
+            self.flags, StoppingFlags.STOPPING_MASK)
+
+        # Remove the last point if it triggered one of these two flags.
+        flags = np.logical_or(curvature_flags, mask_flags)
+
+        # IMPORTANT: The oracle will wildly
+        # overestimate the tractogram if the last point is not included
+        # since the last point (and segment) is what made it stop tracking.
+        # **Therefore** the last point should be included as much as possible.
         stopped_streamlines = [
-            s[:-1] if f else s for f, s in zip(flags, stopped_streamlines)]
+            s[:-1] if f else s for s, f in zip(stopped_streamlines, flags)]
 
         stopped_seeds = self.initial_points
 
@@ -276,7 +289,6 @@ class TrackingEnvironment(BaseEnv):
         tractogram = Tractogram(
             streamlines=stopped_streamlines,
             data_per_streamline={"seeds": stopped_seeds,
-                                 },
-            affine_to_rasmm=self.affine_vox2rasmm)
+                                 "flags": self.flags})
 
         return tractogram

@@ -1,57 +1,9 @@
 import numpy as np
-import torch
+from dipy.tracking import metrics as tm
+from multiprocessing import Pool
+from scipy.ndimage import map_coordinates
 
-from TrackToLearn.environments.interpolation import (
-    interpolate_volume_at_coordinates,
-    torch_trilinear_interpolation)
 from TrackToLearn.utils.utils import normalize_vectors
-
-
-def get_sh(
-    segments,
-    data_volume,
-    add_neighborhood_vox,
-    neighborhood_directions,
-    history,
-    device
-) -> np.ndarray:
-    """ Get the sh coefficients at the end of streamlines
-    """
-
-    N, H, P = segments.shape
-    flat_coords = np.reshape(segments, (N * H, P))
-
-    coords = torch.as_tensor(flat_coords).to(device)
-    n_coords = coords.shape[0]
-
-    if add_neighborhood_vox:
-        # Extend the coords array with the neighborhood coordinates
-        coords = torch.repeat_interleave(
-            coords,
-            neighborhood_directions.size()[0],
-            axis=0)
-
-        coords[:, :3] += \
-            neighborhood_directions.repeat(n_coords, 1)
-
-        # Evaluate signal as if all coords were independent
-        partial_signal = torch_trilinear_interpolation(
-            data_volume, coords)
-
-        # Reshape signal into (n_coords, new_feature_size)
-        new_feature_size = partial_signal.size()[-1] * \
-            neighborhood_directions.size()[0]
-    else:
-        partial_signal = torch_trilinear_interpolation(
-            data_volume,
-            coords).type(torch.float32)
-        new_feature_size = partial_signal.size()[-1]
-
-    signal = torch.reshape(partial_signal, (N, history * new_feature_size))
-
-    assert len(signal.size()) == 2, signal.size()
-
-    return signal
 
 
 def get_neighborhood_directions(
@@ -136,8 +88,9 @@ def is_inside_mask(
         or not.
     """
     # Get last streamlines coordinates
-    return interpolate_volume_at_coordinates(
-        mask, streamlines[:, -1, :], mode='constant', order=0) >= threshold
+    return map_coordinates(
+        mask, streamlines[:, -1, :].T - 0.5,
+        mode='constant', order=0) >= threshold
 
 
 def is_outside_mask(
@@ -166,8 +119,9 @@ def is_outside_mask(
     """
 
     # Get last streamlines coordinates
-    return interpolate_volume_at_coordinates(
-        mask, streamlines[:, -1, :], mode='constant', order=0) < threshold
+    return map_coordinates(
+        mask, streamlines[:, -1, :].T - 0.5, mode='constant', order=0
+    ) < threshold
 
 
 def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
@@ -208,15 +162,14 @@ def is_too_curvy(streamlines: np.ndarray, max_theta: float):
     max_theta_rad = np.deg2rad(max_theta)  # Internally use radian
     if streamlines.shape[1] < 3:
         # Not enough segments to compute curvature
-        return np.zeros(streamlines.shape[0], dtype=np.uint8)
+        return np.zeros(streamlines.shape[0], dtype=bool)
 
     # Compute vectors for the last and before last streamline segments
     u = normalize_vectors(streamlines[:, -1] - streamlines[:, -2])
     v = normalize_vectors(streamlines[:, -2] - streamlines[:, -3])
 
     # Compute angles
-    angles = np.arccos(np.sum(u * v, axis=1).clip(-1., 1.))
-
+    angles = np.arccos(np.einsum('ij,ij->i', u, v))
     return angles > max_theta_rad
 
 
@@ -286,6 +239,44 @@ def is_looping(streamlines: np.ndarray, loop_threshold: float):
         Array telling whether a streamline is too curvy or not
     """
 
-    angles = winding(streamlines)
+    clean_ids = remove_loops_and_sharp_turns(
+        streamlines, loop_threshold, num_processes=8)
+    mask = np.full(streamlines.shape[0], True)
+    mask[clean_ids] = False
+    return mask
 
-    return angles > loop_threshold
+
+def remove_loops_and_sharp_turns(streamlines,
+                                 max_angle,
+                                 num_processes=1):
+    """
+    Remove loops and sharp turns from a list of streamlines.
+    Parameters
+    ----------
+    streamlines: list of ndarray
+        The list of streamlines from which to remove loops and sharp turns.
+    max_angle: float
+        Maximal winding angle a streamline can have before
+        being classified as a loop.
+    use_qb: bool
+        Set to True if the additional QuickBundles pass is done.
+        This will help remove sharp turns. Should only be used on
+        bundled streamlines, not on whole-brain tractograms.
+    qb_threshold: float
+        Quickbundles distance threshold, only used if use_qb is True.
+    qb_seed: int
+        Seed to initialize randomness in QuickBundles
+
+    Returns
+    -------
+    list: the ids of clean streamlines
+        Only the ids are returned so proper filtering can be done afterwards
+    """
+
+    ids = []
+    pool = Pool(num_processes)
+    windings = pool.map(tm.winding, streamlines)
+    pool.close()
+    ids = list(np.where(np.array(windings) < max_angle)[0])
+
+    return ids

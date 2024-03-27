@@ -1,201 +1,275 @@
 import functools
-import h5py
-import numpy as np
-import nibabel as nib
-import torch
-
-from gymnasium.wrappers.normalize import RunningMeanStd
-from nibabel.streamlines import Tractogram
 from typing import Callable, Dict, Tuple
 
-from TrackToLearn.datasets.utils import (
-    convert_length_mm2vox,
-    MRIDataVolume,
-    SubjectData,
-    set_sh_order_basis
-)
+import nibabel as nib
+import numpy as np
+import torch
+from dipy.core.sphere import HemiSphere
+from dipy.data import get_sphere
+from dipy.direction.peaks import reshape_peaks_for_visualization
+from dipy.tracking import utils as track_utils
+from dwi_ml.data.processing.volume.interpolation import \
+    interpolate_volume_in_neighborhood
+from dwi_ml.data.processing.space.neighborhood import \
+    get_neighborhood_vectors_axes
+from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
+                                  get_maximas)
+from torch.utils.data import DataLoader
 
-from TrackToLearn.environments.reward import Reward
-
+from TrackToLearn.datasets.SubjectDataset import SubjectDataset
+from TrackToLearn.datasets.utils import (MRIDataVolume,
+                                         convert_length_mm2vox,
+                                         set_sh_order_basis)
+from TrackToLearn.environments.local_reward import PeaksAlignmentReward
+from TrackToLearn.environments.oracle_reward import OracleReward
+from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    BinaryStoppingCriterion,
-    CmcStoppingCriterion,
+    BinaryStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
+from TrackToLearn.environments.utils import (  # is_looping,
+    is_too_curvy, is_too_long)
+from TrackToLearn.utils.utils import normalize_vectors
 
-from TrackToLearn.environments.utils import (
-    get_neighborhood_directions,
-    get_sh,
-    is_too_curvy,
-    is_too_long)
+# from dipy.io.utils import get_reference_info
 
 
 class BaseEnv(object):
     """
-    Abstract tracking environment.
-    TODO: Add more explanations
+    Abstract tracking environment. This class should not be used directly.
+    Instead, use `TrackingEnvironment` or `InferenceTrackingEnvironment`.
+
+    Track-to-Learn environments are based on OpenAI Gym environments. They
+    are used to train reinforcement learning algorithms. They also emulate
+    "Trackers" in dipy by handling streamline propagation, stopping criteria,
+    and seeds.
+
+    Since many streamlines are propagated in parallel, the environment is
+    similar to VectorizedEnvironments in the Gym definition. However, the
+    environment is not vectorized in the sense that it does not reset
+    trajectories (streamlines) independently.
+
+    TODO: reset trajectories independently ?
+
     """
 
     def __init__(
         self,
-        input_volume: MRIDataVolume,
-        tracking_mask: MRIDataVolume,
-        target_mask: MRIDataVolume,
-        seeding_mask: MRIDataVolume,
-        peaks: MRIDataVolume,
+        subject_data: str,
+        split_id: str,
         env_dto: dict,
-        include_mask: MRIDataVolume = None,
-        exclude_mask: MRIDataVolume = None,
     ):
         """
+        Initialize the environment. This should not be called directly.
+        Instead, use `from_dataset` or `from_files`.
+
         Parameters
         ----------
-        input_volume: MRIDataVolume
-            Volumetric data containing the SH coefficients
-        tracking_mask: MRIDataVolume
-            Volumetric mask where tracking is allowed
-        target_mask: MRIDataVolume
-            Mask representing the tracking endpoints
-        seeding_mask: MRIDataVolume
-            Mask where seeding should be done
-        peaks: MRIDataVolume
-            Volume containing the fODFs peaks
+        dataset_file: str
+            Path to the HDF5 file containing the dataset.
+        split_id: str
+            Name of the split to load (e.g. 'training',
+            'validation', 'testing').
+        subjects: list
+            List of subjects to load.
         env_dto: dict
             DTO containing env. parameters
-        include_mask: MRIDataVolume
-            Mask representing the tracking go zones. Only useful if
-            using CMC.
-        exclude_mask: MRIDataVolume
-            Mask representing the tracking no-go zones. Only useful if
-            using CMC.
+
         """
 
-        # Volumes and masks
-        self.affine_vox2rasmm = input_volume.affine_vox2rasmm
-        self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+        # If the subject data is a string, it is assumed to be a path to
+        # an HDF5 file. Otherwise, it is assumed to be a list of volumes
+        if type(subject_data) is str:
+            self.dataset_file = subject_data
+            self.split = split_id
 
-        self.data_volume = torch.tensor(
-            input_volume.data, dtype=torch.float32, device=env_dto['device'])
-        self.tracking_mask = tracking_mask
-        self.target_mask = target_mask
-        self.include_mask = include_mask
-        self.exclude_mask = exclude_mask
-        self.peaks = peaks
+            def collate_fn(data):
+                return data
 
+            self.dataset = SubjectDataset(
+                self.dataset_file, self.split)
+            self.loader = DataLoader(self.dataset, 1, shuffle=True,
+                                     collate_fn=collate_fn,
+                                     num_workers=2)
+            self.loader_iter = iter(self.loader)
+        else:
+            self.subject_data = subject_data
+            self.split = split_id
+
+        # Unused: this is from an attempt to normalize the input data
+        # as is done by the original PPO impl
+        # Does not seem to be necessary here.
         self.normalize_obs = False  # env_dto['normalize']
         self.obs_rms = None
 
         self._state_size = None  # to be calculated later
 
-        self.reference = env_dto['reference']
-
         # Tracking parameters
-        self.n_signal = env_dto['n_signal']
         self.n_dirs = env_dto['n_dirs']
-        self.theta = theta = env_dto['theta']
+        self.theta = env_dto['theta']
+        # Number of seeds per voxel
         self.npv = env_dto['npv']
-        self.cmc = env_dto['cmc']
-        self.asymmetric = env_dto['asymmetric']
+        # Whether to use CMC or binary stopping criterion
+        self.binary_stopping_threshold = env_dto['binary_stopping_threshold']
 
-        step_size_mm = env_dto['step_size']
-        min_length_mm = env_dto['min_length']
-        max_length_mm = env_dto['max_length']
-        add_neighborhood_mm = env_dto['add_neighborhood']
+        # Step-size and min/max lengths are typically defined in mm
+        # by the user, but need to be converted to voxels.
+        self.step_size_mm = env_dto['step_size']
+        self.min_length_mm = env_dto['min_length']
+        self.max_length_mm = env_dto['max_length']
 
-        # Reward parameters
-        self.alignment_weighting = env_dto['alignment_weighting']
-        self.straightness_weighting = env_dto['straightness_weighting']
-        self.length_weighting = env_dto['length_weighting']
-        self.target_bonus_factor = env_dto['target_bonus_factor']
-        self.exclude_penalty_factor = env_dto['exclude_penalty_factor']
-        self.angle_penalty_factor = env_dto['angle_penalty_factor']
-        self.compute_reward = env_dto['compute_reward']
+        # Oracle parameters
+        self.oracle_checkpoint = env_dto['oracle_checkpoint']
+        self.oracle_stopping_criterion = env_dto['oracle_stopping_criterion']
+
+        # Tractometer parameters
         self.scoring_data = env_dto['scoring_data']
 
+        # Reward parameters
+        self.compute_reward = env_dto['compute_reward']
+        # "Local" reward parameters
+        self.alignment_weighting = env_dto['alignment_weighting']
+        # "Sparse" reward parameters
+        self.oracle_bonus = env_dto['oracle_bonus']
+
+        # Other parameters
         self.rng = env_dto['rng']
         self.device = env_dto['device']
 
-        # Stopping criteria is a dictionary that maps `StoppingFlags`
-        # to functions that indicate whether streamlines should stop or not
-        self.stopping_criteria = {}
-        mask_data = tracking_mask.data.astype(np.uint8)
+        # Load one subject as an example
+        self.load_subject()
 
+    def load_subject(
+        self,
+    ):
+        """ Load a random subject from the dataset. This is used to
+        initialize the environment. """
+
+        if hasattr(self, 'dataset_file'):
+
+            if hasattr(self, 'subject_id') and len(self.dataset) == 1:
+                return
+
+            try:
+                (sub_id, input_volume, tracking_mask, seeding_mask,
+                 peaks, reference) = next(self.loader_iter)[0]
+            except StopIteration:
+                self.loader_iter = iter(self.loader)
+                (sub_id, input_volume, tracking_mask, seeding_mask,
+                 peaks, reference) = next(self.loader_iter)[0]
+
+            self.subject_id = sub_id
+            # Affines
+            self.reference = reference
+            self.affine_vox2rasmm = input_volume.affine_vox2rasmm
+            self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+
+            # Volumes and masks
+            self.data_volume = torch.from_numpy(
+                input_volume.data).to(self.device, dtype=torch.float32)
+        else:
+            (input_volume, tracking_mask, seeding_mask, peaks,
+             reference) = self.subject_data
+
+            self.affine_vox2rasmm = input_volume.affine_vox2rasmm
+            self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
+
+            # Volumes and masks
+            self.data_volume = torch.from_numpy(
+                input_volume.data).to(self.device, dtype=torch.float32)
+
+            self.reference = reference
+
+        self.tracking_mask = tracking_mask
+        self.peaks = peaks
+        mask_data = tracking_mask.data.astype(np.uint8)
         self.seeding_data = seeding_mask.data.astype(np.uint8)
 
         self.step_size = convert_length_mm2vox(
-            step_size_mm,
+            self.step_size_mm,
             self.affine_vox2rasmm)
-        self.min_length = min_length_mm
-        self.max_length = max_length_mm
+        self.min_length = self.min_length_mm
+        self.max_length = self.max_length_mm
 
         # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size_mm)
-        self.min_nb_steps = int(self.min_length / step_size_mm)
+        self.max_nb_steps = int(self.max_length / self.step_size_mm)
+        self.min_nb_steps = int(self.min_length / self.step_size_mm)
 
-        if self.compute_reward:
-            self.reward_function = Reward(
-                peaks=self.peaks,
-                exclude=self.exclude_mask,
-                target=self.target_mask,
-                max_nb_steps=self.max_nb_steps,
-                theta=self.theta,
-                min_nb_steps=self.min_nb_steps,
-                asymmetric=self.asymmetric,
-                alignment_weighting=self.alignment_weighting,
-                straightness_weighting=self.straightness_weighting,
-                length_weighting=self.length_weighting,
-                target_bonus_factor=self.target_bonus_factor,
-                exclude_penalty_factor=self.exclude_penalty_factor,
-                angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=self.scoring_data,
-                reference=self.reference)
+        # Neighborhood used as part of the state
+        self.add_neighborhood_vox = convert_length_mm2vox(
+            self.step_size_mm,
+            self.affine_vox2rasmm)
+        self.neighborhood_directions = torch.cat(
+            (torch.zeros((1, 3)),
+             get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
+        ).to(self.device)
 
+        # Tracking seeds
+        self.seeds = track_utils.random_seeds_from_mask(
+            self.seeding_data,
+            np.eye(4),
+            seeds_count=self.npv)
+        # print(
+        #     '{} has {} seeds.'.format(self.__class__.__name__,
+        #                               len(self.seeds)))
+
+        # ===========================================
+        # Stopping criteria
+        # ===========================================
+
+        # Stopping criteria is a dictionary that maps `StoppingFlags`
+        # to functions that indicate whether streamlines should stop or not
+
+        # TODO: Make all stopping criteria classes.
+        # TODO?: Use dipy's stopping criteria instead of custom ones ?
+        self.stopping_criteria = {}
+
+        # Length criterion
         self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
             functools.partial(is_too_long,
                               max_nb_steps=self.max_nb_steps)
 
+        # Angle between segment (curvature criterion)
         self.stopping_criteria[
             StoppingFlags.STOPPING_CURVATURE] = \
-            functools.partial(is_too_curvy, max_theta=theta)
+            functools.partial(is_too_curvy, max_theta=self.theta)
 
-        if self.cmc:
-            cmc_criterion = CmcStoppingCriterion(
-                self.include_mask.data,
-                self.exclude_mask.data,
+        # Stopping criterion according to an oracle
+        if self.oracle_checkpoint and self.oracle_stopping_criterion:
+            self.stopping_criteria[
+                StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
+                self.oracle_checkpoint,
+                self.min_nb_steps * 5,
+                self.reference,
                 self.affine_vox2rasmm,
-                self.step_size,
-                self.min_nb_steps)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-        else:
-            binary_criterion = BinaryStoppingCriterion(
-                mask_data,
-                0.5)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-                binary_criterion
+                self.device)
 
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_LOOP] = \
-        #     functools.partial(is_looping,
-        #                       loop_threshold=300)
+        # Mask criterion (either binary or CMC)
+        binary_criterion = BinaryStoppingCriterion(
+            mask_data,
+            self.binary_stopping_threshold)
+        self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
+            binary_criterion
 
-        # Convert neighborhood to voxel space
-        self.add_neighborhood_vox = None
-        if add_neighborhood_mm:
-            self.add_neighborhood_vox = convert_length_mm2vox(
-                add_neighborhood_mm,
-                self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.tensor(
-                get_neighborhood_directions(
-                    radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(self.device)
+        # ==========================================
+        # Reward function
+        # =========================================
 
-        # Tracking seeds
-        self.seeds = self._get_tracking_seeds_from_mask(
-            self.seeding_data,
-            self.npv,
-            self.rng)
-        print(
-            '{} has {} seeds.'.format(self.__class__.__name__,
-                                      len(self.seeds)))
+        # Reward function and reward factors
+        if self.compute_reward:
+            # Reward streamline according to alignment with local peaks
+            peaks_reward = PeaksAlignmentReward(self.peaks)
+            oracle_reward = OracleReward(self.oracle_checkpoint,
+                                         self.min_nb_steps,
+                                         self.reference,
+                                         self.affine_vox2rasmm,
+                                         self.device)
+
+            # Combine all reward factors into the reward function
+            self.reward_function = RewardFunction(
+                [peaks_reward,
+                 oracle_reward],
+                [self.alignment_weighting,
+                 self.oracle_bonus])
 
     @classmethod
     def from_dataset(
@@ -203,107 +277,102 @@ class BaseEnv(object):
         env_dto: dict,
         split: str,
     ):
+        """ Initialize the environment from an HDF5.
+
+        Parameters
+        ----------
+        env_dto: dict
+            DTO containing env. parameters
+        split: str
+            Name of the split to load (e.g. 'training', 'validation',
+            'testing').
+
+        Returns
+        -------
+        env: BaseEnv
+            Environment initialized from a dataset.
+        """
+
         dataset_file = env_dto['dataset_file']
-        subject_id = env_dto['subject_id']
-        interface_seeding = env_dto['interface_seeding']
 
-        (input_volume, tracking_mask, include_mask, exclude_mask, target_mask,
-         seeding_mask, peaks) = \
-            BaseEnv._load_dataset(
-                dataset_file, split, subject_id, interface_seeding
-        )
-
-        return cls(
-            input_volume,
-            tracking_mask,
-            target_mask,
-            seeding_mask,
-            peaks,
-            env_dto,
-            include_mask,
-            exclude_mask,
-        )
+        env = cls(dataset_file, split, env_dto)
+        return env
 
     @classmethod
     def from_files(
         cls,
         env_dto: dict,
     ):
+        """ Initialize the environment from files. This is useful for
+        tracking from a trained model.
+
+        Parameters
+        ----------
+        env_dto: dict
+            DTO containing env. parameters
+
+        Returns
+        -------
+        env: BaseEnv
+            Environment initialized from files.
+        """
+
         in_odf = env_dto['in_odf']
-        wm_file = env_dto['wm_file']
         in_seed = env_dto['in_seed']
         in_mask = env_dto['in_mask']
         sh_basis = env_dto['sh_basis']
+        reference = env_dto['reference']
 
-        input_volume, tracking_mask, seeding_mask = BaseEnv._load_files(
-            in_odf,
-            wm_file,
-            in_seed,
-            in_mask,
-            sh_basis)
+        (input_volume, peaks_volume, tracking_mask, seeding_mask) = \
+            BaseEnv._load_files(
+                in_odf,
+                in_seed,
+                in_mask,
+                sh_basis)
 
-        return cls(
-            input_volume,
-            tracking_mask,
-            None,
-            seeding_mask,
-            None,
-            env_dto)
+        subj_files = (input_volume, tracking_mask, seeding_mask,
+                      peaks_volume, reference)
 
-    @classmethod
-    def _load_dataset(
-        cls, dataset_file, split_id, subject_id, interface_seeding=False
-    ):
-        """ Load data volumes and masks from the HDF5
-
-        Should everything be put into `self` ? Should everything be returned
-        instead ?
-        """
-
-        print("Loading {} from the {} set.".format(subject_id, split_id))
-        # Load input volume
-        with h5py.File(
-                dataset_file, 'r'
-        ) as hdf_file:
-            print(list(hdf_file.keys()))
-            assert split_id in ['training', 'validation', 'testing']
-            split_set = hdf_file[split_id]
-            tracto_data = SubjectData.from_hdf_subject(
-                split_set, subject_id)
-            tracto_data.input_dv.subject_id = subject_id
-        input_volume = tracto_data.input_dv
-
-        # Load peaks for reward
-        peaks = tracto_data.peaks
-
-        # Load tracking mask
-        tracking_mask = tracto_data.wm
-
-        # Load target and exclude masks
-        target_mask = tracto_data.gm
-
-        include_mask = tracto_data.include
-        exclude_mask = tracto_data.exclude
-
-        if interface_seeding:
-            print("Seeding from the interface")
-            seeding = tracto_data.interface
-        else:
-            print("Seeding from the WM.")
-            seeding = tracto_data.wm
-
-        return (input_volume, tracking_mask, include_mask, exclude_mask,
-                target_mask, seeding, peaks)
+        return cls(subj_files, 'testing', env_dto)
 
     @classmethod
     def _load_files(
         cls,
         signal_file,
-        wm_file,
         in_seed,
         in_mask,
-        sh_basis
+        sh_basis,
     ):
+        """ Load data volumes and masks from files. This is useful for
+        tracking from a trained model.
+
+        If the signal is not in descoteaux07 basis, it will be converted. The
+        WM mask will be loaded and concatenated to the signal. Additionally,
+        peaks will be computed from the signal.
+
+        Parameters
+        ----------
+        signal_file: str
+            Path to the signal file (e.g. SH coefficients).
+        in_seed: str
+            Path to the seeding mask.
+        in_mask: str
+            Path to the tracking mask.
+        sh_basis: str
+            Basis of the SH coefficients.
+
+        Returns
+        -------
+        signal_volume: MRIDataVolume
+            Volumetric data containing the SH coefficients
+        peaks_volume: MRIDataVolume
+            Volume containing the fODFs peaks
+        tracking_volume: MRIDataVolume
+            Volumetric mask where tracking is allowed
+        seeding_volume: MRIDataVolume
+            Mask where seeding should be done
+        """
+
         signal = nib.load(signal_file)
 
         # Assert that the subject has iso voxels, else stuff will get
@@ -316,36 +385,73 @@ class BaseEnv(object):
 
         data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
                                   sh_basis,
-                                  target_order=6,
+                                  target_order=8,
                                   target_basis='descoteaux07')
 
+        # Compute peaks from signal
+        # Does not work if signal is not fODFs
+        npeaks = 5
+        odf_shape_3d = data.shape[:-1]
+        peak_dirs = np.zeros((odf_shape_3d + (npeaks, 3)))
+        peak_values = np.zeros((odf_shape_3d + (npeaks, )))
+
+        sphere = HemiSphere.from_sphere(get_sphere("repulsion724")
+                                        ).subdivide(0)
+
+        b_matrix = get_b_matrix(
+            find_order_from_nb_coeff(data), sphere, "descoteaux07")
+
+        for idx in np.argwhere(np.sum(data, axis=-1)):
+            idx = tuple(idx)
+            directions, values, indices = get_maximas(data[idx],
+                                                      sphere, b_matrix,
+                                                      0.1, 0)
+            if values.shape[0] != 0:
+                n = min(npeaks, values.shape[0])
+                peak_dirs[idx][:n] = directions[:n]
+                peak_values[idx][:n] = values[:n]
+
+        X, Y, Z, N, P = peak_dirs.shape
+        peak_values = np.divide(peak_values, peak_values[..., 0, None],
+                                out=np.zeros_like(peak_values),
+                                where=peak_values[..., 0, None] != 0)
+        peak_dirs[...] *= peak_values[..., :, None]
+        peak_dirs = reshape_peaks_for_visualization(peak_dirs)
+
+        # Load rest of volumes
         seeding = nib.load(in_seed)
         tracking = nib.load(in_mask)
-        wm = nib.load(wm_file)
-        wm_data = wm.get_fdata()
-        if len(wm_data.shape) == 3:
-            wm_data = wm_data[..., None]
-
-        signal_data = np.concatenate(
-            [data, wm_data], axis=-1)
-
+        signal_data = data
         signal_volume = MRIDataVolume(
-            signal_data, signal.affine, filename=signal_file)
+            signal_data, signal.affine)
+
+        peaks_volume = MRIDataVolume(
+            peak_dirs, signal.affine)
 
         seeding_volume = MRIDataVolume(
-            seeding.get_fdata(), seeding.affine, filename=in_seed)
+            seeding.get_fdata(), seeding.affine)
         tracking_volume = MRIDataVolume(
-            tracking.get_fdata(), tracking.affine, filename=in_mask)
+            tracking.get_fdata(), tracking.affine)
 
-        return (signal_volume, tracking_volume, seeding_volume)
+        return (signal_volume, peaks_volume, tracking_volume, seeding_volume)
 
     def get_state_size(self):
+        """ Returns the size of the state space by computing the size of
+        an example state.
+
+        Returns
+        -------
+        state_size: int
+            Size of the state space.
+        """
+
         example_state = self.reset(0, 1)
         self._state_size = example_state.shape[1]
         return self._state_size
 
     def get_action_size(self):
-        """ TODO: Support spherical actions"""
+        """ Returns the size of the action space.
+        """
 
         return 3
 
@@ -364,99 +470,16 @@ class BaseEnv(object):
 
         return voxel_size
 
-    def set_step_size(self, step_size_mm):
-        """ Set a different step size (in voxels) than computed by the
-        environment. This is necessary when the voxel size between training
-        and tracking envs is different.
-        """
-
-        self.step_size = convert_length_mm2vox(
-            step_size_mm,
-            self.affine_vox2rasmm)
-
-        if self.add_neighborhood_vox:
-            self.add_neighborhood_vox = convert_length_mm2vox(
-                step_size_mm,
-                self.affine_vox2rasmm)
-            self.neighborhood_directions = torch.tensor(
-                get_neighborhood_directions(
-                    radius=self.add_neighborhood_vox),
-                dtype=torch.float16).to(self.device)
-
-        # Compute maximum length
-        self.max_nb_steps = int(self.max_length / step_size_mm)
-        self.min_nb_steps = int(self.min_length / step_size_mm)
-
-        if self.compute_reward:
-            self.reward_function = Reward(
-                peaks=self.peaks,
-                exclude=self.exclude_mask,
-                target=self.target_mask,
-                max_nb_steps=self.max_nb_steps,
-                theta=self.theta,
-                min_nb_steps=self.min_nb_steps,
-                asymmetric=self.asymmetric,
-                alignment_weighting=self.alignment_weighting,
-                straightness_weighting=self.straightness_weighting,
-                length_weighting=self.length_weighting,
-                target_bonus_factor=self.target_bonus_factor,
-                exclude_penalty_factor=self.exclude_penalty_factor,
-                angle_penalty_factor=self.angle_penalty_factor,
-                scoring_data=self.scoring_data,
-                reference=self.reference)
-
-        self.stopping_criteria[StoppingFlags.STOPPING_LENGTH] = \
-            functools.partial(is_too_long,
-                              max_nb_steps=self.max_nb_steps)
-
-        if self.cmc:
-            cmc_criterion = CmcStoppingCriterion(
-                self.include_mask.data,
-                self.exclude_mask.data,
-                self.affine_vox2rasmm,
-                self.step_size,
-                self.min_nb_steps)
-            self.stopping_criteria[StoppingFlags.STOPPING_MASK] = cmc_criterion
-
-    def _normalize(self, obs):
-        """Normalises the observation using the running mean and variance of
-        the observations. Taken from Gymnasium."""
-        if self.obs_rms is None:
-            self.obs_rms = RunningMeanStd(shape=(self._state_size,))
-        self.obs_rms.update(obs)
-        return (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8)
-
-    def _get_tracking_seeds_from_mask(
+    def _format_actions(
         self,
-        mask: np.ndarray,
-        npv: int,
-        rng: np.random.RandomState
-    ) -> np.ndarray:
-        """ Given a binary seeding mask, get seeds in DWI voxel
-        space using the provided affine. TODO: Replace this
-        with scilpy's SeedGenerator
-
-        Parameters
-        ----------
-        mask : 3D `numpy.ndarray`
-            Binary seeding mask
-        npv : int
-        rng : `numpy.random.RandomState`
-
-        Returns
-        -------
-        seeds : `numpy.ndarray`
+        actions: np.ndarray,
+    ):
+        """ Format actions to be used by the environment. Scaling
+        actions to the step size.
         """
-        seeds = []
-        indices = np.array(np.where(mask)).T
-        for idx in indices:
-            seeds_in_seeding_voxel = idx + rng.uniform(
-                -0.5,
-                0.5,
-                size=(npv, 3))
-            seeds.extend(seeds_in_seeding_voxel)
-        seeds = np.array(seeds, dtype=np.float16)
-        return seeds
+        actions = normalize_vectors(actions) * self.step_size
+
+        return actions
 
     def _format_state(
         self,
@@ -477,43 +500,51 @@ class BaseEnv(object):
             Observations of the state, incl. previous directions.
         """
         N, L, P = streamlines.shape
+
         if N <= 0:
             return []
+
+        # Get the last point of each streamline
         segments = streamlines[:, -1, :][:, None, :]
 
-        signal = get_sh(
-            segments,
-            self.data_volume,
-            self.add_neighborhood_vox,
-            self.neighborhood_directions,
-            self.n_signal,
-            self.device
-        )
+        # Reshape to get a list of coordinates
+        N, H, P = segments.shape
+        flat_coords = np.reshape(segments, (N * H, P))
+        coords = torch.as_tensor(flat_coords).to(self.device)
 
+        # Get the SH coefficients at the last point of each streamline
+        # The neighborhood is used to get the SH coefficients around
+        # the last point
+        signal, _ = interpolate_volume_in_neighborhood(
+            self.data_volume,
+            coords,
+            self.neighborhood_directions)
         N, S = signal.shape
 
+        # Placeholder for the final imputs
         inputs = torch.zeros((N, S + (self.n_dirs * P)), device=self.device)
-
+        # Fill the first part of the inputs with the SH coefficients
         inputs[:, :S] = signal
 
+        # Placeholder for the previous directions
         previous_dirs = np.zeros((N, self.n_dirs, P), dtype=np.float32)
         if L > 1:
+            # Compute directions from the streamlines
             dirs = np.diff(streamlines, axis=1)
+            # Fetch the N last directions
             previous_dirs[:, :min(dirs.shape[1], self.n_dirs), :] = \
                 dirs[:, :-(self.n_dirs+1):-1, :]
 
+        # Flatten the directions to fit in the inputs and send to device
         dir_inputs = torch.reshape(
             torch.from_numpy(previous_dirs).to(self.device),
             (N, self.n_dirs * P))
-
+        # Fill the second part of the inputs with the previous directions
         inputs[:, S:] = dir_inputs
-
-        # if self.normalize_obs and self._state_size is not None:
-        #     inputs = self._normalize(inputs)
 
         return inputs
 
-    def _filter_stopping_streamlines(
+    def _compute_stopping_flags(
         self,
         streamlines: np.ndarray,
         stopping_criteria: Dict[StoppingFlags, Callable]
@@ -557,73 +588,17 @@ class BaseEnv(object):
         """
         pass
 
-    def reset():
-        """ Initialize tracking seeds and streamlines
+    def reset(self):
+        """ Reset the environment to its initial state.
         """
-        pass
+        if self.compute_reward:
+            self.reward_function.reset()
 
     def step():
         """
-        Apply actions and grow streamlines for one step forward
-        Calculate rewards and if the tracking is done, and compute new
-        hidden states
+        Abstract method to be implemented by subclasses which defines
+        the behavior of the environment when taking a step. This includes
+        propagating the streamlines, computing the reward, and checking
+        which streamlines should stop.
         """
         pass
-
-    def render(
-        self,
-        tractogram: Tractogram = None,
-        filename: str = None
-    ):
-        """ Render the streamlines, either directly or through a file
-        Might render from "outside" the environment, like for comet
-
-        Parameters:
-        -----------
-        tractogram: Tractogram, optional
-            Object containing the streamlines and seeds
-        path: str, optional
-            If set, save the image at the specified location instead
-            of displaying directly
-        """
-        from fury import window, actor
-        # Might be rendering from outside the environment
-        if tractogram is None:
-            tractogram = Tractogram(
-                streamlines=self.streamlines[:, :self.length],
-                data_per_streamline={
-                    'seeds': self.starting_points
-                })
-
-        # Reshape peaks for displaying
-        X, Y, Z, M = self.peaks.data.shape
-        peaks = np.reshape(self.peaks.data, (X, Y, Z, 5, M//5))
-
-        # Setup scene and actors
-        scene = window.Scene()
-
-        stream_actor = actor.streamtube(tractogram.streamlines)
-        peak_actor = actor.peak_slicer(peaks,
-                                       np.ones((X, Y, Z, M)),
-                                       colors=(0.2, 0.2, 1.),
-                                       opacity=0.5)
-        dot_actor = actor.dots(tractogram.data_per_streamline['seeds'],
-                               color=(1, 1, 1),
-                               opacity=1,
-                               dot_size=2.5)
-        scene.add(stream_actor)
-        scene.add(peak_actor)
-        scene.add(dot_actor)
-        scene.reset_camera_tight(0.95)
-
-        # Save or display scene
-        if filename is not None:
-            window.snapshot(
-                scene,
-                fname=filename,
-                offscreen=True,
-                size=(800, 800))
-        else:
-            showm = window.ShowManager(scene, reset_camera=True)
-            showm.initialize()
-            showm.start()

@@ -1,5 +1,8 @@
+import math
 import os
 import sys
+
+from dipy.core.geometry import sphere2cart
 from os.path import join as pjoin
 from time import time
 
@@ -33,8 +36,8 @@ class LossHistory(object):
         monitor.epochs  # returns the loss curve as a list
     """
 
-    def __init__(self, experiment_id, filename, path):
-        self.experiment_id = experiment_id
+    def __init__(self, name, filename, path):
+        self.name = name
         self.history = []
         self.epochs = []
         self.sum = 0.0
@@ -106,5 +109,24 @@ class Timer:
         print("{:.2f} sec.".format(time() - self.start))
 
 
-def normalize_vectors(v):
-    return v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))
+def from_sphere(actions, sphere, norm=1.):
+    vertices = sphere.vertices[actions]
+    return vertices * norm
+
+
+def normalize_vectors(v, norm=1.):
+    # v = (v / np.sqrt(np.sum(v ** 2, axis=-1, keepdims=True))) * norm
+    v = (v / np.sqrt(np.einsum('...i,...i', v, v))[..., None]) * norm
+    # assert np.all(np.isnan(v) == False), (v, np.argwhere(np.isnan(v)))
+    return v
+
+
+def from_polar(actions, radius=1.):
+
+    radii = np.ones((actions.shape[0])) * radius
+    theta = ((actions[..., 0] + 1) / 2.) * (math.pi)
+    phi = ((actions[..., 1] + 1) / 2.) * (2 * math.pi)
+
+    X, Y, Z = sphere2cart(radii, theta, phi)
+    cart_directions = np.stack((X, Y, Z), axis=-1)
+    return cart_directions

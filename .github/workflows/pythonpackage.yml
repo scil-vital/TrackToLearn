@@ -12,10 +12,11 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.8] # TODO: Add support for other python versions
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.10']
 
     steps:
     - uses: actions/checkout@v2
@@ -26,14 +27,19 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install --no-cache-dir -e .
+        pip install --user wheel
+        pip install --user packaging
+        ./install.sh
     - name: Lint with flake8
       run: |
+        python -m pip install --upgrade pip
+        pip install --user wheel
+        python3 -m pip install flake8
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest
+        python3 -m pip install pytest pytest-console-scripts
+        python3 -m pytest .
