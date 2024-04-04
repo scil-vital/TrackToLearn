@@ -26,7 +26,7 @@ Getting errors during installation ? Open an issue !
 
 ## Tracking
 
-You will need a trained agent for tracking. One is provided in the `models` folder. You can then track by running `ttl_track.py`.
+You will need a trained agent for tracking. One is provided in the `models` folder and is loaded autmatically when tracking. You can then track by running `ttl_track.py`.
 
 ```
 usage: ttl_track.py [-h] [--input_wm] [--sh_basis {descoteaux07,tournier07}]
@@ -43,7 +43,7 @@ usage: ttl_track.py [-h] [--input_wm] [--sh_basis {descoteaux07,tournier07}]
 
 You will need to provide fODFs, a seeding mask and a WM mask. The seeding mask **must** represent the interface of white matter and gray matter. _WM tracking is no longer supported._
 
-Agents used for tracking are constrained by their training regime. For example, the agents provided in `example_models` were trained on a volume with a resolution of ~1mm iso voxels and a step size of 0.75mm using fODFs of order 8, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically (i.e resulting in a step size of 0.375mm on 0.5mm iso diffusion data). **However**, if using fODFs in the `tournier07` basis, you will need to set the `--sh_basis` argument accordingly.
+Agents used for tracking are constrained by their training regime. For example, the agents provided in `models` were trained on a volume with a resolution of ~1mm iso voxels and a step size of 0.75mm using fODFs of order 8, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically (i.e resulting in a step size of 0.375mm on 0.5mm iso diffusion data). **However**, if using fODFs in the `tournier07` basis, you will need to set the `--sh_basis` argument accordingly.
 
 ## Training
 
@@ -61,7 +61,7 @@ optional arguments:
   --normalize  If set, normalize first input signal.
 ```
 
-Example datasets and config files are available here: COMING SOON 
+Example dataset config files are available in `examples`.
 
 Then, you may train an agent by running `python TrackToLearn/trainers/sac_auto_train.py`.
 
@@ -87,10 +87,6 @@ usage: sac_auto_train.py [-h] [--workspace WORKSPACE] [--rng_seed RNG_SEED]
                          path experiment id dataset_file
 sac_auto_train.py: error: the following arguments are required: path, experiment, id, dataset_file
 ```
-
-Other trainers are available in `TrackToLearn/trainers`.
-
-You can recreate an experiment by running a script in the `scripts` folder. These scripts should provide an excellent starting point for improving upon this work. You will only need to first set the `TRACK_TO_LEARN_DATA` environment variable to where you extracted the datasets (i.e. a network disk or somewhere with lots of space) and the `LOCAL_TRACK_TO_LEARN_DATA` environment variable your working folder (i.e. a faster local disk). Then, the script can be launched.
 
 To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder. **Usage of comet-ml is necessary for hyperparameter search**. This constraint may be removed in future releases.
 
