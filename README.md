@@ -24,7 +24,7 @@ Then, install the dependencies and setup the repo with
 
 Getting errors during installation ? Open an issue !
 
-## Tracking
+### Tracking
 
 You will need a trained agent for tracking. One is provided in the `models` folder and is loaded autmatically when tracking. You can then track by running `ttl_track.py`.
 
@@ -45,7 +45,27 @@ You will need to provide fODFs, a seeding mask and a WM mask. The seeding mask *
 
 Agents used for tracking are constrained by their training regime. For example, the agents provided in `models` were trained on a volume with a resolution of ~1mm iso voxels and a step size of 0.75mm using fODFs of order 8, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically (i.e resulting in a step size of 0.375mm on 0.5mm iso diffusion data). **However**, if using fODFs in the `tournier07` basis, you will need to set the `--sh_basis` argument accordingly.
 
-## Training
+## Docker
+
+You can also track using Docker. First pull the container by running
+
+```
+sudo docker pull scilus/tractoracle-rl:v2024b
+```
+
+You can then track by running
+
+```
+sudo docker run scilus/tractoracle-rl:v2024b ttl_track.py ...
+```
+
+See [Docker volumes](https://docs.docker.com/storage/volumes/) to use local files. **To use CUDA capabilities with Docker, you will need to install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**. You will then be able to use the `--gpus` flag. For example:
+
+```
+sudo docker run --gpus all scilus/tractoracle-rl:v2024b ttl_track.py ...
+```
+
+### Training
 
 First, make a dataset `.hdf5` file with `TrackToLearn/dataset/create_dataset.py`.
 ```
@@ -90,7 +110,7 @@ sac_auto_train.py: error: the following arguments are required: path, experiment
 
 To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder. **Usage of comet-ml is necessary for hyperparameter search**. This constraint may be removed in future releases.
 
-## Contributing
+### Contributing
 
 Contributions are welcome ! There are several TODOs sprinkled through the project which may inspire you. A lot of the code's architecure could be improved, better organized, split and reworked to make the code cleaner. Several performance improvements could also easily be added.
 
