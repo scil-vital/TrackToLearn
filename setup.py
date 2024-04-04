@@ -7,7 +7,6 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open('requirements.txt') as f:
     required_dependencies = f.read().splitlines()
     external_dependencies = []
-    torch_added = False
     for dependency in required_dependencies:
         external_dependencies.append(dependency)
 

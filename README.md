@@ -24,9 +24,9 @@ Then, install the dependencies and setup the repo with
 
 Getting errors during installation ? Open an issue !
 
-## Tracking
+### Tracking
 
-You will need a trained agent for tracking. One is provided in the `models` folder. You can then track by running `ttl_track.py`.
+You will need a trained agent for tracking. One is provided in the `models` folder and is loaded autmatically when tracking. You can then track by running `ttl_track.py`.
 
 ```
 usage: ttl_track.py [-h] [--input_wm] [--sh_basis {descoteaux07,tournier07}]
@@ -43,9 +43,29 @@ usage: ttl_track.py [-h] [--input_wm] [--sh_basis {descoteaux07,tournier07}]
 
 You will need to provide fODFs, a seeding mask and a WM mask. The seeding mask **must** represent the interface of white matter and gray matter. _WM tracking is no longer supported._
 
-Agents used for tracking are constrained by their training regime. For example, the agents provided in `example_models` were trained on a volume with a resolution of ~1mm iso voxels and a step size of 0.75mm using fODFs of order 8, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically (i.e resulting in a step size of 0.375mm on 0.5mm iso diffusion data). **However**, if using fODFs in the `tournier07` basis, you will need to set the `--sh_basis` argument accordingly.
+Agents used for tracking are constrained by their training regime. For example, the agents provided in `models` were trained on a volume with a resolution of ~1mm iso voxels and a step size of 0.75mm using fODFs of order 8, `descoteaux07` basis. When tracking on arbitrary data, the step-size and fODF order and basis will be adjusted accordingly automatically (i.e resulting in a step size of 0.375mm on 0.5mm iso diffusion data). **However**, if using fODFs in the `tournier07` basis, you will need to set the `--sh_basis` argument accordingly.
 
-## Training
+## Docker
+
+You can also track using Docker. First pull the container by running
+
+```
+sudo docker pull scilus/tractoracle-rl:v2024b
+```
+
+You can then track by running
+
+```
+sudo docker run scilus/tractoracle-rl:v2024b ttl_track.py ...
+```
+
+See [Docker volumes](https://docs.docker.com/storage/volumes/) to use local files. **To use CUDA capabilities with Docker, you will need to install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**. You will then be able to use the `--gpus` flag. For example:
+
+```
+sudo docker run --gpus all scilus/tractoracle-rl:v2024b ttl_track.py ...
+```
+
+### Training
 
 First, make a dataset `.hdf5` file with `TrackToLearn/dataset/create_dataset.py`.
 ```
@@ -61,7 +81,7 @@ optional arguments:
   --normalize  If set, normalize first input signal.
 ```
 
-Example datasets and config files are available here: COMING SOON 
+Example dataset config files are available in `examples`.
 
 Then, you may train an agent by running `python TrackToLearn/trainers/sac_auto_train.py`.
 
@@ -88,13 +108,9 @@ usage: sac_auto_train.py [-h] [--workspace WORKSPACE] [--rng_seed RNG_SEED]
 sac_auto_train.py: error: the following arguments are required: path, experiment, id, dataset_file
 ```
 
-Other trainers are available in `TrackToLearn/trainers`.
-
-You can recreate an experiment by running a script in the `scripts` folder. These scripts should provide an excellent starting point for improving upon this work. You will only need to first set the `TRACK_TO_LEARN_DATA` environment variable to where you extracted the datasets (i.e. a network disk or somewhere with lots of space) and the `LOCAL_TRACK_TO_LEARN_DATA` environment variable your working folder (i.e. a faster local disk). Then, the script can be launched.
-
 To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder. **Usage of comet-ml is necessary for hyperparameter search**. This constraint may be removed in future releases.
 
-## Contributing
+### Contributing
 
 Contributions are welcome ! There are several TODOs sprinkled through the project which may inspire you. A lot of the code's architecure could be improved, better organized, split and reworked to make the code cleaner. Several performance improvements could also easily be added.
 
