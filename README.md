@@ -32,7 +32,7 @@ You will need a trained agent for tracking. One is provided in the `models` fold
 usage: ttl_track.py [-h] [--input_wm] [--sh_basis {descoteaux07,tournier07}]
                     [--compress thresh] [-f] [--save_seeds] [--agent AGENT]
                     [--hyperparameters HYPERPARAMETERS] [--n_actor N]
-                    [--npv NPV] [--min_length m] [--max_length M] [--prob %]
+                    [--npv NPV] [--min_length m] [--max_length M]
                     [--noise sigma] [--fa_map FA_MAP]
                     [--binary_stopping_threshold BINARY_STOPPING_THRESHOLD]
                     [--rng_seed RNG_SEED]
@@ -69,16 +69,18 @@ sudo docker run --gpus all scilus/tractoracle-rl:v2024b ttl_track.py ...
 
 First, make a dataset `.hdf5` file with `TrackToLearn/dataset/create_dataset.py`.
 ```
-usage: create_dataset.py [-h] [--normalize] path config_file output
+usage: create_dataset.py [-h] [--sh_basis {descoteaux07,tournier07}]
+                         config_file output
 
 positional arguments:
-  path         Location of the dataset files.
   config_file  Configuration file to load subjects and their volumes.
   output       Output filename including path
 
 optional arguments:
   -h, --help   show this help message and exit
-  --normalize  If set, normalize first input signal.
+
+Basis options:
+  --sh_basis {descoteaux07,tournier07} Spherical harmonics basis used for the SH coefficients.
 ```
 
 Example dataset config files are available in `examples`.
@@ -90,11 +92,11 @@ usage: sac_auto_train.py [-h] [--workspace WORKSPACE] [--rng_seed RNG_SEED]
                          [--use_comet] [--n_dirs N_DIRS]
                          [--binary_stopping_threshold BINARY_STOPPING_THRESHOLD]
                          [--n_actor N_ACTOR] [--hidden_dims HIDDEN_DIMS]
-                         [--load_agent LOAD_AGENT] [--max_ep MAX_EP]
+                         [--max_ep MAX_EP]
                          [--log_interval LOG_INTERVAL] [--lr LR] [--gamma GAMMA]
                          [--alignment_weighting ALIGNMENT_WEIGHTING] [--npv NPV]
                          [--theta THETA] [--min_length m] [--max_length M]
-                         [--step_size STEP_SIZE] [--prob %] [--noise sigma]
+                         [--step_size STEP_SIZE] [--noise sigma]
                          [--oracle_checkpoint ORACLE_CHECKPOINT]
                          [--oracle_validator] [--oracle_stopping_criterion]
                          [--oracle_bonus ORACLE_BONUS]
@@ -105,7 +107,6 @@ usage: sac_auto_train.py [-h] [--workspace WORKSPACE] [--rng_seed RNG_SEED]
                          [--alpha ALPHA] [--batch_size BATCH_SIZE]
                          [--replay_size REPLAY_SIZE]
                          path experiment id dataset_file
-sac_auto_train.py: error: the following arguments are required: path, experiment, id, dataset_file
 ```
 
 To use [Comet.ml](https://www.comet.ml/), follow instructions [here](https://www.comet.ml/docs/python-sdk/advanced/#python-configuration), with the config file either in your home folder or current folder. **Usage of comet-ml is necessary for hyperparameter search**. This constraint may be removed in future releases.
