@@ -1,7 +1,7 @@
-comet-ml==3.21.0
+comet-ml>=3.22.0
 h5py==3.7.0
-nibabel==4.0.2
+nibabel==5.2.*
 tqdm==4.64.1
 
-dwi-ml @ git+https://github.com/scil-vital/dwi_ml@b7ac03a5b4f2cab77bbcf000a763afa133786b04
-scilpy @ git+https://github.com/scilus/scilpy@1.5.0
+dwi-ml @ git+https://github.com/scil-vital/dwi_ml@f8166eb16f7ebc9210f274ef2e1021b927ff1686
+# scilpy @ git+https://github.com/scilus/scilpy@d20d3d4917d40f698aa975f64a575dda34e0c89c#egg=scilpy

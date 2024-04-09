@@ -397,7 +397,7 @@ def add_rl_args(parser):
     parser.add_argument('--max_ep', default=1000, type=int,
                         help='Number of episodes to run the training '
                         'algorithm')
-    parser.add_argument('--log_interval', default=50, type=int,
+    parser.add_argument('--log_interval', default=10, type=int,
                         help='Log statistics, update comet, save the model '
                         'and hyperparameters at n steps')
     parser.add_argument('--lr', default=0.0005, type=float,

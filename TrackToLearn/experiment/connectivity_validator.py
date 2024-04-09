@@ -3,12 +3,12 @@ import itertools
 import numpy as np
 
 from dipy.io.streamline import load_tractogram
-from matplotlib import pyplot as plt
 
 from scilpy.tractanalysis.tools import (
     compute_connectivity, extract_longest_segments_from_profile)
-from scilpy.tractanalysis.uncompress import uncompress
-from scilpy.tractanalysis.tools import compute_streamline_segment
+from scilpy.tractograms.uncompress import uncompress
+from scilpy.tractograms.streamline_and_mask_operations import \
+    compute_streamline_segment
 
 from TrackToLearn.experiment.validators import Validator
 
@@ -47,34 +47,25 @@ class ConnectivityValidator(Validator):
         comb_list = list(itertools.combinations(real_labels, r=2))
         comb_list.extend(zip(real_labels, real_labels))
 
-
         connectivity = np.zeros((len(real_labels), len(real_labels)))
 
         for in_label, out_label in comb_list:
-
             pair_info = []
             if in_label not in con_info:
                 continue
             elif out_label in con_info[in_label]:
                 pair_info.extend(con_info[in_label][out_label])
-
             if out_label not in con_info:
                 continue
             elif in_label in con_info[out_label]:
                 pair_info.extend(con_info[out_label][in_label])
-
             if not len(pair_info):
                 continue
 
-            connectivity[int(in_label), int(out_label)] = len(pair_info)
+            connectivity[int(in_label)-1, int(out_label)-1] = len(pair_info)
 
         # Normalize the connectivity matrix
         connectivity = connectivity / np.max(connectivity)
-
-        # Display the connectivity matrix using matplotlib
-        plt.imshow(connectivity, cmap='hot', interpolation='nearest')
-        plt.colorbar()
-        plt.show()
 
         # Compute the correlation between the reference and the computed
         # connectivity matrix
