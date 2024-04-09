@@ -7,8 +7,6 @@ from dipy.io.streamline import load_tractogram
 from scilpy.tractanalysis.tools import (
     compute_connectivity, extract_longest_segments_from_profile)
 from scilpy.tractograms.uncompress import uncompress
-from scilpy.tractograms.streamline_and_mask_operations import \
-    compute_streamline_segment
 
 from TrackToLearn.experiment.validators import Validator
 
@@ -37,9 +35,16 @@ class ConnectivityValidator(Validator):
         sft.to_vox()
         sft.to_corner()
 
+        # Filter the streamlines according to their length
+        idx_mapping = np.arange(len(sft.streamlines))
+        lengths = np.array([len(s) for s in sft.streamlines])
+        long_idx = idx_mapping[lengths > 10]
+
+        filt_sft = sft[long_idx]
+
         # Uncompress the streamlines
         indices, points_to_idx = uncompress(
-            sft.streamlines, return_mapping=True)
+            filt_sft.streamlines, return_mapping=True)
 
         con_info = compute_connectivity(indices, data_labels, real_labels,
                                         extract_longest_segments_from_profile)
@@ -48,21 +53,25 @@ class ConnectivityValidator(Validator):
         comb_list.extend(zip(real_labels, real_labels))
 
         connectivity = np.zeros((len(real_labels), len(real_labels)))
-
+        label_list = real_labels.tolist()
         for in_label, out_label in comb_list:
             pair_info = []
-            if in_label not in con_info:
+            if in_label not in con_info or out_label not in con_info:
                 continue
-            elif out_label in con_info[in_label]:
+
+            if out_label in con_info[in_label]:
                 pair_info.extend(con_info[in_label][out_label])
-            if out_label not in con_info:
-                continue
-            elif in_label in con_info[out_label]:
+
+            if in_label in con_info[out_label]:
                 pair_info.extend(con_info[out_label][in_label])
+
             if not len(pair_info):
                 continue
 
-            connectivity[int(in_label)-1, int(out_label)-1] = len(pair_info)
+            in_pos = label_list.index(in_label)
+            out_pos = label_list.index(out_label)
+
+            connectivity[in_pos, out_pos] = len(pair_info)
 
         # Normalize the connectivity matrix
         connectivity = connectivity / np.max(connectivity)
@@ -70,6 +79,11 @@ class ConnectivityValidator(Validator):
         # Compute the correlation between the reference and the computed
         # connectivity matrix
         correlation = np.corrcoef(env.connectivity.flatten(),
-                                    connectivity.flatten())[0, 1]
+                                  connectivity.flatten())[0, 1]
+
+        # # Display the connectivity matrix using matplotlib
+        # import matplotlib.pyplot as plt
+        # plt.imshow(connectivity)
+        # plt.show()
 
         return {'corr': correlation}

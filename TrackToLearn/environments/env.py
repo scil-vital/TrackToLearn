@@ -20,6 +20,7 @@ from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
+from TrackToLearn.environments.connectivity_reward import ConnectivityReward
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
@@ -269,12 +270,20 @@ class BaseEnv(object):
                                          self.affine_vox2rasmm,
                                          self.device)
 
+            connectivity_reward = ConnectivityReward(self.labels.data,
+                                                     self.connectivity,
+                                                     self.reference,
+                                                     self.affine_vox2rasmm,
+                                                     self.min_nb_steps)
+
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(
                 [peaks_reward,
-                 oracle_reward],
+                 oracle_reward,
+                 connectivity_reward],
                 [self.alignment_weighting,
-                 self.oracle_bonus])
+                 self.oracle_bonus,
+                 10])
 
     @classmethod
     def from_dataset(
