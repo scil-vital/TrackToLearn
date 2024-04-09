@@ -17,6 +17,8 @@ from TrackToLearn.experiment.experiment import (add_data_args,
                                                 add_reward_args,
                                                 add_tracking_args,
                                                 add_tractometer_args)
+from TrackToLearn.experiment.connectivity_validator import \
+    ConnectivityValidator
 from TrackToLearn.experiment.oracle_validator import OracleValidator
 from TrackToLearn.experiment.tractometer_validator import TractometerValidator
 from TrackToLearn.experiment.experiment import Experiment
@@ -221,6 +223,9 @@ class TrackToLearnTraining(Experiment):
         if self.oracle_validator:
             self.validators.append(OracleValidator(
                 self.oracle_checkpoint, self.device))
+
+        # if self.connect_validator:
+        self.validators.append(ConnectivityValidator())
 
         # Run tracking before training to see what an untrained network does
         valid_env.load_subject()

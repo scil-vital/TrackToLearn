@@ -151,11 +151,13 @@ class BaseEnv(object):
 
             try:
                 (sub_id, input_volume, tracking_mask, seeding_mask,
-                 peaks, reference) = next(self.loader_iter)[0]
+                 peaks, reference, labels, connectivity) = \
+                    next(self.loader_iter)[0]
             except StopIteration:
                 self.loader_iter = iter(self.loader)
                 (sub_id, input_volume, tracking_mask, seeding_mask,
-                 peaks, reference) = next(self.loader_iter)[0]
+                 peaks, reference, labels, connectivity) = \
+                    next(self.loader_iter)[0]
 
             self.subject_id = sub_id
             # Affines
@@ -183,6 +185,9 @@ class BaseEnv(object):
         self.peaks = peaks
         mask_data = tracking_mask.data.astype(np.uint8)
         self.seeding_data = seeding_mask.data.astype(np.uint8)
+
+        self.labels = labels
+        self.connectivity = connectivity
 
         self.step_size = convert_length_mm2vox(
             self.step_size_mm,
