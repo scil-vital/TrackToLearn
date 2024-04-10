@@ -384,7 +384,7 @@ def add_experiment_args(parser: ArgumentParser):
                         help='Name of experiment.')
     parser.add_argument('id', type=str,
                         help='ID of experiment.')
-    parser.add_argument('--workspace', type=str, default='TractOracle',
+    parser.add_argument('--workspace', type=str, default='TractConnect',
                         help='Comet.ml workspace')
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Seed to fix general randomness')
@@ -465,5 +465,5 @@ def add_oracle_args(parser: ArgumentParser):
                         'monitor how the training is doing.')
     oracle.add_argument('--oracle_stopping_criterion', action='store_true',
                         help='Stop streamlines according to the Oracle.')
-    oracle.add_argument('--oracle_bonus', default=10, type=float,
+    oracle.add_argument('--oracle_bonus', default=0, type=float,
                         help='Sparse oracle weighting for reward.')

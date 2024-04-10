@@ -74,16 +74,20 @@ class ConnectivityValidator(Validator):
             connectivity[in_pos, out_pos] = len(pair_info)
 
         # Normalize the connectivity matrix
-        connectivity = connectivity / np.max(connectivity)
+        connectivity = (connectivity > 0).astype(float)
+        reference_connectivity = (env.connectivity > 0).astype(float)
 
-        # Compute the correlation between the reference and the computed
-        # connectivity matrix
-        correlation = np.corrcoef(env.connectivity.flatten(),
-                                  connectivity.flatten())[0, 1]
+        correlation = np.dot(connectivity.flatten(),
+                             reference_connectivity.flatten()) / (
+                                 2 * len(connectivity.flatten()))
+        # # Compute the correlation between the reference and the computed
+        # # connectivity matrix
+        # correlation = np.corrcoef(env.connectivity.flatten(),
+        #                           connectivity.flatten())[0, 1]
 
-        # # Display the connectivity matrix using matplotlib
-        # import matplotlib.pyplot as plt
-        # plt.imshow(connectivity)
-        # plt.show()
+        # # # Display the connectivity matrix using matplotlib
+        # # import matplotlib.pyplot as plt
+        # # plt.imshow(connectivity)
+        # # plt.show()
 
-        return {'corr': correlation}
+        return {'corr': float(correlation)}
