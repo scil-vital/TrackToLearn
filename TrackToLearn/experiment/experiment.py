@@ -398,7 +398,7 @@ def add_data_args(parser: ArgumentParser):
 
 
 def add_environment_args(parser: ArgumentParser):
-    parser.add_argument('--n_dirs', default=4, type=int,
+    parser.add_argument('--n_dirs', default=100, type=int,
                         help='Last n steps taken')
     parser.add_argument(
         '--binary_stopping_threshold',
@@ -432,7 +432,7 @@ def add_tracking_args(parser: ArgumentParser):
                         metavar='M',
                         help='Maximum length of a streamline in mm. '
                         '[%(default)s]')
-    parser.add_argument('--step_size', default=0.75, type=float,
+    parser.add_argument('--step_size', default=0.5, type=float,
                         help='Step size for tracking')
     parser.add_argument('--noise', default=0.0, type=float, metavar='sigma',
                         help='Add noise ~ N (0, `noise`) to the agent\'s\n'
