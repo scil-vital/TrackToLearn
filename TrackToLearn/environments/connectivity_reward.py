@@ -49,22 +49,24 @@ class ConnectivityReward(Reward):
         Parameters
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-            Streamline coordinates in voxel space
+        Streamline coordinates in voxel space
 
         Returns
         -------
         rewards: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-            Array containing the reward
+        Array containing the reward
         """
 
         reward = np.zeros((len(streamlines)))
+        all_idx = np.arange(len(streamlines))
+        done_streamlines = streamlines[dones.astype(bool)]
 
         data_labels = self.labels
         real_labels = np.unique(data_labels)[1:]   # Removing the background 0.
 
         # Uncompress the streamlines
         indices = uncompress(
-            streamlines, return_mapping=False)
+            done_streamlines, return_mapping=False)
 
         con_info = compute_connectivity(indices, data_labels, real_labels,
                                         extract_longest_segments_from_profile)
@@ -79,12 +81,12 @@ class ConnectivityReward(Reward):
                 continue
             elif out_label in con_info[in_label]:
                 pair_info.extend(con_info[in_label][out_label])
-            if out_label not in con_info:
-                continue
-            elif in_label in con_info[out_label]:
-                pair_info.extend(con_info[out_label][in_label])
-            if not len(pair_info):
-                continue
+                if out_label not in con_info:
+                    continue
+                elif in_label in con_info[out_label]:
+                    pair_info.extend(con_info[out_label][in_label])
+                    if not len(pair_info):
+                        continue
 
             in_pos = label_list.index(in_label)
             out_pos = label_list.index(out_label)
@@ -92,7 +94,12 @@ class ConnectivityReward(Reward):
             if self.connectivity[in_pos, out_pos] > 0:
                 for connection in pair_info:
                     strl_idx = connection['strl_idx']
-                    reward[strl_idx] = 1
+                    actual_idx = all_idx[dones.astype(bool)][strl_idx]
+                    reward[actual_idx] = 1
+
+                    self.visualize_connection(
+                        streamlines[actual_idx], self.labels,
+                        self.affine_vox2rasmm)
 
         return reward * dones
 
@@ -108,3 +115,22 @@ class ConnectivityReward(Reward):
             array_seq = ArraySequence(streamlines)
             return self.reward(array_seq, dones)
         return np.zeros((N))
+
+    def visualize_connection(self, streamline, labels, affine_vox2rasmm):
+        """ Visualize the connection of a streamline by displaying it
+        as a tube alongside the ROIs it connects.
+        """
+
+        from dipy.viz import window, actor
+
+        # Create a new scene
+        scene = window.Scene()
+
+        # Add the streamline
+        scene.add(actor.line(streamline, linewidth=0.1))
+
+        # Add a slice of the labels
+        scene.add(actor.slicer(labels, affine=affine_vox2rasmm))
+
+        # Display the scene
+        window.show(scene)

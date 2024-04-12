@@ -25,7 +25,7 @@ from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    AngularErrorCriterion, BinaryStoppingCriterion, OracleStoppingCriterion,
+    BinaryStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
     is_too_curvy, is_too_long)
@@ -285,7 +285,7 @@ class BaseEnv(object):
                                                      self.connectivity,
                                                      self.reference,
                                                      self.affine_vox2rasmm,
-                                                     self.min_nb_steps)
+                                                     self.min_nb_steps * 3)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(

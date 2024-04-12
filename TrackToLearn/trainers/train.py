@@ -9,7 +9,8 @@ import torch
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.experiment.experiment import (add_data_args,
+from TrackToLearn.experiment.experiment import (add_connectivity_args,
+                                                add_data_args,
                                                 add_environment_args,
                                                 add_experiment_args,
                                                 add_model_args,
@@ -150,6 +151,8 @@ class TrackToLearnTraining(Experiment):
             'oracle_bonus': self.oracle_bonus,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
+            # Connectivity bonus
+            'connectivity_bonus': self.connectivity_bonus,
         }
 
     def save_hyperparameters(self):
@@ -421,5 +424,6 @@ def add_training_args(parser):
     add_model_args(parser)
     add_rl_args(parser)
     add_tracking_args(parser)
+    add_connectivity_args(parser)
     add_oracle_args(parser)
     add_tractometer_args(parser)
