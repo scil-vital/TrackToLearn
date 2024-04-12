@@ -125,6 +125,9 @@ class BaseEnv(object):
         # Tractometer parameters
         self.scoring_data = env_dto['scoring_data']
 
+        # Connectivity bonus
+        self.connectivity_bonus = env_dto['connectivity_bonus']
+
         # Reward parameters
         self.compute_reward = env_dto['compute_reward']
         # "Local" reward parameters
@@ -181,6 +184,8 @@ class BaseEnv(object):
                 input_volume.data).to(self.device, dtype=torch.float32)
 
             self.reference = reference
+            labels = None
+            connectivity = None
 
         self.tracking_mask = tracking_mask
         self.peaks = peaks
@@ -240,10 +245,10 @@ class BaseEnv(object):
             functools.partial(is_too_curvy, max_theta=self.theta)
 
         # Angle between peaks and segments (angular error criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-            30,
-            self.peaks)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+        #     45,
+        #     self.peaks)
 
         # Stopping criterion according to an oracle
         if self.oracle_checkpoint and self.oracle_stopping_criterion:
@@ -289,7 +294,7 @@ class BaseEnv(object):
                  connectivity_reward],
                 [self.alignment_weighting,
                  self.oracle_bonus,
-                 10])
+                 self.connectivity_bonus])
 
     @classmethod
     def from_dataset(

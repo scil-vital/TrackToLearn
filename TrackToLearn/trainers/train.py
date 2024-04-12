@@ -94,6 +94,9 @@ class TrackToLearnTraining(Experiment):
         self.tractometer_reference = train_dto['tractometer_reference']
         self.scoring_data = train_dto['scoring_data']
 
+        # Connectivity bonus
+        self.connectivity_bonus = train_dto['connectivity_bonus']
+
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
 

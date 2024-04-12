@@ -63,8 +63,8 @@ class ConnectivityReward(Reward):
         real_labels = np.unique(data_labels)[1:]   # Removing the background 0.
 
         # Uncompress the streamlines
-        indices, points_to_idx = uncompress(
-            streamlines, return_mapping=True)
+        indices = uncompress(
+            streamlines, return_mapping=False)
 
         con_info = compute_connectivity(indices, data_labels, real_labels,
                                         extract_longest_segments_from_profile)
@@ -94,7 +94,7 @@ class ConnectivityReward(Reward):
                     strl_idx = connection['strl_idx']
                     reward[strl_idx] = 1
 
-        return reward
+        return reward * dones
 
     def __call__(
         self,

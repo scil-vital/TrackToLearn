@@ -120,6 +120,7 @@ class Experiment(object):
             'oracle_validator': self.oracle_validator,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
             'oracle_checkpoint': self.oracle_checkpoint,
+            'connectivity_bonus': self.connectivity_bonus,
             'scoring_data': self.scoring_data,
             'tractometer_validator': self.tractometer_validator,
             'binary_stopping_threshold': self.binary_stopping_threshold,
@@ -467,3 +468,9 @@ def add_oracle_args(parser: ArgumentParser):
                         help='Stop streamlines according to the Oracle.')
     oracle.add_argument('--oracle_bonus', default=0, type=float,
                         help='Sparse oracle weighting for reward.')
+
+
+def add_connectivity_args(parser: ArgumentParser):
+    oracle = parser.add_argument_group('Connectivity')
+    oracle.add_argument('--connectivity_bonus', default=10, type=float,
+                        help='Reward bonus from connectivity.')

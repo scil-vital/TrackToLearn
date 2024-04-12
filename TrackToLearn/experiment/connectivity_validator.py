@@ -72,22 +72,15 @@ class ConnectivityValidator(Validator):
             out_pos = label_list.index(out_label)
 
             connectivity[in_pos, out_pos] = len(pair_info)
+            connectivity[out_pos, in_pos] = len(pair_info)
+
+        np.save('count.npy', connectivity)
 
         # Normalize the connectivity matrix
-        connectivity = (connectivity > 0).astype(float)
-        reference_connectivity = (env.connectivity > 0).astype(float)
+        connectivity = (connectivity > 0).astype(int).flatten()
+        reference_connectivity = (env.connectivity > 0).astype(int).flatten()
 
-        correlation = np.dot(connectivity.flatten(),
-                             reference_connectivity.flatten()) / (
-                                 2 * len(connectivity.flatten()))
-        # # Compute the correlation between the reference and the computed
-        # # connectivity matrix
-        # correlation = np.corrcoef(env.connectivity.flatten(),
-        #                           connectivity.flatten())[0, 1]
+        dice = float(np.dot(connectivity, reference_connectivity) * 2) / float(
+            np.sum(connectivity) + np.sum(reference_connectivity))
 
-        # # # Display the connectivity matrix using matplotlib
-        # # import matplotlib.pyplot as plt
-        # # plt.imshow(connectivity)
-        # # plt.show()
-
-        return {'corr': float(correlation)}
+        return {'dice': float(dice)}
