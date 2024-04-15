@@ -25,6 +25,7 @@ from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
+    AngularErrorCriterion,
     BinaryStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
@@ -547,7 +548,9 @@ class BaseEnv(object):
         N, S = signal.shape
 
         # Placeholder for the final imputs
-        inputs = torch.zeros((N, S + (self.n_dirs * P)), device=self.device)
+        inputs = torch.zeros(
+            (N, S + (self.n_dirs * P)), device=self.device,
+            requires_grad=False)
         # Fill the first part of the inputs with the SH coefficients
         inputs[:, :S] = signal
 
@@ -567,7 +570,7 @@ class BaseEnv(object):
         # Fill the second part of the inputs with the previous directions
         inputs[:, S:] = dir_inputs
 
-        return inputs
+        return inputs.cpu().numpy()
 
     def _compute_stopping_flags(
         self,

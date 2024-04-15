@@ -183,30 +183,30 @@ class DDPG(RLAlgorithm):
             with torch.no_grad():
                 action = self.sample_action(state)
 
-            # Perform action
-            next_state, reward, done, info = env.step(
-                action.to(device='cpu', copy=True).numpy())
-            done_bool = done
+                # Perform action
+                next_state, reward, done, info = env.step(
+                    action.to(device='cpu', copy=True).numpy())
+                done_bool = done
 
-            running_reward_factors = add_item_to_means(
-                running_reward_factors, info['reward_info'])
+                running_reward_factors = add_item_to_means(
+                    running_reward_factors, info['reward_info'])
 
-            # Store data in replay buffer
-            # WARNING: This is a bit of a trick and I'm not entirely sure this
-            # is legal. This is effectively adding to the replay buffer as if
-            # I had n agents gathering transitions instead of a single one.
-            # This is not mentionned in the TD3 paper. PPO2 does use multiple
-            # learners, though.
-            # I'm keeping it since since it reaaaally speeds up training with
-            # no visible costs
-            self.replay_buffer.add(
-                state.to('cpu', copy=True),
-                action.to('cpu', copy=True),
-                next_state.to('cpu', copy=True),
-                torch.as_tensor(reward[..., None], dtype=torch.float32),
-                torch.as_tensor(done_bool[..., None], dtype=torch.float32))
+                # Store data in replay buffer
+                # WARNING: This is a bit of a trick and I'm not entirely sure this
+                # is legal. This is effectively adding to the replay buffer as if
+                # I had n agents gathering transitions instead of a single one.
+                # This is not mentionned in the TD3 paper. PPO2 does use multiple
+                # learners, though.
+                # I'm keeping it since since it reaaaally speeds up training with
+                # no visible costs
+                self.replay_buffer.add(
+                    torch.as_tensor(state, dtype=torch.float32),
+                    action.to('cpu', copy=True),
+                    torch.as_tensor(next_state, dtype=torch.float32),
+                    torch.as_tensor(reward[..., None], dtype=torch.float32),
+                    torch.as_tensor(done_bool[..., None], dtype=torch.float32))
 
-            running_reward += sum(reward)
+                running_reward += sum(reward)
 
             # Train agent after collecting sufficient data
             if self.t >= self.start_timesteps:
@@ -217,11 +217,11 @@ class DDPG(RLAlgorithm):
                 running_losses = add_item_to_means(running_losses, losses)
 
             self.t += action.shape[0]
-
-            # "Harvesting" here means removing "done" trajectories
-            # from state as well as removing the associated streamlines
-            # This line also set the next_state as the state
-            state, _ = env.harvest()
+            with torch.no_grad():
+                # "Harvesting" here means removing "done" trajectories
+                # from state as well as removing the associated streamlines
+                # This line also set the next_state as the state
+                state, _ = env.harvest()
 
             # Keeping track of episode length
             episode_length += 1

@@ -126,7 +126,6 @@ class SAC(DDPG):
     ) -> np.ndarray:
         """ Sample an action according to the algorithm.
         """
-
         # Select action according to policy + noise for exploration
         action = self.agent.select_action(state, probabilistic=1.0)
 
