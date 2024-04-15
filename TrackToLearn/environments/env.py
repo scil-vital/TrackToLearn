@@ -285,7 +285,7 @@ class BaseEnv(object):
                                                      self.connectivity,
                                                      self.reference,
                                                      self.affine_vox2rasmm,
-                                                     self.min_nb_steps * 3)
+                                                     self.min_nb_steps)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(

@@ -4,6 +4,7 @@ import numpy as np
 
 from nibabel.streamlines.array_sequence import ArraySequence
 
+from scilpy.image.labels import dilate_labels
 from scilpy.tractanalysis.tools import (
     compute_connectivity, extract_longest_segments_from_profile)
 from scilpy.tractograms.uncompress import uncompress
@@ -24,9 +25,18 @@ class ConnectivityReward(Reward):
         reference: nib.Nifti1Image,
         affine_vox2rasmm: np.ndarray,
         min_nb_steps: int = 10,
+        dilate: int = 2,
     ):
         # Name for stats
         self.name = 'connectivity_reward'
+
+        if dilate > 0:
+            diag = np.diag_indices(4)
+            vox_size = np.mean(affine_vox2rasmm[diag][:3])
+            distance = vox_size * dilate
+            labels = dilate_labels(labels, vox_size, distance, 1,
+                                   labels_not_to_dilate=[],
+                                   labels_to_fill=[0])
 
         self.labels = labels
         self.min_nb_steps = min_nb_steps
@@ -97,9 +107,9 @@ class ConnectivityReward(Reward):
                     actual_idx = all_idx[dones.astype(bool)][strl_idx]
                     reward[actual_idx] = 1
 
-                    self.visualize_connection(
-                        streamlines[actual_idx], self.labels,
-                        self.affine_vox2rasmm)
+                    # self.visualize_connection(
+                    #     streamlines[actual_idx], self.labels,
+                    #     self.affine_vox2rasmm)
 
         return reward * dones
 

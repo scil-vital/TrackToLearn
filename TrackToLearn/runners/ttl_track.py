@@ -110,6 +110,9 @@ class TrackToLearnTrack(Experiment):
         self.oracle_validator = False
         self.oracle_stopping_criterion = False
 
+        # Connectivity
+        self.connectivity_bonus = 0
+
         self.random_seed = track_dto['rng_seed']
         torch.manual_seed(self.random_seed)
         np.random.seed(self.random_seed)
