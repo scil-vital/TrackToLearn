@@ -241,7 +241,6 @@ class Experiment(object):
         ----------
         filename: str
             Filename of the tractogram to score.
-
         """
         # Dict of scores
         all_scores = {}
@@ -332,6 +331,7 @@ class Experiment(object):
             lens = [len(s) for s in valid_tractogram.streamlines]
         else:
             lens = [0]
+
         avg_valid_reward = valid_reward / len(lens)
         avg_length = np.mean(lens)  # Euclidian length
 
@@ -406,7 +406,7 @@ def add_environment_args(parser: ArgumentParser):
         '--binary_stopping_threshold',
         type=float, default=0.1,
         help='Lower limit for interpolation of tracking mask value.\n'
-             'Tracking will stop below this threshold.')
+        'Tracking will stop below this threshold.')
 
 
 def add_reward_args(parser: ArgumentParser):
@@ -456,7 +456,7 @@ def add_tractometer_args(parser: ArgumentParser):
                          ' how the training is doing w.r.t. ground truth.')
     tractom.add_argument('--tractometer_dilate', default=1, type=int,
                          help='Dilation factor for the ROIs of the '
-                              'Tractometer.')
+                         'Tractometer.')
 
 
 def add_oracle_args(parser: ArgumentParser):
@@ -474,6 +474,10 @@ def add_oracle_args(parser: ArgumentParser):
 
 
 def add_connectivity_args(parser: ArgumentParser):
-    oracle = parser.add_argument_group('Connectivity')
-    oracle.add_argument('--connectivity_bonus', default=10, type=float,
-                        help='Reward bonus from connectivity.')
+    connectivity = parser.add_argument_group('Connectivity')
+    connectivity.add_argument('--connectivity_bonus', default=10, type=float,
+                              help='Reward bonus from connectivity.')
+    connectivity.add_argument('--connectivity_validator', action='store_true',
+                              help='Compute connectivity metrics during '
+                              'validation to monitor how the training is doing'
+                              ' w.r.t. reference connectivity matrix.')

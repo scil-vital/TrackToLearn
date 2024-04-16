@@ -98,6 +98,7 @@ class TrackToLearnTraining(Experiment):
 
         # Connectivity bonus
         self.connectivity_bonus = train_dto['connectivity_bonus']
+        self.connectivity_validator = train_dto['connectivity_validator']
 
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
@@ -232,8 +233,8 @@ class TrackToLearnTraining(Experiment):
             self.validators.append(OracleValidator(
                 self.oracle_checkpoint, self.device))
 
-        # if self.connect_validator:
-        self.validators.append(ConnectivityValidator())
+        if self.connectivity_validator:
+            self.validators.append(ConnectivityValidator())
 
         # Run tracking before training to see what an untrained network does
         valid_env.load_subject()
