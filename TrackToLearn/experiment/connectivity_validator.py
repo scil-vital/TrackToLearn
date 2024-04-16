@@ -4,8 +4,10 @@ import numpy as np
 
 from dipy.io.streamline import load_tractogram
 
+from scilpy.tractanalysis.reproducibility_measures import compute_dice_voxel
 from scilpy.tractanalysis.tools import (
     compute_connectivity, extract_longest_segments_from_profile)
+
 from scilpy.tractograms.uncompress import uncompress
 
 from TrackToLearn.experiment.validators import Validator
@@ -74,13 +76,13 @@ class ConnectivityValidator(Validator):
             connectivity[in_pos, out_pos] = len(pair_info)
             connectivity[out_pos, in_pos] = len(pair_info)
 
-        np.save('count.npy', connectivity)
+        dice, w_dice = compute_dice_voxel(connectivity, env.connectivity)
+        corrcoef = np.corrcoef(connectivity.ravel(),
+                               env.connectivity.ravel())[0, 1]
+        rmse = np.sqrt(np.mean((connectivity - env.connectivity)**2))
 
-        # Normalize the connectivity matrix
-        connectivity = (connectivity > 0).astype(int).flatten()
-        reference_connectivity = (env.connectivity > 0).astype(int).flatten()
-
-        dice = float(np.dot(connectivity, reference_connectivity) * 2) / float(
-            np.sum(connectivity) + np.sum(reference_connectivity))
-
-        return {'dice': float(dice)}
+        return {'dice': float(dice),
+                'w_dice': float(w_dice),
+                'corr': float(np.nan_to_num(corrcoef,
+                                            nan=0.0)),
+                'rmse': rmse}
