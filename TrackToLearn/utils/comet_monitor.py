@@ -110,6 +110,9 @@ class CometMonitor():
         for k, v in loss_dict.items():
             if type(v) is np.ndarray:
                 self.e.log_histogram_3d(v, name=k, step=i)
+            elif type(v) is tuple:
+                mat, ref = v
+                self.e.log_confusion_matrix(ref, mat, step=i)
             else:
                 self.e.log_metric(k, v, step=i)
 

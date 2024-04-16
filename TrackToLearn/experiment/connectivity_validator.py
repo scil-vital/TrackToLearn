@@ -85,4 +85,5 @@ class ConnectivityValidator(Validator):
                 'w_dice': float(w_dice),
                 'corr': float(np.nan_to_num(corrcoef,
                                             nan=0.0)),
-                'rmse': rmse}
+                'rmse': rmse,
+                'connectivity': (connectivity, env.connectivity)}
