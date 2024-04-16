@@ -251,7 +251,7 @@ class TrackToLearnTraining(Experiment):
                                                   valid_env.affine_vox2rasmm,
                                                   valid_env.reference)
             scores = self.score_tractogram(filename, valid_env)
-            print(scores)
+            print({k: v for k, v in scores.items() if type(v) is not tuple})
 
             if self.use_comet:
                 self.comet_monitor.log_losses(scores, i_episode)
@@ -326,7 +326,8 @@ class TrackToLearnTraining(Experiment):
                     valid_env.affine_vox2rasmm, valid_env.reference)
                 scores = self.score_tractogram(
                     filename, valid_env)
-                print(scores)
+                print(
+                    {k: v for k, v in scores.items() if type(v) is not tuple})
 
                 # Display what the network is capable-of "now"
                 self.log(
@@ -350,7 +351,7 @@ class TrackToLearnTraining(Experiment):
                                               valid_env.affine_vox2rasmm,
                                               valid_env.reference)
         scores = self.score_tractogram(filename, valid_env)
-        print(scores)
+        print({k: v for k, v in scores.items() if type(v) is not tuple})
 
         # Display what the network is capable-of "now"
         self.log(
