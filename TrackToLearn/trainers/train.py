@@ -67,6 +67,7 @@ class TrackToLearnTraining(Experiment):
 
         # Angular thresholds
         self.theta = train_dto['theta']
+        self.epsilon = train_dto['epsilon']
 
         # More tracking parameters
         self.min_length = train_dto['min_length']
@@ -135,6 +136,7 @@ class TrackToLearnTraining(Experiment):
             'dataset_file': self.dataset_file,
             'n_seeds_per_voxel': self.npv,
             'max_angle': self.theta,
+            'epsilon': self.epsilon,
             'min_length': self.min_length,
             'max_length': self.max_length,
             'binary_stopping_threshold': self.binary_stopping_threshold,

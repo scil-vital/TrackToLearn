@@ -108,6 +108,8 @@ class BaseEnv(object):
         # Tracking parameters
         self.n_dirs = env_dto['n_dirs']
         self.theta = env_dto['theta']
+        self.epsilon = env_dto['epsilon']
+
         # Number of seeds per voxel
         self.npv = env_dto['npv']
         # Whether to use CMC or binary stopping criterion
@@ -246,10 +248,10 @@ class BaseEnv(object):
             functools.partial(is_too_curvy, max_theta=self.theta)
 
         # Angle between peaks and segments (angular error criterion)
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-        #     45,
-        #     self.peaks)
+        self.stopping_criteria[
+            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+            self.epsilon,
+            self.peaks)
 
         # Stopping criterion according to an oracle
         if self.oracle_checkpoint and self.oracle_stopping_criterion:
