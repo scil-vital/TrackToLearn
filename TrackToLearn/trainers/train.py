@@ -6,6 +6,8 @@ from os.path import join as pjoin
 import numpy as np
 import torch
 
+from dipy.tracking.streamlinespeed import length
+
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
@@ -248,7 +250,7 @@ class TrackToLearnTraining(Experiment):
 
             filename = self.save_rasmm_tractogram(valid_tractogram,
                                                   valid_env.subject_id,
-                                                  valid_env.affine_vox2rasmm,
+                                                  valid_env,
                                                   valid_env.reference)
             scores = self.score_tractogram(filename, valid_env)
             print({k: v for k, v in scores.items() if type(v) is not tuple})
@@ -275,7 +277,7 @@ class TrackToLearnTraining(Experiment):
                 train_tracker.track_and_train(env)
 
             # Compute average streamline length
-            lengths = [len(s) for s in tractogram]
+            lengths = length(tractogram.streamlines)
             avg_length = np.mean(lengths)  # Nb. of steps
 
             # Keep track of how many transitions were gathered
@@ -323,7 +325,7 @@ class TrackToLearnTraining(Experiment):
                     self.comet_monitor.log_losses(stopping_stats, i_episode)
                 filename = self.save_rasmm_tractogram(
                     valid_tractogram, valid_env.subject_id,
-                    valid_env.affine_vox2rasmm, valid_env.reference)
+                    valid_env, valid_env.reference)
                 scores = self.score_tractogram(
                     filename, valid_env)
                 print(
@@ -348,7 +350,7 @@ class TrackToLearnTraining(Experiment):
 
         filename = self.save_rasmm_tractogram(valid_tractogram,
                                               valid_env.subject_id,
-                                              valid_env.affine_vox2rasmm,
+                                              valid_env,
                                               valid_env.reference)
         scores = self.score_tractogram(filename, valid_env)
         print({k: v for k, v in scores.items() if type(v) is not tuple})

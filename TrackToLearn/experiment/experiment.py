@@ -7,6 +7,7 @@ from typing import Tuple
 
 from dipy.io.stateful_tractogram import Origin, Space, StatefulTractogram
 from dipy.io.streamline import save_tractogram
+from dipy.tracking.streamlinespeed import length
 
 from nibabel.streamlines import Tractogram
 
@@ -257,7 +258,7 @@ class Experiment(object):
         self,
         tractogram,
         subject_id: str,
-        affine: np.ndarray,
+        env: BaseEnv,
         reference: nib.Nifti1Image
     ) -> str:
         """
@@ -284,9 +285,9 @@ class Experiment(object):
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.
         indices = [i for (i, s) in enumerate(tractogram.streamlines)
-                   if len(s) > 1]
+                   if len(s) > env.min_nb_steps]
 
-        tractogram.apply_affine(affine)
+        tractogram.apply_affine(env.affine_vox2rasmm)
 
         streamlines = tractogram.streamlines[indices]
         data_per_streamline = tractogram.data_per_streamline[indices]
@@ -311,7 +312,6 @@ class Experiment(object):
         valid_tractogram: Tractogram,
         valid_reward: float = 0,
         i_episode: int = 0,
-        scores: dict = None,
     ):
         """ Print training infos and log metrics to Comet, if
         activated.
@@ -328,7 +328,7 @@ class Experiment(object):
             Scores as computed by the tractometer.
         """
         if valid_tractogram:
-            lens = [len(s) for s in valid_tractogram.streamlines]
+            lens = [length(s) for s in valid_tractogram.streamlines]
         else:
             lens = [0]
 
@@ -342,21 +342,6 @@ class Experiment(object):
             avg_length,
             avg_valid_reward))
         print('---------------------------------------------------')
-
-        if scores is not None:
-            self.vc_monitor.update(scores['VC'])
-            self.ic_monitor.update(scores['IC'])
-            self.nc_monitor.update(scores['NC'])
-            self.vb_monitor.update(scores['VB'])
-            self.ib_monitor.update(scores['IB'])
-            self.ol_monitor.update(scores['mean_OL'])
-
-            self.vc_monitor.end_epoch(i_episode)
-            self.ic_monitor.end_epoch(i_episode)
-            self.nc_monitor.end_epoch(i_episode)
-            self.vb_monitor.end_epoch(i_episode)
-            self.ib_monitor.end_epoch(i_episode)
-            self.ol_monitor.end_epoch(i_episode)
 
         # Update monitors
         self.len_monitor.update(avg_length)

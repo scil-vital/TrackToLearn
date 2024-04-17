@@ -34,6 +34,13 @@ class ConnectivityValidator(Validator):
         # Load the streamlines
         sft = load_tractogram(filename, 'same', bbox_valid_check=False)
 
+        if len(sft.streamlines) <= 0:
+            return {'dice': 0,
+                    'w_dice': 0,
+                    'corr': 0,
+                    'rmse': 0,
+                    'connectivity': (
+                        np.zeros_like(env.connectivity), env.connectivity)}
         sft.to_vox()
         sft.to_corner()
 
