@@ -373,7 +373,7 @@ class BaseEnv(object):
         sh_basis: str
             Basis of the SH coefficients.
         target_sh_order: int
-            Target SH order.
+            Target SH order. Should come from the hyperparameters file.
 
         Returns
         -------
