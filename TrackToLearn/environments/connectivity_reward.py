@@ -143,12 +143,14 @@ class ConnectivityReward(Reward):
                 continue
             elif out_label in con_info[in_label]:
                 pair_info.extend(con_info[in_label][out_label])
-                if out_label not in con_info:
-                    continue
-                elif in_label in con_info[out_label]:
-                    pair_info.extend(con_info[out_label][in_label])
-                    if not len(pair_info):
-                        continue
+
+            if out_label not in con_info:
+                continue
+            elif in_label in con_info[out_label]:
+                pair_info.extend(con_info[out_label][in_label])
+
+            if not len(pair_info):
+                continue
 
             in_pos = label_list.index(in_label)
             out_pos = label_list.index(out_label)
