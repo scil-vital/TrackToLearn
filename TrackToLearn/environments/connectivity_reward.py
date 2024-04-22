@@ -13,7 +13,7 @@ from scilpy.tractograms.uncompress import uncompress
 from TrackToLearn.environments.reward import Reward
 
 
-def extract_longest_segments_from_profile(
+def segmenting_func(
     strl_indices, atlas_data, background=0
 ):
     """
@@ -47,7 +47,8 @@ def extract_longest_segments_from_profile(
 
     # If the streamline does not traverse any GM voxel, we return an empty list
     # If the streamline is entirely in GM, we return an empty list.
-    if label_idices.size == 1 or len(label_idices) == nb_underlying_voxels:
+    if (label_idices.size == 1 or len(label_idices) == 0 or
+            len(label_idices) == nb_underlying_voxels):
         return []
 
     start_idx = label_idices[0]
@@ -134,7 +135,7 @@ class ConnectivityReward(Reward):
 
         con_info = compute_connectivity(indices,
                                         self.data_labels, self.real_labels,
-                                        extract_longest_segments_from_profile)
+                                        segmenting_func)
 
         label_list = self.real_labels.tolist()
         for in_label, out_label in self.comb_list:
