@@ -47,5 +47,5 @@
     "input_size": 615,
     "action_size": 3,
     "voxel_size": "0.9987237",
-    "target_sh_order": 6.0
+    "target_sh_order": 8.0
 }
