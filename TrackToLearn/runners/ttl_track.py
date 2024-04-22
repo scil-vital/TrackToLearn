@@ -102,6 +102,7 @@ class TrackToLearnTrack(Experiment):
             self.theta = hyperparams['max_angle']
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_dirs = hyperparams['n_dirs']
+            self.target_sh_order = hyperparams['target_sh_order']
 
         self.alignment_weighting = 0.0
         # Oracle parameters

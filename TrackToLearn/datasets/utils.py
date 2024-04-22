@@ -155,7 +155,7 @@ def set_sh_order_basis(
         _, orders = sph_harm_ind_list(sh_order, full_basis)
         sh = sh[..., orders % 2 == 0]
 
-    # If SH are not of order 6, convert them
+    # If SH are not of target order, convert them
     if sh_order != target_order:
         print('SH coefficients are of order {}, '
               'converting them to order {}.'.format(sh_order, target_order))

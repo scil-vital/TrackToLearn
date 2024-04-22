@@ -124,7 +124,8 @@ class Experiment(object):
             'tractometer_validator': self.tractometer_validator,
             'binary_stopping_threshold': self.binary_stopping_threshold,
             'compute_reward': self.compute_reward,
-            'device': self.device
+            'device': self.device,
+            'target_sh_order': self.target_sh_order if hasattr(self, 'target_sh_order') else None,
         }
 
         if noisy:
