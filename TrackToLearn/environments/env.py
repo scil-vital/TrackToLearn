@@ -385,7 +385,7 @@ class BaseEnv(object):
 
         data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
                                   sh_basis,
-                                  target_order=8,
+                                  target_order=6,
                                   target_basis='descoteaux07')
 
         # Compute peaks from signal
