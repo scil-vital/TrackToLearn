@@ -2,14 +2,64 @@ import itertools
 import nibabel as nib
 import numpy as np
 
+from scipy.ndimage import map_coordinates
 from nibabel.streamlines.array_sequence import ArraySequence
 
 from scilpy.image.labels import dilate_labels
 from scilpy.tractanalysis.tools import (
-    compute_connectivity, extract_longest_segments_from_profile)
+    compute_connectivity)
 from scilpy.tractograms.uncompress import uncompress
 
 from TrackToLearn.environments.reward import Reward
+
+
+def extract_longest_segments_from_profile(
+    strl_indices, atlas_data, background=0
+):
+    """
+    For one given streamline, find the labels at both ends.
+
+    Parameters
+    ----------
+    strl_indices: np.ndarray
+        The indices of all voxels traversed by this streamline.
+    atlas_data: np.ndarray
+        The loaded image containing the labels.
+    background: int
+        The value of the background in the atlas.
+
+    Returns
+    -------
+    segments_info: list[dict]
+        A list of length 1 with the information dict if , else, an empty list.
+    """
+    start_label = None
+    end_label = None
+    start_idx = None
+    end_idx = None
+
+    nb_underlying_voxels = len(strl_indices)
+
+    labels = map_coordinates(
+        atlas_data, strl_indices.T, order=0, mode='nearest')
+
+    label_idices = np.argwhere(labels != background).squeeze()
+
+    # If the streamline does not traverse any GM voxel, we return an empty list
+    # If the streamline is entirely in GM, we return an empty list.
+    if label_idices.size == 1 or len(label_idices) == nb_underlying_voxels:
+        return []
+
+    start_idx = label_idices[0]
+    end_idx = label_idices[-1]
+
+    start_label = labels[start_idx]
+    end_label = labels[end_idx]
+
+    return [{'start_label': start_label,
+             'start_index': start_idx,
+             'end_label': end_label,
+             'end_index': end_idx}]
 
 
 class ConnectivityReward(Reward):
