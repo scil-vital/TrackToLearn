@@ -6,8 +6,6 @@ from scipy.ndimage import map_coordinates
 from nibabel.streamlines.array_sequence import ArraySequence
 
 from scilpy.image.labels import dilate_labels
-from scilpy.tractanalysis.tools import (
-    compute_connectivity)
 from scilpy.tractograms.uncompress import uncompress
 
 from TrackToLearn.environments.reward import Reward
@@ -92,6 +90,9 @@ class ConnectivityReward(Reward):
         self.data_labels = labels
         self.real_labels = np.unique(self.data_labels)[1:]
 
+        self.base_connectivity = {
+            k: {lab: [] for lab in self.real_labels} for k in self.real_labels}
+
         comb_list = list(itertools.combinations(self.real_labels, r=2))
         comb_list.extend(zip(self.real_labels, self.real_labels))
 
@@ -133,9 +134,22 @@ class ConnectivityReward(Reward):
         indices = uncompress(
             done_streamlines, return_mapping=False)
 
-        con_info = compute_connectivity(indices,
-                                        self.data_labels, self.real_labels,
-                                        segmenting_func)
+        connectivity = self.base_connectivity.copy()
+        # toDo. real_labels is not used in segmenting func!
+        for strl_idx, strl_vox_indices in enumerate(indices):
+            # Managing streamlines out of bound.
+            if (np.array(strl_vox_indices) > self.data_labels.shape).any():
+                continue
+
+            # Finding start_label and end_label.
+            segments_info = segmenting_func(strl_vox_indices, self.real_labels)
+            for si in segments_info:
+                connectivity[si['start_label']][si['end_label']].append(
+                    {'strl_idx': strl_idx,
+                     'in_idx': si['start_index'],
+                     'out_idx': si['end_index']})
+
+        con_info = connectivity
 
         label_list = self.real_labels.tolist()
         for in_label, out_label in self.comb_list:
