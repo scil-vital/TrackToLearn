@@ -100,6 +100,7 @@ class TrackToLearnTrack(Experiment):
             self.step_size = float(hyperparams['step_size'])
             self.voxel_size = hyperparams.get('voxel_size', 2.0)
             self.theta = hyperparams['max_angle']
+            self.epsilon = hyperparams['epsilon']
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_dirs = hyperparams['n_dirs']
 

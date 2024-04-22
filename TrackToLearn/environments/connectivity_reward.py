@@ -38,7 +38,14 @@ class ConnectivityReward(Reward):
                                    labels_not_to_dilate=[],
                                    labels_to_fill=[0])
 
-        self.labels = labels
+        self.data_labels = labels
+        self.real_labels = np.unique(self.data_labels)[1:]
+
+        comb_list = list(itertools.combinations(self.real_labels, r=2))
+        comb_list.extend(zip(self.real_labels, self.real_labels))
+
+        self.comb_list = comb_list
+
         self.min_nb_steps = min_nb_steps
 
         # Reference connectivity matrix
@@ -71,21 +78,16 @@ class ConnectivityReward(Reward):
         all_idx = np.arange(len(streamlines))
         done_streamlines = streamlines[dones.astype(bool)]
 
-        data_labels = self.labels
-        real_labels = np.unique(data_labels)[1:]   # Removing the background 0.
-
         # Uncompress the streamlines
         indices = uncompress(
             done_streamlines, return_mapping=False)
 
-        con_info = compute_connectivity(indices, data_labels, real_labels,
+        con_info = compute_connectivity(indices,
+                                        self.data_labels, self.real_labels,
                                         extract_longest_segments_from_profile)
 
-        comb_list = list(itertools.combinations(real_labels, r=2))
-        comb_list.extend(zip(real_labels, real_labels))
-
-        label_list = real_labels.tolist()
-        for in_label, out_label in comb_list:
+        label_list = self.real_labels.tolist()
+        for in_label, out_label in self.comb_list:
             pair_info = []
             if in_label not in con_info:
                 continue
@@ -106,10 +108,6 @@ class ConnectivityReward(Reward):
                     strl_idx = connection['strl_idx']
                     actual_idx = all_idx[dones.astype(bool)][strl_idx]
                     reward[actual_idx] = 1
-
-                    # self.visualize_connection(
-                    #     streamlines[actual_idx], self.labels,
-                    #     self.affine_vox2rasmm)
 
         return reward * dones
 
