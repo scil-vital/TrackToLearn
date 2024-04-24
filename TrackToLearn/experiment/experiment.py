@@ -411,7 +411,7 @@ def add_tracking_args(parser: ArgumentParser):
                         help='Number of random seeds per seeding mask voxel.')
     parser.add_argument('--theta', default=30, type=int,
                         help='Max angle between segments for tracking.')
-    parser.add_argument('--epsilon', default=30, type=int,
+    parser.add_argument('--epsilon', default=90, type=int,
                         help='Max angle between tracking step and fodf peaks.')
     parser.add_argument('--min_length', type=float, default=20.,
                         metavar='m',

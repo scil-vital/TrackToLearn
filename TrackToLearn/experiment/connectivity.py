@@ -17,7 +17,7 @@ class Connectivity():
 
         self.data_labels = labels
         self.real_labels = np.unique(self.data_labels)[1:]
-        self.list_labels = self.real_labels.tolist()
+        self.label_list = self.real_labels.tolist()
 
         comb_list = list(itertools.combinations(self.real_labels, r=2))
         comb_list.extend(zip(self.real_labels, self.real_labels))

@@ -28,6 +28,8 @@ class ConnectivityReward(Reward):
         self.connectivity = Connectivity(
             labels, min_nb_steps)
 
+        self.min_nb_steps = min_nb_steps
+
         # Reference connectivity matrix
         self.ref_connectivity = connectivity
 
@@ -61,7 +63,7 @@ class ConnectivityReward(Reward):
         con_info = self.connectivity.compute_connectivity_matrix(
             done_streamlines)
 
-        label_list = self.real_labels.tolist()
+        label_list = self.connectivity.label_list
         for in_label, out_label in self.connectivity.comb_list:
             pair_info = []
             if in_label not in con_info:
@@ -80,7 +82,7 @@ class ConnectivityReward(Reward):
             in_pos = label_list.index(in_label)
             out_pos = label_list.index(out_label)
 
-            if self.connectivity[in_pos, out_pos] > 0:
+            if self.ref_connectivity[in_pos, out_pos] > 0:
                 for connection in pair_info:
                     strl_idx = connection['strl_idx']
                     actual_idx = all_idx[dones.astype(bool)][strl_idx]

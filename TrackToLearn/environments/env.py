@@ -25,7 +25,7 @@ from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    AngularErrorCriterion,
+    # AngularErrorCriterion,
     BinaryStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
@@ -247,11 +247,11 @@ class BaseEnv(object):
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=self.theta)
 
-        # Angle between peaks and segments (angular error criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-            self.epsilon,
-            self.peaks)
+        # # Angle between peaks and segments (angular error criterion)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+        #     self.epsilon,
+        #     self.peaks)
 
         # Stopping criterion according to an oracle
         if self.oracle_checkpoint and self.oracle_stopping_criterion:
