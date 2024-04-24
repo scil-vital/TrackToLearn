@@ -200,9 +200,9 @@ class DDPG(RLAlgorithm):
                 # I'm keeping it since since it reaaaally speeds up training with
                 # no visible costs
                 self.replay_buffer.add(
-                    torch.as_tensor(state, dtype=torch.float32),
+                    state.to('cpu', copy=True),
                     action.to('cpu', copy=True),
-                    torch.as_tensor(next_state, dtype=torch.float32),
+                    next_state.to('cpu', copy=True),
                     torch.as_tensor(reward[..., None], dtype=torch.float32),
                     torch.as_tensor(done_bool[..., None], dtype=torch.float32))
 

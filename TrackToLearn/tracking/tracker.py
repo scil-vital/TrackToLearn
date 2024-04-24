@@ -139,7 +139,7 @@ class Tracker(object):
                         seed_dict = {}
                         if self.save_seeds:
                             seed = item.data_for_streamline['seeds']
-                            seed_dict = {'seeds': seed-0.5}
+                            seed_dict = {'seeds': seed}
 
                         yield TractogramItem(
                             streamline, seed_dict, {})
@@ -234,7 +234,7 @@ class Tracker(object):
 
             # Track for every seed in the environment
             for i, start in enumerate(
-                    tqdm(range(0, len(env.seeds), self.n_actor))):
+                    tqdm(range(0, len(env.seeds), 50000))):
 
                 # Last batch might not be "full"
                 end = min(start + self.n_actor, len(env.seeds))

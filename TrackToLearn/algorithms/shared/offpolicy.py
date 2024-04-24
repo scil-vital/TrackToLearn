@@ -477,8 +477,6 @@ class SACActorCritic(ActorCritic):
         if len(state.shape) < 2:
             state = state[None, :]
 
-        state = torch.as_tensor(state, dtype=torch.float32, device=self.device)
-
         action, _ = self.act(state, probabilistic)
 
         return action

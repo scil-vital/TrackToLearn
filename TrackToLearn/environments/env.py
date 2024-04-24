@@ -572,7 +572,7 @@ class BaseEnv(object):
         # Fill the second part of the inputs with the previous directions
         inputs[:, S:] = dir_inputs
 
-        return inputs.cpu().numpy()
+        return inputs
 
     def _compute_stopping_flags(
         self,

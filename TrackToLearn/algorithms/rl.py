@@ -84,12 +84,13 @@ class RLAlgorithm(object):
         running_reward = 0
         state = initial_state
         done = False
-        while not np.all(done):
-            # Select action according to policy + noise to make tracking
-            # probabilistic
-            with torch.no_grad():
+
+        with torch.no_grad():
+            while not np.all(done):
+                # Select action according to policy + noise to make tracking
+                # probabilistic
                 action = self.agent.select_action(state, probabilistic=prob)
-            # Perform action
+                # Perform action
                 next_state, reward, done, *_ = env.step(
                     action.to(device='cpu', copy=True).numpy())
 
@@ -101,6 +102,6 @@ class RLAlgorithm(object):
                 # state
                 state, _ = env.harvest()
 
-        # env.render()
+            # env.render()
 
         return running_reward
