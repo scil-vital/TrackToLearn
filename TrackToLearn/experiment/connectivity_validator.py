@@ -1,16 +1,11 @@
-import itertools
-
 import numpy as np
 
 from dipy.io.streamline import load_tractogram
 
 from scilpy.tractanalysis.reproducibility_measures import compute_dice_voxel
-from scilpy.tractanalysis.tools import (
-    compute_connectivity, extract_longest_segments_from_profile)
-
-from scilpy.tractograms.uncompress import uncompress
 
 from TrackToLearn.experiment.validators import Validator
+from TrackToLearn.experiment.connectivity import Connectivity
 
 
 class ConnectivityValidator(Validator):
@@ -30,6 +25,9 @@ class ConnectivityValidator(Validator):
 
         data_labels = env.labels.data
         real_labels = np.unique(data_labels)[1:]   # Removing the background 0.
+
+        connectivity = Connectivity(
+            env.labels.data, 0)
 
         # Load the streamlines
         sft = load_tractogram(filename, 'same', bbox_valid_check=False)
@@ -51,19 +49,12 @@ class ConnectivityValidator(Validator):
 
         filt_sft = sft[long_idx]
 
-        # Uncompress the streamlines
-        indices, points_to_idx = uncompress(
-            filt_sft.streamlines, return_mapping=True)
+        con_info = connectivity.compute_connectivity_matrix(
+            filt_sft.streamlines)
 
-        con_info = compute_connectivity(indices, data_labels, real_labels,
-                                        extract_longest_segments_from_profile)
+        matrix = np.zeros((len(real_labels), len(real_labels)))
 
-        comb_list = list(itertools.combinations(real_labels, r=2))
-        comb_list.extend(zip(real_labels, real_labels))
-
-        connectivity = np.zeros((len(real_labels), len(real_labels)))
-        label_list = real_labels.tolist()
-        for in_label, out_label in comb_list:
+        for in_label, out_label in connectivity.comb_list:
             pair_info = []
             if in_label not in con_info or out_label not in con_info:
                 continue
@@ -77,20 +68,20 @@ class ConnectivityValidator(Validator):
             if not len(pair_info):
                 continue
 
-            in_pos = label_list.index(in_label)
-            out_pos = label_list.index(out_label)
+            in_pos = connectivity.label_list.index(in_label)
+            out_pos = connectivity.label_list.index(out_label)
 
-            connectivity[in_pos, out_pos] = len(pair_info)
-            connectivity[out_pos, in_pos] = len(pair_info)
+            matrix[in_pos, out_pos] = len(pair_info)
+            matrix[out_pos, in_pos] = len(pair_info)
 
-        dice, w_dice = compute_dice_voxel(connectivity, env.connectivity)
-        corrcoef = np.corrcoef(connectivity.ravel(),
+        dice, w_dice = compute_dice_voxel(matrix, env.connectivity)
+        corrcoef = np.corrcoef(matrix.ravel(),
                                env.connectivity.ravel())[0, 1]
-        rmse = np.sqrt(np.mean((connectivity - env.connectivity)**2))
+        rmse = np.sqrt(np.mean((matrix - env.connectivity)**2))
 
         return {'dice': float(dice),
                 'w_dice': float(w_dice),
                 'corr': float(np.nan_to_num(corrcoef,
                                             nan=0.0)),
                 'rmse': rmse,
-                'connectivity': (connectivity, env.connectivity)}
+                'connectivity': (matrix, env.connectivity)}
