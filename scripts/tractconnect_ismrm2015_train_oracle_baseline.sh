@@ -14,7 +14,7 @@ mkdir -p $WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}
 echo "Transfering data to working folder..."
 rsync -rltv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
 
-dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}_freesurfer.hdf5
+dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 scoring_data=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/scoring_data
 reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}__t1.nii.gz
 
@@ -23,7 +23,7 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.99 # Gamma for reward discounting
+gamma=0.95 # Gamma for reward discounting
 
 # Env parameters
 npv=10 # Seed per voxel
@@ -52,7 +52,7 @@ do
     --theta=${theta} \
     --step=${step} \
     --n_dirs=100 \
-    --connectivity_bonus=10 \
+    --connectivity_bonus=0 \
     --connectivity_validator \
     --oracle_checkpoint="models/epoch_49_ismrm2015v4.ckpt" \
     --oracle_bonus=10 \
