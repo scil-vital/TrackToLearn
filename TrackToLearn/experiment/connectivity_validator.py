@@ -74,6 +74,8 @@ class ConnectivityValidator(Validator):
             matrix[in_pos, out_pos] = len(pair_info)
             matrix[out_pos, in_pos] = len(pair_info)
 
+        np.save('connectivity.npy', matrix)
+
         dice, w_dice = compute_dice_voxel(matrix, env.connectivity)
         corrcoef = np.corrcoef(matrix.ravel(),
                                env.connectivity.ravel())[0, 1]

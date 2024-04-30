@@ -4,16 +4,12 @@ from typing import Callable, Dict, Tuple
 import nibabel as nib
 import numpy as np
 import torch
-from dipy.core.sphere import HemiSphere
-from dipy.data import get_sphere
 from dipy.direction.peaks import reshape_peaks_for_visualization
 from dipy.tracking import utils as track_utils
 from dwi_ml.data.processing.volume.interpolation import \
     interpolate_volume_in_neighborhood
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
-from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
-                                  get_maximas)
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
@@ -25,7 +21,7 @@ from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    AngularErrorCriterion,
+    # AngularErrorCriterion,
     BinaryStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
@@ -190,9 +186,9 @@ class BaseEnv(object):
             labels = None
             connectivity = None
 
-        self.tracking_mask = tracking_mask
+        self.tracking_mask = (
+            tracking_mask.data + seeding_mask.data).astype(np.uint8)
         self.peaks = peaks
-        mask_data = tracking_mask.data.astype(np.uint8)
         self.seeding_data = seeding_mask.data.astype(np.uint8)
 
         self.labels = labels
@@ -247,11 +243,11 @@ class BaseEnv(object):
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=self.theta)
 
-        # Angle between peaks and segments (angular error criterion)
-        self.stopping_criteria[
-            StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-            self.epsilon,
-            self.peaks)
+        # # Angle between peaks and segments (angular error criterion)
+        # self.stopping_criteria[
+        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
+        #     self.epsilon,
+        #     self.peaks)
 
         # Stopping criterion according to an oracle
         if self.oracle_checkpoint and self.oracle_stopping_criterion:
@@ -265,7 +261,7 @@ class BaseEnv(object):
 
         # Mask criterion (either binary or CMC)
         binary_criterion = BinaryStoppingCriterion(
-            mask_data,
+            self.tracking_mask,
             self.binary_stopping_threshold)
         self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
             binary_criterion
@@ -421,29 +417,7 @@ class BaseEnv(object):
         npeaks = 5
         odf_shape_3d = data.shape[:-1]
         peak_dirs = np.zeros((odf_shape_3d + (npeaks, 3)))
-        peak_values = np.zeros((odf_shape_3d + (npeaks, )))
 
-        sphere = HemiSphere.from_sphere(get_sphere("repulsion724")
-                                        ).subdivide(0)
-
-        b_matrix = get_b_matrix(
-            find_order_from_nb_coeff(data), sphere, "descoteaux07")
-
-        for idx in np.argwhere(np.sum(data, axis=-1)):
-            idx = tuple(idx)
-            directions, values, indices = get_maximas(data[idx],
-                                                      sphere, b_matrix,
-                                                      0.1, 0)
-            if values.shape[0] != 0:
-                n = min(npeaks, values.shape[0])
-                peak_dirs[idx][:n] = directions[:n]
-                peak_values[idx][:n] = values[:n]
-
-        X, Y, Z, N, P = peak_dirs.shape
-        peak_values = np.divide(peak_values, peak_values[..., 0, None],
-                                out=np.zeros_like(peak_values),
-                                where=peak_values[..., 0, None] != 0)
-        peak_dirs[...] *= peak_values[..., :, None]
         peak_dirs = reshape_peaks_for_visualization(peak_dirs)
 
         # Load rest of volumes
