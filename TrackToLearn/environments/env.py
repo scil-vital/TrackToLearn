@@ -4,6 +4,7 @@ from typing import Callable, Dict, Tuple
 import nibabel as nib
 import numpy as np
 import torch
+from dipy.direction.peaks import reshape_peaks_for_visualization
 from dipy.tracking import utils as track_utils
 from dwi_ml.data.processing.volume.interpolation import \
     interpolate_volume_in_neighborhood
@@ -185,9 +186,9 @@ class BaseEnv(object):
             labels = None
             connectivity = None
 
-        self.tracking_mask = tracking_mask
+        self.tracking_mask = (
+            tracking_mask.data + seeding_mask.data).astype(np.uint8)
         self.peaks = peaks
-        mask_data = tracking_mask.data.astype(np.uint8)
         self.seeding_data = seeding_mask.data.astype(np.uint8)
 
         self.labels = labels
@@ -260,7 +261,7 @@ class BaseEnv(object):
 
         # Mask criterion (either binary or CMC)
         binary_criterion = BinaryStoppingCriterion(
-            mask_data,
+            self.tracking_mask,
             self.binary_stopping_threshold)
         self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
             binary_criterion
@@ -411,6 +412,14 @@ class BaseEnv(object):
                                   target_order=8,
                                   target_basis='descoteaux07')
 
+        # Compute peaks from signal
+        # Does not work if signal is not fODFs
+        npeaks = 5
+        odf_shape_3d = data.shape[:-1]
+        peak_dirs = np.zeros((odf_shape_3d + (npeaks, 3)))
+
+        peak_dirs = reshape_peaks_for_visualization(peak_dirs)
+
         # Load rest of volumes
         seeding = nib.load(in_seed)
         tracking = nib.load(in_mask)
@@ -420,7 +429,7 @@ class BaseEnv(object):
 
         odf_shape_3d = data.shape[:-1]
         peaks_volume = MRIDataVolume(
-            np.zeros((*odf_shape_3d, 5 * 3)), signal.affine)
+            peak_dirs, signal.affine)
 
         seeding_volume = MRIDataVolume(
             seeding.get_fdata(), seeding.affine)

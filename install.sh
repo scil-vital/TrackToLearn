@@ -11,7 +11,8 @@ if [ -x "$(command -v nvidia-smi)" ]; then
     echo "Found CUDA version: $(nvidia-smi | grep "CUDA Version" | awk '{print $9}')"
     # Check CUDA version and format as cuXXX
     FOUND_CUDA=$(nvidia-smi | grep "CUDA Version" | awk '{print $9}' | sed 's/\.//g')
-    if (( $FOUND_CUDA >= 116 )); then
+
+    if (( $FOUND_CUDA >= 118 )); then
         CUDA_VERSION="cu118"
     else
       CUDA_VERSION="cpu"

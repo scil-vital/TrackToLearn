@@ -100,7 +100,7 @@ def add_subject_to_hdf5(
     seeding_file = config['seeding']
     anat_file = config['anat']
     labels_file = config['labels']
-    connect_file = config['connect']
+    connect_file = config['connectivity']
 
     # Process subject's data
     process_subject(hdf_subject, input_files, peaks_file, tracking_file,
