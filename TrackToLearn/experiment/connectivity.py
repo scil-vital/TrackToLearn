@@ -96,7 +96,7 @@ class Connectivity():
         start_labels, end_labels = segmenting_func(streamlines, atlas_data)
 
         # toDo. real_labels is not used in segmenting func!
-        for strl_idx, start_label, end_label in enumerate(
+        for strl_idx, (start_label, end_label) in enumerate(
             zip(start_labels, end_labels)
         ):
             if start_label == 0 or end_label == 0:
