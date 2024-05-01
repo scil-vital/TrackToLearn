@@ -5,7 +5,7 @@ set -e  # exit if any command fails
 DATASET_FOLDER=${TRACK_TO_LEARN_DATA}/
 WORK_DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}/
 
-SUBJECT_ID=ismrm2015
+SUBJECT_ID=fibercup
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 
@@ -14,7 +14,7 @@ mkdir -p $WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}
 echo "Transfering data to working folder..."
 rsync -rltv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/datasets/
 
-dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}_freesurfer.hdf5
+dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 scoring_data=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/scoring_data
 reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}__t1.nii.gz
 
@@ -30,7 +30,7 @@ npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 step=0.5
 
-EXPERIMENT=OracleISMRM2015
+EXPERIMENT=OracleFiberCup
 
 ID=$1_$(date +"%F-%H_%M_%S")
 
@@ -54,7 +54,7 @@ do
     --n_dirs=100 \
     --connectivity_bonus=0 \
     --connectivity_validator \
-    --oracle_checkpoint="models/epoch_49_ismrm2015v4.ckpt" \
+    --oracle_checkpoint="models/tractconnect_fibercup.ckpt" \
     --oracle_bonus=10 \
     --oracle_stopping \
     --tractometer_validator \

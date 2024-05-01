@@ -80,7 +80,7 @@ class BinaryStoppingCriterion(object):
             Array telling whether a streamline's last coordinate is outside the
             mask or not.
         """
-        coords = streamlines[:, -1, :].T - 0.5
+        coords = streamlines[:, -1, :].T
         return map_coordinates(
             self.mask, coords, prefilter=False
         ) < self.threshold

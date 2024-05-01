@@ -32,7 +32,7 @@ step=0.5
 
 EXPERIMENT=OracleFiberCup
 
-ID=$1_$(date +"%F-%H_%M_%S")
+ID=connect_$(date +"%F-%H_%M_%S")
 
 seeds=(1111 2222 3333 4444 5555)
 
@@ -41,7 +41,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python -O TrackToLearn/trainers/sac_auto_train.py \
+  python -m cProfile -o program.prof TrackToLearn/trainers/sac_auto_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -52,7 +52,7 @@ do
     --theta=${theta} \
     --step=${step} \
     --n_dirs=100 \
-    --connectivity_bonus=0 \
+    --connectivity_bonus=10 \
     --connectivity_validator \
     --oracle_checkpoint="models/tractconnect_fibercup.ckpt" \
     --oracle_bonus=10 \

@@ -40,7 +40,7 @@ class ConnectivityValidator(Validator):
                     'connectivity': (
                         np.zeros_like(env.connectivity), env.connectivity)}
         sft.to_vox()
-        sft.to_corner()
+        # sft.to_corner()
 
         # Filter the streamlines according to their length
         idx_mapping = np.arange(len(sft.streamlines))
