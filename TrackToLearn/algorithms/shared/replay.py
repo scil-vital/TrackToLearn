@@ -109,8 +109,11 @@ class OffPolicyReplayBuffer(object):
         d: torch.Tensor
             Sampled 1-done flags
         """
-        ind = torch.randperm(self.size, dtype=torch.long)[
-            :min(self.size, batch_size)]
+        ind = np.random.choice(
+            self.size, min(self.size, batch_size), replace=False)
+        # ind = torch.randperm(self.size, dtype=torch.long)[
+        #     :min(self.size, batch_size)]
+        ind = torch.tensor(ind)
 
         s = self.state.index_select(0, ind).pin_memory()
         a = self.action.index_select(0, ind).pin_memory()
