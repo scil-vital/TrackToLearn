@@ -23,7 +23,7 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.99 # Gamma for reward discounting
+gamma=0.95 # Gamma for reward discounting
 
 # Env parameters
 npv=10 # Seed per voxel
@@ -41,7 +41,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python -O TrackToLearn/trainers/sac_auto_train.py \
+  python -m cProfile -o program.prof TrackToLearn/trainers/sac_auto_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
