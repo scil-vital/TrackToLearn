@@ -232,8 +232,7 @@ class TrackingEnvironment(BaseEnv):
     def set_continuing_states(self):
         # Set the state of the continuing streamlines.
         # TODO: This is very slow, not sure why. Investigate.
-        return self._format_state(
-            self.streamlines[self.continue_idx, :self.length])
+        return self.state[self.continue_idx]
 
     def harvest(
         self,
