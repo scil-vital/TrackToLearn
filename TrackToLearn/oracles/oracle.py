@@ -25,8 +25,8 @@ class OracleSingleton:
         }
 
         # Load it from the checkpoint
-        self.model = models[hyper_parameters[
-            'name']].load_from_checkpoint(self.checkpoint).to(device)
+        self.model = torch.compile(models[hyper_parameters[
+            'name']].load_from_checkpoint(self.checkpoint).to(device))
 
         self.model.eval()
         self.batch_size = batch_size

@@ -1,12 +1,29 @@
+import torch
 import numpy as np
-
-# from numba import njit
 
 from dwi_ml.data.processing.space.neighborhood import \
     extend_coordinates_with_neighborhood
 
-from dwi_ml.data.processing.volume.interpolation import \
-    torch_trilinear_interpolation
+B1 = np.array([[1, 0, 0, 0, 0, 0, 0, 0],
+               [-1, 0, 0, 0, 1, 0, 0, 0],
+               [-1, 0, 1, 0, 0, 0, 0, 0],
+               [-1, 1, 0, 0, 0, 0, 0, 0],
+               [1, 0, -1, 0, -1, 0, 1, 0],
+               [1, -1, -1, 1, 0, 0, 0, 0],
+               [1, -1, 0, 0, -1, 1, 0, 0],
+               [-1, 1, 1, -1, 1, -1, -1, 1]], dtype=float)
+
+# We will use the 8 voxels surrounding current position to interpolate a
+# value. See ref https://spie.org/samples/PM159.pdf. The point p000 = [0, 0, 0]
+# is the bottom corner of the current position (using floor).
+idx_box = np.array([[0, 0, 0],
+                    [0, 0, 1],
+                    [0, 1, 0],
+                    [0, 1, 1],
+                    [1, 0, 0],
+                    [1, 0, 1],
+                    [1, 1, 0],
+                    [1, 1, 1]], dtype=float)
 
 
 # @njit
@@ -83,3 +100,110 @@ def interpolate_volume_in_neighborhood(
                                                     coords_vox_corner)
 
     return subj_x_data, coords_vox_corner
+
+
+def torch_trilinear_interpolation(volume: torch.Tensor,
+                                  coords_vox_corner: torch.Tensor):
+    """Evaluates the data volume at given coordinates using trilinear
+    interpolation on a torch tensor.
+
+    Interpolation is done using the device on which the volume is stored.
+
+    * Note. There is a function in torch:
+    torch.nn.functional.interpolation with mode trilinear
+    But it resamples volumes, not coordinates.
+
+    Parameters
+    ----------
+    volume : torch.Tensor with 3D or 4D shape
+        The input volume to interpolate from
+    coords_vox_corner : torch.Tensor with shape (N,3)
+        The coordinates where to interpolate. (Origin = corner, space = vox).
+
+    Returns
+    -------
+    output : torch.Tensor with shape (N, #modalities)
+        The list of interpolated values
+    coords_to_idx_clipped: the coords after floor and clipping in box.
+
+    References
+    ----------
+    [1] https://spie.org/samples/PM159.pdf
+    """
+    device = volume.device
+
+    # Send data to device
+    idx_box_torch = torch.as_tensor(idx_box, dtype=torch.float, device=device)
+    B1_torch = torch.as_tensor(B1, dtype=torch.float, device=device)
+
+    if volume.dim() <= 2 or volume.dim() >= 5:
+        raise ValueError("Volume must be 3D or 4D!")
+
+    # - indices are the floor of coordinates + idx, boxes with 8 corners around
+    #   given coordinates. (Floor means origin = corner)
+    # - coords + idx_torch shape -> the box of 8 corners around each coord
+    #   reshaped as (-1,3) = [n * 8, 3]
+    # - torch needs indices to be cast to long
+    # - clip indices to make sure we don't go out-of-bounds
+    #   Origin = corner means the minimum is 0.
+    #                         the maximum is shape.
+    # Ex, for shape 150, last voxel is #149, with possible coords up to 149.99.
+    lower = torch.as_tensor([0, 0, 0], device=device)
+    upper = torch.as_tensor(volume.shape[:3], device=device) - 1
+    idx_box_clipped = torch.min(
+        torch.max(
+            torch.floor(coords_vox_corner[:, None, :] + idx_box_torch
+                        ).reshape((-1, 3)).long(),
+            lower),
+        upper)
+
+    # Setting Q1 such as in equation 9.9
+    d = coords_vox_corner - torch.floor(coords_vox_corner)
+    dx, dy, dz = d[:, 0], d[:, 1], d[:, 2]
+    Q1 = torch.stack([torch.ones_like(dx), dx, dy, dz,
+                      dx * dy, dy * dz, dx * dz,
+                      dx * dy * dz], dim=0)
+
+    # As of now:
+    # B1 = 8x8
+    # Q1 = 8 x n (GROS)
+    # mult B1 * Q1 = 8 x n
+    # overwriting Q1 with mult to try and save space
+    if volume.dim() == 3:
+        Q1 = torch.mm(B1_torch.t(), Q1)
+
+        # Fetch volume data at indices based on equation 9.11.
+        p = volume[idx_box_clipped[:, 0],
+                   idx_box_clipped[:, 1],
+                   idx_box_clipped[:, 2]]
+        # Last dim (-1) = the 8 corners
+        p = p.reshape((coords_vox_corner.shape[0], -1)).t()
+
+        # Finding coordinates with equation 9.12a.
+        return torch.sum(p * Q1, dim=0)
+
+    elif volume.dim() == 4:
+        Q1 = torch.mm(B1_torch.t(), Q1).t()[:, :, None]
+
+        # Fetch volume data at indices
+        p = volume[idx_box_clipped[:, 0],
+                   idx_box_clipped[:, 1],
+                   idx_box_clipped[:, 2], :]
+        p = p.reshape((coords_vox_corner.shape[0], 8, volume.shape[-1]))
+
+        # p: of shape n x 8 x features
+        # Q1: n x 8 x 1
+
+        # return torch.sum(p * Q1, dim=1)
+        # Able to have bigger batches by avoiding 3D matrix.
+        # Ex: With neighborhood axis [1 2] (13 neighbors), 47 features per
+        # point, we can pass from batches of 1250 streamlines to 2300!
+        total = torch.zeros(p.shape[0], p.shape[2], device=device,
+                            dtype=torch.float)
+        for corner in range(8):
+            total += p[:, corner, :] * Q1[:, corner, :]
+        return total
+
+    else:
+        raise ValueError("Interpolation: There was a problem with the "
+                         "volume's number of dimensions!")
