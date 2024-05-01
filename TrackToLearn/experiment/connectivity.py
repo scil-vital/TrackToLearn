@@ -4,8 +4,6 @@ import numpy as np
 from collections import defaultdict
 from scipy.ndimage import map_coordinates
 
-from scilpy.tractograms.uncompress import uncompress
-
 
 class Connectivity():
 
@@ -27,15 +25,15 @@ class Connectivity():
         self.min_nb_steps = min_nb_steps
 
     def segmenting_func(
-        self, strl_indices, atlas_data, background=0
+        self, streamlines, atlas_data, background=0
     ):
         """
         For one given streamline, find the labels at both ends.
 
         Parameters
         ----------
-        strl_indices: np.ndarray
-            The indices of all voxels traversed by this streamline.
+        streamlines: np.ndarray
+            The streamlines to be processed.
         atlas_data: np.ndarray
             The loaded image containing the labels.
         background: int
@@ -47,45 +45,27 @@ class Connectivity():
             A list of length 1 with the information dict if ,
             else, an empty list.
         """
-        start_label = None
-        end_label = None
-        start_idx = None
-        end_idx = None
 
-        nb_underlying_voxels = len(strl_indices)
+        start_voxels = np.asarray([s[0] for s in streamlines])
 
-        labels = map_coordinates(
-            atlas_data, strl_indices.T, order=0, mode='nearest')
+        start_labels = map_coordinates(
+            atlas_data, start_voxels.T, order=0, mode='nearest')
 
-        label_idices = np.argwhere(labels != background).squeeze()
+        end_voxels = np.asarray([s[-1] for s in streamlines])
 
-        # If the streamline does not traverse any GM voxel, we return an
-        # empty list
-        # If the streamline is entirely in GM, we return an empty list.
-        if (label_idices.size == 1 or len(label_idices) == 0 or
-                len(label_idices) == nb_underlying_voxels):
-            return []
+        end_labels = map_coordinates(
+            atlas_data, end_voxels.T, order=0, mode='nearest')
 
-        start_idx = label_idices[0]
-        end_idx = label_idices[-1]
-
-        start_label = labels[start_idx]
-        end_label = labels[end_idx]
-
-        return [{'start_label': start_label,
-                 'start_index': start_idx,
-                 'end_label': end_label,
-                 'end_index': end_idx}]
+        return start_labels, end_labels
 
     def compute_connectivity(
-        self, indices, atlas_data, real_labels, segmenting_func
+        self, streamlines, atlas_data, real_labels, segmenting_func
     ):
         """
         Parameters
         ----------
-        indices: ArraySequence
-            The list of 3D indices [i, j, k] of all voxels traversed by all
-            streamlines. This is the output of our uncompress function.
+        streamlines: np.ndarray
+            The streamlines to be processed.
         atlas_data: np.ndarray
             The loaded image containing the labels.
         real_labels: list
@@ -113,19 +93,18 @@ class Connectivity():
         nest = return_labels
         connectivity = defaultdict(nest)
 
-        # toDo. real_labels is not used in segmenting func!
-        for strl_idx, strl_vox_indices in enumerate(indices):
-            # Managing streamlines out of bound.
-            if (np.array(strl_vox_indices) > atlas_data.shape).any():
-                continue
+        start_labels, end_labels = segmenting_func(streamlines, atlas_data)
 
-            # Finding start_label and end_label.
-            segments_info = segmenting_func(strl_vox_indices, atlas_data)
-            for si in segments_info:
-                connectivity[si['start_label']][si['end_label']].append(
-                    {'strl_idx': strl_idx,
-                     'in_idx': si['start_index'],
-                     'out_idx': si['end_index']})
+        # toDo. real_labels is not used in segmenting func!
+        for strl_idx, start_label, end_label in enumerate(
+            zip(start_labels, end_labels)
+        ):
+            if start_label == 0 or end_label == 0:
+                continue
+            connectivity[start_label][end_label].append(
+                {'strl_idx': strl_idx,
+                 'in_idx': 0,
+                 'out_idx': len(streamlines[strl_idx]) - 1})
 
         return connectivity
 
@@ -144,10 +123,8 @@ class Connectivity():
         """
 
         # Uncompress the streamlines
-        indices = uncompress(
-            streamlines, return_mapping=False)
 
-        con_info = self.compute_connectivity(indices,
+        con_info = self.compute_connectivity(streamlines,
                                              self.data_labels,
                                              self.real_labels,
                                              self.segmenting_func)
