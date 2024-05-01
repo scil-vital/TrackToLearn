@@ -220,6 +220,19 @@ class TrackingEnvironment(BaseEnv):
             {'continue_idx': self.continue_idx,
              'reward_info': reward_info})
 
+    def set_lengths(self):
+        # Register the length of the streamlines that have stopped.
+        self.lengths[self.stopping_idx] = self.length
+
+    def set_continue_idx(self):
+        # Set the new "continue idx" based on the old idxes. This is to
+        # keep the idxes "global".
+        self.continue_idx = self.new_continue_idx
+
+    def set_continuing_states(self):
+        # Set the state of the continuing streamlines.
+        return self.state[self.continue_idx]
+
     def harvest(
         self,
     ) -> Tuple[StatefulTractogram, np.ndarray]:
@@ -234,15 +247,12 @@ class TrackingEnvironment(BaseEnv):
             Indexes of trajectories that did not stop.
         """
 
-        # Register the length of the streamlines that have stopped.
-        self.lengths[self.stopping_idx] = self.length
-        # Set new "continue idx" based on the old idxes. This is to keep
-        # the idxes "global".
-        self.continue_idx = self.new_continue_idx
+        self.set_lengths()
+        self.set_continue_idx()
+
         # Return the state corresponding to streamlines that are actually
         # still being tracked.
-        # TODO: investigate why `not_stopping` is returned.
-        return self.state[self.continue_idx], self.not_stopping
+        return self.set_continuing_states()
 
     def get_streamlines(self):
         """ Obtain tracked streamlines from the environment.

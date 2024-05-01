@@ -38,8 +38,9 @@ class OracleSingleton:
         N = len(streamlines)
         # Placeholders for input and output data
         placeholder = torch.zeros(
-            (self.batch_size, 127, 3), pin_memory=True)
-        result = torch.zeros((N), dtype=torch.float, device=self.device)
+            (self.batch_size, 127, 3), pin_memory=True, requires_grad=False)
+        result = torch.zeros((N), dtype=torch.float, device=self.device,
+                             requires_grad=False)
 
         # Get the first batch
         batch = streamlines[:self.batch_size]

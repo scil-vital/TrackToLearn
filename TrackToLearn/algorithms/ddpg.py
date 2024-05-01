@@ -221,7 +221,7 @@ class DDPG(RLAlgorithm):
                 # "Harvesting" here means removing "done" trajectories
                 # from state as well as removing the associated streamlines
                 # This line also set the next_state as the state
-                state, _ = env.harvest()
+                state = env.harvest()
 
             # Keeping track of episode length
             episode_length += 1
