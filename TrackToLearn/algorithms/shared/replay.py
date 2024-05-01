@@ -27,6 +27,8 @@ class OffPolicyReplayBuffer(object):
         max_size: int
             Number of transitions to store
         """
+        self.g = np.random.Generator(np.random.PCG64())
+
         self.device = device
         self.max_size = int(max_size)
         self.ptr = 0
@@ -109,11 +111,11 @@ class OffPolicyReplayBuffer(object):
         d: torch.Tensor
             Sampled 1-done flags
         """
-        ind = np.random.choice(
+        ind = self.g.choice(
             self.size, min(self.size, batch_size), replace=False)
         # ind = torch.randperm(self.size, dtype=torch.long)[
         #     :min(self.size, batch_size)]
-        ind = torch.tensor(ind)
+        ind = torch.as_tensor(ind)
 
         s = self.state.index_select(0, ind).pin_memory()
         a = self.action.index_select(0, ind).pin_memory()
