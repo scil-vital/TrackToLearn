@@ -1,8 +1,6 @@
 import numpy as np
 from dipy.tracking import metrics as tm
 from multiprocessing import Pool
-from scipy.ndimage import map_coordinates
-
 from TrackToLearn.utils.utils import normalize_vectors
 
 
@@ -29,99 +27,6 @@ def get_neighborhood_directions(
     axes = np.identity(3)
     directions = np.concatenate(([[0, 0, 0]], axes, -axes)) * radius
     return directions
-
-
-def has_reached_gm(
-    streamlines: np.ndarray,
-    mask: np.ndarray,
-    threshold: float = 0.,
-    min_nb_steps: int = 10
-):
-    """ Checks which streamlines have their last coordinates inside a mask and
-    are at least longer than a minimum strealine length.
-
-    Parameters
-    ----------
-    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-        Streamline coordinates in voxel space
-    mask : 3D `numpy.ndarray`
-        3D image defining a stopping mask. The interior of the mask is defined
-        by values higher or equal than `threshold` .
-    threshold : float
-        Voxels with a value higher or equal than this threshold are considered
-        as part of the interior of the mask.
-    min_length: float
-        Minimum streamline length to end
-
-    Returns
-    -------
-    inside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-        Array telling whether a streamline's can end after reaching GM.
-    """
-    return np.logical_and(is_inside_mask(
-        streamlines, mask, threshold),
-        np.full(streamlines.shape[0], streamlines.shape[1] > min_nb_steps))
-
-
-def is_inside_mask(
-    streamlines: np.ndarray,
-    mask: np.ndarray,
-    threshold: float = 0.
-):
-    """ Checks which streamlines have their last coordinates inside a mask.
-
-    Parameters
-    ----------
-    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-        Streamline coordinates in voxel space
-    mask : 3D `numpy.ndarray`
-        3D image defining a stopping mask. The interior of the mask is defined
-        by values higher or equal than `threshold` .
-    threshold : float
-        Voxels with a value higher or equal than this threshold are considered
-        as part of the interior of the mask.
-
-    Returns
-    -------
-    inside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-        Array telling whether a streamline's last coordinate is inside the mask
-        or not.
-    """
-    # Get last streamlines coordinates
-    return map_coordinates(
-        mask, streamlines[:, -1, :].T - 0.5,
-        mode='constant', order=0) >= threshold
-
-
-def is_outside_mask(
-    streamlines: np.ndarray,
-    mask: np.ndarray,
-    threshold: float = 0.
-):
-    """ Checks which streamlines have their last coordinates outside a mask.
-
-    Parameters
-    ----------
-    streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
-        Streamline coordinates in voxel space
-    mask : 3D `numpy.ndarray`
-        3D image defining a stopping mask. The interior of the mask is defined
-        by values higher or equal than `threshold` .
-    threshold : float
-        Voxels with a value higher or equal than this threshold are considered
-        as part of the interior of the mask.
-
-    Returns
-    -------
-    outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
-        Array telling whether a streamline's last coordinate is outside the
-        mask or not.
-    """
-
-    # Get last streamlines coordinates
-    return map_coordinates(
-        mask, streamlines[:, -1, :].T - 0.5, mode='constant', order=0
-    ) < threshold
 
 
 def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
