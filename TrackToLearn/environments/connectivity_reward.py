@@ -84,7 +84,7 @@ class ConnectivityReward(Reward):
 
             if self.ref_connectivity[in_pos, out_pos] > 0:
                 for connection in pair_info:
-                    strl_idx = connection['strl_idx']
+                    strl_idx = connection
                     actual_idx = all_idx[dones.astype(bool)][strl_idx]
                     reward[actual_idx] = 1
 

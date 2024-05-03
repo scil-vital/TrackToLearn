@@ -46,17 +46,19 @@ class Connectivity():
             else, an empty list.
         """
 
-        start_voxels = np.asarray([s[0] for s in streamlines])
+        start_voxels = np.asarray([s[0].astype(np.int16)
+                                   for s in streamlines])
 
         start_labels = map_coordinates(
             atlas_data, start_voxels.T, order=0, mode='nearest')
 
-        end_voxels = np.asarray([s[-1] for s in streamlines])
+        end_voxels = np.asarray([s[-1].astype(np.int16)
+                                 for s in streamlines])
 
         end_labels = map_coordinates(
             atlas_data, end_voxels.T, order=0, mode='nearest')
 
-        return start_labels, end_labels
+        return start_labels.astype(np.int32), end_labels.astype(np.int32)
 
     def compute_connectivity(
         self, streamlines, atlas_data, real_labels, segmenting_func
@@ -90,8 +92,7 @@ class Connectivity():
 
         def return_labels():
             return {lab: [] for lab in self.real_labels}
-        nest = return_labels
-        connectivity = defaultdict(nest)
+        connectivity = defaultdict(return_labels)
 
         start_labels, end_labels = segmenting_func(streamlines, atlas_data)
 
@@ -101,10 +102,8 @@ class Connectivity():
         ):
             if start_label == 0 or end_label == 0:
                 continue
-            connectivity[start_label][end_label].append(
-                {'strl_idx': strl_idx,
-                 'in_idx': 0,
-                 'out_idx': len(streamlines[strl_idx]) - 1})
+
+            connectivity[start_label][end_label].append(strl_idx)
 
         return connectivity
 

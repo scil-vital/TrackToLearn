@@ -30,49 +30,41 @@ class ConnectivityValidator(Validator):
             env.labels.data, 0)
 
         # Load the streamlines
-        sft = load_tractogram(filename, 'same', bbox_valid_check=False)
+        sft = load_tractogram(filename, env.reference,
+                              bbox_valid_check=True, trk_header_check=True)
 
-        if len(sft.streamlines) <= 0:
+        sft.to_vox()
+        sft.to_corner()
+
+        # Filter the streamlines according to their length
+        idx_mapping = np.arange(len(sft.streamlines))
+        lengths = np.array([len(s) for s in sft.streamlines])
+        long_idx = idx_mapping[lengths > env.min_nb_steps]
+
+        filt_sft = sft[long_idx]
+
+        if len(filt_sft.streamlines) <= 0:
             return {'dice': 0,
                     'w_dice': 0,
                     'corr': 0,
                     'rmse': 0,
                     'connectivity': (
                         np.zeros_like(env.connectivity), env.connectivity)}
-        sft.to_vox()
-        # sft.to_corner()
-
-        # Filter the streamlines according to their length
-        idx_mapping = np.arange(len(sft.streamlines))
-        lengths = np.array([len(s) for s in sft.streamlines])
-        long_idx = idx_mapping[lengths > 10]
-
-        filt_sft = sft[long_idx]
 
         con_info = connectivity.compute_connectivity_matrix(
             filt_sft.streamlines)
 
         matrix = np.zeros((len(real_labels), len(real_labels)))
 
+        label_list = connectivity.label_list
         for in_label, out_label in connectivity.comb_list:
-            pair_info = []
-            if in_label not in con_info or out_label not in con_info:
-                continue
 
-            if out_label in con_info[in_label]:
-                pair_info.extend(con_info[in_label][out_label])
-
-            if in_label in con_info[out_label]:
-                pair_info.extend(con_info[out_label][in_label])
-
-            if not len(pair_info):
-                continue
-
-            in_pos = connectivity.label_list.index(in_label)
-            out_pos = connectivity.label_list.index(out_label)
-
-            matrix[in_pos, out_pos] = len(pair_info)
-            matrix[out_pos, in_pos] = len(pair_info)
+            in_pos = label_list.index(in_label)
+            out_pos = label_list.index(out_label)
+            matrix[in_pos, out_pos] += len(con_info[in_label][out_label])
+            matrix[out_pos, in_pos] += len(con_info[in_label][out_label])
+            matrix[in_pos, out_pos] += len(con_info[out_label][in_label])
+            matrix[out_pos, in_pos] += len(con_info[out_label][in_label])
 
         np.save('connectivity.npy', matrix)
 
