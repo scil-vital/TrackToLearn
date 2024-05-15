@@ -210,7 +210,7 @@ class BaseEnv(object):
             self.affine_vox2rasmm)
         self.neighborhood_directions = torch.cat(
             (torch.zeros((1, 3)),
-             get_neighborhood_vectors_axes(1, self.add_neighborhood_vox))
+             get_neighborhood_vectors_axes(self.add_neighborhood_vox))
         ).to(self.device)
 
         # Tracking seeds
