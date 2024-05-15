@@ -4,7 +4,7 @@ import numpy as np
 from dipy.data import get_sphere
 from dipy.reconst.csdeconv import sph_harm_ind_list
 from scilpy.reconst.utils import get_sh_order_and_fullness
-from scilpy.reconst.multi_processes import convert_sh_basis
+from scilpy.reconst.sh import convert_sh_basis
 
 
 class MRIDataVolume(object):
