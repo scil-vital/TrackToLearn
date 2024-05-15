@@ -125,6 +125,8 @@ The reference commit to the `main` brain for this work is `0fb20306edc32b6015fbf
 
 See preprint: https://arxiv.org/pdf/2403.17845.pdf
 
+See additional data: https://zenodo.org/doi/10.5281/zenodo.10931313
+
 Conference paper (hopefully) coming soon.
 
 ### What matters in Reinforcement Learning for Tractography (2024a)
