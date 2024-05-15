@@ -1,7 +1,7 @@
 comet-ml==3.39.0
-h5py==3.10.0
+h5py==3.7.0
 nibabel==5.2.0
-tqdm==4.66.4
+tqdm==4.64.0
 
-dwi-ml==0.1.0.dev0
+dwi-ml @ git+https://github.com/EmmaRenauld/dwi_ml.git@update_to_scilpy2
 scilpy==2.0.2
