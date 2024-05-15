@@ -103,6 +103,7 @@ class TrackToLearnTraining(Experiment):
             "cuda" if torch.cuda.is_available() else "cpu")
 
         self.use_comet = train_dto['use_comet']
+        self.offline_comet = train_dto['offline_comet']
 
         # RNG
         torch.manual_seed(self.rng_seed)

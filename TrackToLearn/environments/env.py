@@ -12,8 +12,9 @@ from dwi_ml.data.processing.volume.interpolation import \
     interpolate_volume_in_neighborhood
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
-from scilpy.reconst.utils import (find_order_from_nb_coeff, get_b_matrix,
+from scilpy.reconst.utils import (find_order_from_nb_coeff,
                                   get_maximas)
+from dipy.reconst.shm import sh_to_sf_matrix
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
@@ -412,8 +413,7 @@ class BaseEnv(object):
         sphere = HemiSphere.from_sphere(get_sphere("repulsion724")
                                         ).subdivide(0)
 
-        b_matrix = get_b_matrix(
-            find_order_from_nb_coeff(data), sphere, "descoteaux07")
+        b_matrix, _ = sh_to_sf_matrix(sphere, find_order_from_nb_coeff(data), "descoteaux07")
 
         for idx in np.argwhere(np.sum(data, axis=-1)):
             idx = tuple(idx)

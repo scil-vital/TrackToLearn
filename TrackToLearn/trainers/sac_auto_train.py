@@ -7,6 +7,7 @@ from argparse import RawTextHelpFormatter
 import comet_ml  # noqa: F401 ugh
 import torch
 from comet_ml import Experiment as CometExperiment
+from comet_ml import OfflineExperiment as CometOfflineExperiment
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.trainers.train import (TrackToLearnTraining,
@@ -100,11 +101,20 @@ def main():
     args = parse_args()
     print(args)
 
+    offline = args.comet_offline_dir is not None
+
     # Create comet-ml experiment
-    experiment = CometExperiment(project_name=args.experiment,
-                                 workspace=args.workspace, parse_args=False,
-                                 auto_metric_logging=False,
-                                 disabled=not args.use_comet)
+    if offline:
+        experiment = CometOfflineExperiment(project_name=args.experiment,
+                                    workspace=args.workspace, parse_args=False,
+                                    auto_metric_logging=False,
+                                    disabled=not args.use_comet,
+                                    offline_directory=args.comet_offline_dir)
+    else:
+        experiment = CometExperiment(project_name=args.experiment,
+                                    workspace=args.workspace, parse_args=False,
+                                    auto_metric_logging=False,
+                                    disabled=not args.use_comet)
 
     # Create and run experiment
     sac_auto_experiment = SACAutoTrackToLearnTraining(
