@@ -34,6 +34,8 @@ from TrackToLearn.utils.utils import normalize_vectors
 
 # from dipy.io.utils import get_reference_info
 
+def collate_fn(data):
+    return data
 
 class BaseEnv(object):
     """
@@ -83,9 +85,6 @@ class BaseEnv(object):
         if type(subject_data) is str:
             self.dataset_file = subject_data
             self.split = split_id
-
-            def collate_fn(data):
-                return data
 
             self.dataset = SubjectDataset(
                 self.dataset_file, self.split)

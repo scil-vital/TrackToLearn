@@ -23,6 +23,7 @@ from TrackToLearn.datasets.utils import MRIDataVolume
 
 from TrackToLearn.experiment.experiment import Experiment
 from TrackToLearn.tracking.tracker import Tracker
+from TrackToLearn.utils.torch_utils import get_device
 
 # Define the example model paths from the install folder.
 # Hackish ? I'm not aware of a better solution but I'm
@@ -79,9 +80,7 @@ class TrackToLearnTrack(Experiment):
         self.compute_reward = False
         self.render = False
 
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available()
-            else "cpu")
+        self.device = get_device()
 
         self.fa_map = None
         if 'fa_map_file' in track_dto:

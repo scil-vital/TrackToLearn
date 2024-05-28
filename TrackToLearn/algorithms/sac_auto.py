@@ -9,7 +9,7 @@ from typing import Tuple
 from TrackToLearn.algorithms.sac import SAC
 from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
-
+from TrackToLearn.utils.torch_utils import get_device
 
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
@@ -46,7 +46,7 @@ class SACAuto(SAC):
         batch_size: int = 2**12,
         replay_size: int = 1e6,
         rng: np.random.RandomState = None,
-        device: torch.device = "cuda:0",
+        device: torch.device = get_device,
     ):
         """
         Parameters
