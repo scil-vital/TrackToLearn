@@ -1,5 +1,6 @@
 import numpy as np
 from dipy.tracking import metrics as tm
+from dipy.tracking import utils as track_utils
 from multiprocessing import Pool
 from TrackToLearn.utils.utils import normalize_vectors
 
@@ -29,7 +30,9 @@ def get_neighborhood_directions(
     return directions
 
 
-def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
+def is_too_long(
+    streamlines: np.ndarray, bundles: np.ndarray, max_nb_steps: int
+):
     """ Checks whether streamlines have exceeded the maximum number of steps
 
     Parameters
@@ -47,7 +50,9 @@ def is_too_long(streamlines: np.ndarray, max_nb_steps: int):
     return np.full(streamlines.shape[0], streamlines.shape[1] >= max_nb_steps)
 
 
-def is_too_curvy(streamlines: np.ndarray, max_theta: float):
+def is_too_curvy(
+    streamlines: np.ndarray, bundles: np.ndarray, max_theta: float
+):
     """ Checks whether streamlines have exceeded the maximum angle between the
     last 2 steps
 
@@ -185,3 +190,27 @@ def remove_loops_and_sharp_turns(streamlines,
     ids = list(np.where(np.array(windings) < max_angle)[0])
 
     return ids
+
+
+def seeds_from_head_tail(head_tail, affine, seed_count=1):
+    """ Create seeds from a stack of head and tail masks
+
+    Parameters
+    ----------
+    head_tail : `numpy.ndarray` of shape (x, y, z, n)
+        Stack of head and tail masks
+    affine : `numpy.ndarray` of shape (4, 4)
+        Affine matrix to convert voxel coordinates to world coordinates
+    seeds_count : int
+        Number of seeds to generate per voxel for each slice
+    """
+
+    # For each slice of the head and tail masks, create seeds
+    seeds = []
+    for i in range(head_tail.shape[-1]):
+        ht_i = head_tail[..., i]
+        seeds.append(
+            track_utils.random_seeds_from_mask(
+                ht_i, affine, seeds_count=seed_count))
+
+    return seeds

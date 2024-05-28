@@ -52,12 +52,11 @@ class SubjectDataset(Dataset):
 
         reference = tracto_data.reference
 
-        labels = tracto_data.labels
-
-        connectivity = tracto_data.connectivity
+        bundles = tracto_data.bundles
+        head_tail = tracto_data.head_tail
 
         return (subject_id, input_volume, tracking_mask,
-                seeding, peaks, reference, labels, connectivity)
+                seeding, peaks, reference, bundles, head_tail)
 
     def __len__(self):
         """

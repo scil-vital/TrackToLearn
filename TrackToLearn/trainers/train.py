@@ -11,8 +11,7 @@ from dipy.tracking.streamlinespeed import length
 from TrackToLearn.algorithms.rl import RLAlgorithm
 from TrackToLearn.algorithms.shared.utils import mean_losses, mean_rewards
 from TrackToLearn.environments.env import BaseEnv
-from TrackToLearn.experiment.experiment import (add_connectivity_args,
-                                                add_data_args,
+from TrackToLearn.experiment.experiment import (add_data_args,
                                                 add_environment_args,
                                                 add_experiment_args,
                                                 add_model_args,
@@ -20,8 +19,6 @@ from TrackToLearn.experiment.experiment import (add_connectivity_args,
                                                 add_reward_args,
                                                 add_tracking_args,
                                                 add_tractometer_args)
-from TrackToLearn.experiment.connectivity_validator import \
-    ConnectivityValidator
 from TrackToLearn.experiment.oracle_validator import OracleValidator
 from TrackToLearn.experiment.tractometer_validator import TractometerValidator
 from TrackToLearn.experiment.experiment import Experiment
@@ -98,10 +95,6 @@ class TrackToLearnTraining(Experiment):
         self.tractometer_reference = train_dto['tractometer_reference']
         self.scoring_data = train_dto['scoring_data']
 
-        # Connectivity bonus
-        self.connectivity_bonus = train_dto['connectivity_bonus']
-        self.connectivity_validator = train_dto['connectivity_validator']
-
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
 
@@ -156,8 +149,6 @@ class TrackToLearnTraining(Experiment):
             'oracle_bonus': self.oracle_bonus,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
-            # Connectivity bonus
-            'connectivity_bonus': self.connectivity_bonus,
         }
 
     def save_hyperparameters(self):
@@ -234,9 +225,6 @@ class TrackToLearnTraining(Experiment):
         if self.oracle_validator:
             self.validators.append(OracleValidator(
                 self.oracle_checkpoint, self.device))
-
-        if self.connectivity_validator:
-            self.validators.append(ConnectivityValidator())
 
         # Run tracking before training to see what an untrained network does
         valid_env.load_subject()
@@ -430,6 +418,5 @@ def add_training_args(parser):
     add_model_args(parser)
     add_rl_args(parser)
     add_tracking_args(parser)
-    add_connectivity_args(parser)
     add_oracle_args(parser)
     add_tractometer_args(parser)

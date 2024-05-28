@@ -21,7 +21,8 @@ class TrackingEnvironment(BaseEnv):
 
     def _is_stopping(
         self,
-        streamlines: np.ndarray
+        streamlines: np.ndarray,
+        bundles: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """ Check which streamlines should stop or not according to the
         predefined stopping criteria
@@ -30,6 +31,8 @@ class TrackingEnvironment(BaseEnv):
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
             Streamlines that will be checked
+        bundles : `numpy.ndarray` of shape (n_streamlines,)
+            Bundles to which each streamline belongs
 
         Returns
         -------
@@ -41,7 +44,7 @@ class TrackingEnvironment(BaseEnv):
         """
         stopping, flags = \
             self._compute_stopping_flags(
-                streamlines, self.stopping_criteria)
+                streamlines, bundles, self.stopping_criteria)
         return stopping, flags
 
     def nreset(self, n_seeds: int) -> np.ndarray:
@@ -65,9 +68,18 @@ class TrackingEnvironment(BaseEnv):
 
         # Heuristic to avoid duplicating seeds if fewer seeds than actors.
         replace = n_seeds > len(self.seeds)
+
+        nbs = [len(s) for s in self.seeds]
+        all_initial_points = np.concatenate(self.seeds, axis=0)
+        all_bundles = np.repeat(np.arange(len(nbs)), nbs)
+
         seeds = np.random.choice(
-            np.arange(len(self.seeds)), size=n_seeds, replace=replace)
-        self.initial_points = self.seeds[seeds]
+            np.arange(len(all_initial_points)), size=n_seeds,
+            replace=replace)
+
+        self.initial_points = all_initial_points[seeds]
+
+        self.bundles = all_bundles[seeds]
 
         self.streamlines = np.zeros(
             (n_seeds, self.max_nb_steps + 1, 3), dtype=np.float32)
@@ -110,7 +122,10 @@ class TrackingEnvironment(BaseEnv):
         super().reset()
 
         # Initialize seeds as streamlines
-        self.initial_points = self.seeds[start:end]
+        nbs = [len(s) for s in self.seeds]
+        self.initial_points = np.concatenate(self.seeds, axis=0)
+        self.bundles = np.repeat(np.arange(len(nbs)), nbs)
+
         N = self.initial_points.shape[0]
 
         self.streamlines = np.zeros(
@@ -185,7 +200,8 @@ class TrackingEnvironment(BaseEnv):
         # Get stopping and keeping indexes.
         stopping, new_flags = \
             self._is_stopping(
-                self.streamlines[self.continue_idx, :self.length])
+                self.streamlines[self.continue_idx, :self.length],
+                self.bundles[self.continue_idx])
 
         # See which trajectory is stopping or continuing.
         # TODO: `investigate the use of `not_stopping`.

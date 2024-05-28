@@ -16,7 +16,7 @@ rsync -rltv "${DATASET_FOLDER}"/datasets/${SUBJECT_ID} "${WORK_DATASET_FOLDER}"/
 
 dataset_file=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/${SUBJECT_ID}.hdf5
 scoring_data=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/scoring_data
-reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/anat/${SUBJECT_ID}__t1.nii.gz
+reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/dti/${SUBJECT_ID}__fa.nii.gz
 
 # RL params
 max_ep=1000 # Chosen empirically
@@ -26,11 +26,11 @@ lr=0.0005 # Learning rate
 gamma=0.95 # Gamma for reward discounting
 
 # Env parameters
-npv=10 # Seed per voxel
+npv=100 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 step=0.5
 
-EXPERIMENT=OracleFiberCup
+EXPERIMENT=BundleTrackFiberCup
 
 ID=$1_$(date +"%F-%H_%M_%S")
 
@@ -41,7 +41,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python -m cProfile -o program.prof TrackToLearn/trainers/sac_auto_train.py \
+  python -O TrackToLearn/trainers/sac_auto_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
@@ -52,13 +52,8 @@ do
     --theta=${theta} \
     --step=${step} \
     --n_dirs=100 \
-    --connectivity_bonus=0 \
-    --connectivity_validator \
-    --oracle_checkpoint="models/tractconnect_fibercup.ckpt" \
-    --oracle_bonus=10 \
-    --oracle_stopping \
     --tractometer_validator \
-    --tractometer_dilate=1 \
+    --tractometer_dilate=2 \
     --scoring_data=${scoring_data} \
     --tractometer_reference=${reference} \
     --log_interval=${log_interval} \

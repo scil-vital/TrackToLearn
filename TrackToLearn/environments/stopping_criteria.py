@@ -86,6 +86,60 @@ class BinaryStoppingCriterion(object):
         ) < self.threshold
 
 
+class BundleStoppingCriterion(object):
+    """ Defines if tracking should stop based on the bundle mask """
+
+    def __init__(
+        self,
+        bundle_mask: np.ndarray,
+        threshold: float = 0.5,
+    ):
+        """
+        Parameters
+        ----------
+        bundle_mask : 3D `numpy.ndarray`
+            3D image defining masks for bundles.
+        threshold : float
+            Voxels with a value higher or equal than this threshold are
+            considered as part of the interior of the mask.
+        """
+        self.N = bundle_mask.shape[-1]
+        self.bundle_mask = [spline_filter(
+            np.ascontiguousarray(bundle_mask[..., i], dtype=float), order=3)
+            for i in range(self.N)]
+        self.threshold = threshold
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+        bundles: np.ndarray,
+    ):
+        """ Checks which streamlines have their last coordinates outside a
+        bundle mask.
+
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+        Returns
+        -------
+        outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array telling whether a streamline's last coordinate is outside the
+            mask or not.
+        """
+        stopping = np.zeros(len(streamlines), dtype=bool)
+
+        for i in range(self.N):
+            b_i = bundles == i
+            coords = streamlines[b_i][:, -1, :].T - 0.5
+            mask = map_coordinates(
+                self.bundle_mask[i], coords, prefilter=False
+            ) > self.threshold
+            stopping[bundles == i] = mask
+
+        return stopping
+
+
 class AngularErrorCriterion(object):
     """ Defines if tracking should stop based on the maximum angular
     distance with the most aligned peak. This is to prevent streamlines

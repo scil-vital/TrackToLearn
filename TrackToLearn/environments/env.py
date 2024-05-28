@@ -5,7 +5,6 @@ import nibabel as nib
 import numpy as np
 import torch
 from dipy.direction.peaks import reshape_peaks_for_visualization
-from dipy.tracking import utils as track_utils
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
 from torch.utils.data import DataLoader
@@ -14,7 +13,6 @@ from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
-from TrackToLearn.environments.connectivity_reward import ConnectivityReward
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_in_neighborhood)
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
@@ -22,10 +20,10 @@ from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
     # AngularErrorCriterion,
-    BinaryStoppingCriterion, OracleStoppingCriterion,
+    BundleStoppingCriterion, OracleStoppingCriterion,
     StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
-    is_too_curvy, is_too_long)
+    is_too_curvy, is_too_long, seeds_from_head_tail)
 from TrackToLearn.utils.utils import normalize_vectors
 
 # from dipy.io.utils import get_reference_info
@@ -124,9 +122,6 @@ class BaseEnv(object):
         # Tractometer parameters
         self.scoring_data = env_dto['scoring_data']
 
-        # Connectivity bonus
-        self.connectivity_bonus = env_dto['connectivity_bonus']
-
         # Reward parameters
         self.compute_reward = env_dto['compute_reward']
         # "Local" reward parameters
@@ -154,12 +149,12 @@ class BaseEnv(object):
 
             try:
                 (sub_id, input_volume, tracking_mask, seeding_mask,
-                 peaks, reference, labels, connectivity) = \
+                 peaks, reference, bundles, head_tail) = \
                     next(self.loader_iter)[0]
             except StopIteration:
                 self.loader_iter = iter(self.loader)
                 (sub_id, input_volume, tracking_mask, seeding_mask,
-                 peaks, reference, labels, connectivity) = \
+                 peaks, reference, bundles, head_tail) = \
                     next(self.loader_iter)[0]
 
             self.subject_id = sub_id
@@ -173,7 +168,7 @@ class BaseEnv(object):
                 input_volume.data).to(self.device, dtype=torch.float32)
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
-             reference) = self.subject_data
+             reference, bundles, head_tail) = self.subject_data
 
             self.affine_vox2rasmm = input_volume.affine_vox2rasmm
             self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
@@ -183,16 +178,14 @@ class BaseEnv(object):
                 input_volume.data).to(self.device, dtype=torch.float32)
 
             self.reference = reference
-            labels = None
-            connectivity = None
 
         self.tracking_mask = (
             tracking_mask.data + seeding_mask.data).astype(np.uint8)
+        self.bundles_mask = bundles.data.astype(np.uint8)
+        self.head_tail = head_tail.data.astype(np.uint8)
+
         self.peaks = peaks
         self.seeding_data = seeding_mask.data.astype(np.uint8)
-
-        self.labels = labels
-        self.connectivity = connectivity
 
         self.step_size = convert_length_mm2vox(
             self.step_size_mm,
@@ -214,10 +207,12 @@ class BaseEnv(object):
         ).to(self.device)
 
         # Tracking seeds
-        self.seeds = track_utils.random_seeds_from_mask(
-            self.seeding_data,
-            np.eye(4),
-            seeds_count=self.npv)
+        self.seeds = seeds_from_head_tail(
+            self.head_tail, np.eye(4), seed_count=self.npv)
+        # self.seeds = track_utils.random_seeds_from_mask(
+        #     self.seeding_data,
+        #     np.eye(4),
+        #     seeds_count=self.npv)
         # print(
         #     '{} has {} seeds.'.format(self.__class__.__name__,
         #                               len(self.seeds)))
@@ -249,22 +244,27 @@ class BaseEnv(object):
         #     self.epsilon,
         #     self.peaks)
 
-        # Stopping criterion according to an oracle
-        if self.oracle_checkpoint and self.oracle_stopping_criterion:
-            self.stopping_criteria[
-                StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
-                self.oracle_checkpoint,
-                self.min_nb_steps * 5,
-                self.reference,
-                self.affine_vox2rasmm,
-                self.device)
+        # # Stopping criterion according to an oracle
+        # if self.oracle_checkpoint and self.oracle_stopping_criterion:
+        #     self.stopping_criteria[
+        #         StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
+        #         self.oracle_checkpoint,
+        #         self.min_nb_steps * 5,
+        #         self.reference,
+        #         self.affine_vox2rasmm,
+        #         self.device)
 
-        # Mask criterion (either binary or CMC)
-        binary_criterion = BinaryStoppingCriterion(
-            self.tracking_mask,
+        # # Mask criterion (either binary or CMC)
+        # binary_criterion = BinaryStoppingCriterion(
+        #     self.tracking_mask,
+        #     self.binary_stopping_threshold)
+
+        bundle_criterion = BundleStoppingCriterion(
+            self.bundles_mask,
             self.binary_stopping_threshold)
+
         self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-            binary_criterion
+            bundle_criterion
 
         # ==========================================
         # Reward function
@@ -274,26 +274,16 @@ class BaseEnv(object):
         if self.compute_reward:
             # Reward streamline according to alignment with local peaks
             peaks_reward = PeaksAlignmentReward(self.peaks)
-            oracle_reward = OracleReward(self.oracle_checkpoint,
-                                         self.min_nb_steps,
-                                         self.reference,
-                                         self.affine_vox2rasmm,
-                                         self.device)
-
-            connectivity_reward = ConnectivityReward(self.labels.data,
-                                                     self.connectivity,
-                                                     self.reference,
-                                                     self.affine_vox2rasmm,
-                                                     self.min_nb_steps)
+            # oracle_reward = OracleReward(self.oracle_checkpoint,
+            #                              self.min_nb_steps,
+            #                              self.reference,
+            #                              self.affine_vox2rasmm,
+            #                              self.device)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(
-                [peaks_reward,
-                 oracle_reward,
-                 connectivity_reward],
-                [self.alignment_weighting,
-                 self.oracle_bonus,
-                 self.connectivity_bonus])
+                [peaks_reward],
+                [self.alignment_weighting])
 
     @classmethod
     def from_dataset(
@@ -552,6 +542,7 @@ class BaseEnv(object):
     def _compute_stopping_flags(
         self,
         streamlines: np.ndarray,
+        bundles: np.ndarray,
         stopping_criteria: Dict[StoppingFlags, Callable]
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """ Checks which streamlines should stop and which ones should
@@ -561,6 +552,8 @@ class BaseEnv(object):
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
             Streamline coordinates in voxel space
+        bundles : `numpy.ndarray` of shape (n_streamlines,)
+            Bundle index for each streamline
         stopping_criteria : dict of int->Callable
             List of functions that take as input streamlines, and output a
             boolean numpy array indicating which streamlines should stop
@@ -581,7 +574,7 @@ class BaseEnv(object):
         # For each possible flag, determine which streamline should stop and
         # keep track of the triggered flag
         for flag, stopping_criterion in stopping_criteria.items():
-            stopped_by_criterion = stopping_criterion(streamlines)
+            stopped_by_criterion = stopping_criterion(streamlines, bundles)
             flags[stopped_by_criterion] |= flag.value
             should_stop[stopped_by_criterion] = True
 

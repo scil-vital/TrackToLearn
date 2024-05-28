@@ -99,12 +99,12 @@ def add_subject_to_hdf5(
     tracking_file = config['tracking']
     seeding_file = config['seeding']
     anat_file = config['anat']
-    labels_file = config['labels']
-    connect_file = config['connectivity']
+    bundle_file = config['bundles']
+    head_tail_file = config['head_tail']
 
     # Process subject's data
     process_subject(hdf_subject, input_files, peaks_file, tracking_file,
-                    seeding_file, anat_file, labels_file, connect_file)
+                    seeding_file, anat_file, bundle_file, head_tail_file)
 
 
 def process_subject(
@@ -114,8 +114,8 @@ def process_subject(
     tracking: str,
     seeding: str,
     anat: str,
-    labels: str,
-    connect: str,
+    bundle: str,
+    head_tail: str
 ):
     """ Process a subject's data and save it in the hdf5 file.
 
@@ -133,10 +133,6 @@ def process_subject(
         Seeding mask file.
     anat : str
         Anatomical file.
-    labels : str
-        Labels file.
-    connect : str
-        Reference connectivity in .npy format.
     """
 
     ref_volume = nib.load(inputs[0])
@@ -171,12 +167,11 @@ def process_subject(
     anat_image = nib.load(anat)
     add_volume_to_hdf5(hdf_subject, anat_image, 'anat_volume')
 
-    labels_image = nib.load(labels)
-    add_volume_to_hdf5(hdf_subject, labels_image, 'labels_volume')
+    bundle_image = nib.load(bundle)
+    add_volume_to_hdf5(hdf_subject, bundle_image, 'bundle_volume')
 
-    connect_data = np.load(connect)
-    hdf_connectivity = hdf_subject.create_group('connectivity')
-    hdf_connectivity.create_dataset('data', data=connect_data)
+    head_tail_image = nib.load(head_tail)
+    add_volume_to_hdf5(hdf_subject, head_tail_image, 'head_tail_volume')
 
 
 def add_volume_to_hdf5(hdf_subject, volume_img, volume_name):

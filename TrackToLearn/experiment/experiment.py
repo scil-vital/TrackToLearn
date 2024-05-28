@@ -122,7 +122,6 @@ class Experiment(object):
             'oracle_validator': self.oracle_validator,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
             'oracle_checkpoint': self.oracle_checkpoint,
-            'connectivity_bonus': self.connectivity_bonus,
             'scoring_data': self.scoring_data,
             'tractometer_validator': self.tractometer_validator,
             'binary_stopping_threshold': self.binary_stopping_threshold,
@@ -371,7 +370,7 @@ def add_experiment_args(parser: ArgumentParser):
                         help='Name of experiment.')
     parser.add_argument('id', type=str,
                         help='ID of experiment.')
-    parser.add_argument('--workspace', type=str, default='TractConnect',
+    parser.add_argument('--workspace', type=str, default='BundleTrack',
                         help='Comet.ml workspace')
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Seed to fix general randomness')
@@ -456,13 +455,3 @@ def add_oracle_args(parser: ArgumentParser):
                         help='Stop streamlines according to the Oracle.')
     oracle.add_argument('--oracle_bonus', default=0, type=float,
                         help='Sparse oracle weighting for reward.')
-
-
-def add_connectivity_args(parser: ArgumentParser):
-    connectivity = parser.add_argument_group('Connectivity')
-    connectivity.add_argument('--connectivity_bonus', default=10, type=float,
-                              help='Reward bonus from connectivity.')
-    connectivity.add_argument('--connectivity_validator', action='store_true',
-                              help='Compute connectivity metrics during '
-                              'validation to monitor how the training is doing'
-                              ' w.r.t. reference connectivity matrix.')
