@@ -105,7 +105,8 @@ class BundleStoppingCriterion(object):
         """
         self.N = bundle_mask.shape[-1]
         self.bundle_mask = [spline_filter(
-            np.ascontiguousarray(bundle_mask[..., i], dtype=float), order=3)
+            np.ascontiguousarray(
+                bundle_mask[..., i].astype(bool), dtype=float), order=3)
             for i in range(self.N)]
         self.threshold = threshold
 

@@ -209,8 +209,9 @@ def seeds_from_head_tail(head_tail, affine, seed_count=1):
     seeds = []
     for i in range(head_tail.shape[-1]):
         ht_i = head_tail[..., i]
-        seeds.append(
-            track_utils.random_seeds_from_mask(
-                ht_i, affine, seeds_count=seed_count))
+        bundle_seeds = track_utils.random_seeds_from_mask(
+            ht_i.astype(bool), affine, seeds_count=1)
+        seeds.append(bundle_seeds)
+    assert False
 
     return seeds

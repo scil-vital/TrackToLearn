@@ -231,13 +231,13 @@ class Tracker(object):
         cummulative_reward = 0
 
         def _generate_streamlines_and_rewards():
-
+            all_seeds = np.concatenate(env.seeds, axis=0)
             # Track for every seed in the environment
             for i, start in enumerate(
-                    tqdm(range(0, len(env.seeds), 50000))):
+                    tqdm(range(0, len(all_seeds), 50000))):
 
                 # Last batch might not be "full"
-                end = min(start + self.n_actor, len(env.seeds))
+                end = min(start + self.n_actor, len(all_seeds))
 
                 state = env.reset(start, end)
 
