@@ -539,7 +539,8 @@ class BaseEnv(object):
         signal, _ = interpolate_volume_in_neighborhood(
             self.data_volume,
             coords,
-            self.neighborhood_directions)
+            self.neighborhood_directions,
+            clear_cache=False)
         N, S = signal.shape
 
         # Placeholder for the final imputs
