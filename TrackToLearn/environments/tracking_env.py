@@ -123,8 +123,8 @@ class TrackingEnvironment(BaseEnv):
 
         # Initialize seeds as streamlines
         nbs = [len(s) for s in self.seeds]
-        self.initial_points = np.concatenate(self.seeds, axis=0)
-        self.bundles = np.repeat(np.arange(len(nbs)), nbs)
+        self.initial_points = np.concatenate(self.seeds, axis=0)[start:end]
+        self.bundles = np.repeat(np.arange(len(nbs)), nbs)[start:end]
 
         N = self.initial_points.shape[0]
 
