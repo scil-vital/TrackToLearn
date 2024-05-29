@@ -233,7 +233,7 @@ class Tracker(object):
         def _generate_streamlines_and_rewards():
             # Track for every seed in the environment
             for i, start in enumerate(
-                    tqdm(range(0, len(env.seeds), 50000))):
+                    tqdm(range(0, len(env.seeds), self.n_actor))):
 
                 # Last batch might not be "full"
                 end = min(start + self.n_actor, len(env.seeds))
