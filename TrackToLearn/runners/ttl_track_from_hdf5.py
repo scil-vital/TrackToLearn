@@ -23,7 +23,7 @@ from TrackToLearn.experiment.experiment import (
     add_tractometer_args)
 from TrackToLearn.tracking.tracker import Tracker
 from TrackToLearn.experiment.experiment import Experiment
-
+from TrackToLearn.utils.torch_utils import get_device
 
 class TrackToLearnValidation(Experiment):
     """ TrackToLearn validing script. Should work on any model trained with a
@@ -98,8 +98,7 @@ class TrackToLearnValidation(Experiment):
 
         self.comet_experiment = None
 
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = get_device()
 
         self.random_seed = valid_dto['rng_seed']
         torch.manual_seed(self.random_seed)

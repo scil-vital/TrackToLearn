@@ -12,8 +12,8 @@ from comet_ml import OfflineExperiment as CometOfflineExperiment
 from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.trainers.train import (TrackToLearnTraining,
                                          add_training_args)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from TrackToLearn.utils.torch_utils import get_device
+device = get_device()
 
 
 class SACAutoTrackToLearnTraining(TrackToLearnTraining):

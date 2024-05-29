@@ -9,9 +9,10 @@ from comet_ml import Experiment as CometExperiment
 from TrackToLearn.algorithms.ddpg import DDPG
 from TrackToLearn.experiment.train import (
     add_training_args, TrackToLearnTraining)
+from TrackToLearn.utils.torch_utils import get_device, assert_accelerator
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert torch.cuda.is_available()
+device = get_device()
+assert_accelerator()
 
 
 class DDPGTrackToLearnTraining(TrackToLearnTraining):

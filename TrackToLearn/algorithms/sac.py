@@ -7,7 +7,7 @@ from typing import Tuple
 from TrackToLearn.algorithms.ddpg import DDPG
 from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
-
+from TrackToLearn.utils.torch_utils import get_device
 
 class SAC(DDPG):
     """
@@ -41,7 +41,7 @@ class SAC(DDPG):
         batch_size: int = 2**12,
         replay_size: int = 1e6,
         rng: np.random.RandomState = None,
-        device: torch.device = "cuda:0",
+        device: torch.device = get_device(),
     ):
         """ Initialize the algorithm. This includes the replay buffer,
         the policy and the target policy.

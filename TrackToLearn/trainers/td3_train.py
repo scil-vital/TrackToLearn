@@ -16,9 +16,10 @@ from TrackToLearn.experiment.experiment import (
 from TrackToLearn.experiment.train import (
     add_rl_args,
     TrackToLearnTraining)
+from TrackToLearn.utils.torch_utils import get_device, assert_accelerator
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert torch.cuda.is_available()
+device = get_device()
+assert_accelerator()
 
 
 class TD3TrackToLearnTraining(TrackToLearnTraining):
