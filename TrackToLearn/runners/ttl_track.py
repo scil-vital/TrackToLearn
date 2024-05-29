@@ -98,12 +98,11 @@ class TrackToLearnTrack(Experiment):
             hyperparams = json.load(json_file)
             self.algorithm = hyperparams['algorithm']
             self.step_size = float(hyperparams['step_size'])
-            self.add_neighborhood = hyperparams['add_neighborhood']
             self.voxel_size = hyperparams.get('voxel_size', 2.0)
             self.theta = hyperparams['max_angle']
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_dirs = hyperparams['n_dirs']
-            self.interface_seeding = hyperparams['interface_seeding']
+            self.target_sh_order = hyperparams['target_sh_order']
 
         self.alignment_weighting = 0.0
         # Oracle parameters

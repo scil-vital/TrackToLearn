@@ -124,7 +124,8 @@ class Experiment(object):
             'tractometer_validator': self.tractometer_validator,
             'binary_stopping_threshold': self.binary_stopping_threshold,
             'compute_reward': self.compute_reward,
-            'device': self.device
+            'device': self.device,
+            'target_sh_order': self.target_sh_order if hasattr(self, 'target_sh_order') else None,
         }
 
         if noisy:
@@ -257,7 +258,8 @@ class Experiment(object):
         tractogram,
         subject_id: str,
         affine: np.ndarray,
-        reference: nib.Nifti1Image
+        reference: nib.Nifti1Image,
+        path_prefix: str = ''
     ) -> str:
         """
         Saves a non-stateful tractogram from the training/validation
@@ -277,8 +279,9 @@ class Experiment(object):
         # Save tractogram so it can be looked at, used by the tractometer
         # and more
         filename = pjoin(
-            self.experiment_path, "tractogram_{}_{}_{}.trk".format(
-                self.experiment, self.name, subject_id))
+            path_prefix,
+            self.experiment_path,
+            "tractogram_{}_{}_{}.trk".format(self.experiment, self.name, subject_id))
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.
@@ -390,6 +393,7 @@ def add_experiment_args(parser: ArgumentParser):
                         help='Seed to fix general randomness')
     parser.add_argument('--use_comet', action='store_true',
                         help='Use comet to display training or not')
+    parser.add_argument('--comet_offline_dir', type=str, help='Comet offline directory. If enabled, logs will be saved to this directory and the experiment will be ran offline.')
 
 
 def add_data_args(parser: ArgumentParser):
