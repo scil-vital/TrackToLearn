@@ -283,8 +283,10 @@ class Experiment(object):
 
         # Prune empty streamlines, keep only streamlines that have more
         # than the seed.
+        # indices = [i for (i, s) in enumerate(tractogram.streamlines)
+        #            if len(s) > env.min_nb_steps]
         indices = [i for (i, s) in enumerate(tractogram.streamlines)
-                   if len(s) > env.min_nb_steps]
+                   if len(s) > 1]
 
         tractogram.apply_affine(env.affine_vox2rasmm)
 

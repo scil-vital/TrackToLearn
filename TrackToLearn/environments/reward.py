@@ -9,6 +9,7 @@ class Reward(object):
     def __call__(
         self,
         streamlines: np.ndarray,
+        bundle_idx: np.ndarray,
         dones: np.ndarray
     ):
         self.name = "Undefined"
@@ -43,7 +44,7 @@ class RewardFunction():
 
         self.F = len(self.factors)
 
-    def __call__(self, streamlines, dones):
+    def __call__(self, streamlines, bundles_idx, dones):
         """
         Each reward component is weighted according to a
         coefficient and then summed.
@@ -52,6 +53,8 @@ class RewardFunction():
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
             Streamline coordinates in voxel space
+        bundles_idx: `numpy.ndarray` of shape (n_streamlines)
+            Bundle corresponding to every streamline
         dones: `numpy.ndarray` of shape (n_streamlines)
             Whether tracking is over for each streamline or not.
 

@@ -68,18 +68,10 @@ class TrackingEnvironment(BaseEnv):
 
         # Heuristic to avoid duplicating seeds if fewer seeds than actors.
         replace = n_seeds > len(self.seeds)
-
-        nbs = [len(s) for s in self.seeds]
-        all_initial_points = np.concatenate(self.seeds, axis=0)
-        all_bundles = np.repeat(np.arange(len(nbs)), nbs)
-
         seeds = np.random.choice(
-            np.arange(len(all_initial_points)), size=n_seeds,
-            replace=replace)
-
-        self.initial_points = all_initial_points[seeds]
-
-        self.bundles = all_bundles[seeds]
+            np.arange(len(self.seeds)), size=n_seeds, replace=replace)
+        self.initial_points = self.seeds[seeds]
+        self.strm_bundle = self.bundle_idx[seeds]
 
         self.streamlines = np.zeros(
             (n_seeds, self.max_nb_steps + 1, 3), dtype=np.float32)
@@ -121,11 +113,8 @@ class TrackingEnvironment(BaseEnv):
 
         super().reset()
 
-        # Initialize seeds as streamlines
-        nbs = [len(s) for s in self.seeds]
-        self.initial_points = np.concatenate(self.seeds, axis=0)[start:end]
-        self.bundles = np.repeat(np.arange(len(nbs)), nbs)[start:end]
-
+        self.initial_points = self.seeds[start:end]
+        self.strm_bundle = self.bundle_idx[start:end]
         N = self.initial_points.shape[0]
 
         self.streamlines = np.zeros(
@@ -201,7 +190,7 @@ class TrackingEnvironment(BaseEnv):
         stopping, new_flags = \
             self._is_stopping(
                 self.streamlines[self.continue_idx, :self.length],
-                self.bundles[self.continue_idx])
+                self.strm_bundle[self.continue_idx])
 
         # See which trajectory is stopping or continuing.
         # TODO: `investigate the use of `not_stopping`.
@@ -224,6 +213,7 @@ class TrackingEnvironment(BaseEnv):
         if self.compute_reward:
             reward, reward_info = self.reward_function(
                 self.streamlines[self.continue_idx, :self.length],
+                self.strm_bundle[self.continue_idx],
                 self.dones[self.continue_idx])
 
         # Compute the state

@@ -135,8 +135,8 @@ class BundleStoppingCriterion(object):
             coords = streamlines[b_i][:, -1, :].T - 0.5
             mask = map_coordinates(
                 self.bundle_mask[i], coords, prefilter=False
-            ) > self.threshold
-            stopping[bundles == i] = mask
+            ) < self.threshold
+            stopping[b_i] = mask
 
         return stopping
 

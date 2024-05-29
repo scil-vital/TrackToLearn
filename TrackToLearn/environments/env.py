@@ -207,7 +207,7 @@ class BaseEnv(object):
         ).to(self.device)
 
         # Tracking seeds
-        self.seeds = seeds_from_head_tail(
+        self.seeds, self.bundle_idx = seeds_from_head_tail(
             self.head_tail, np.eye(4), seed_count=self.npv)
         # self.seeds = track_utils.random_seeds_from_mask(
         #     self.seeding_data,

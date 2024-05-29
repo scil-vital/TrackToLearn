@@ -203,15 +203,31 @@ def seeds_from_head_tail(head_tail, affine, seed_count=1):
         Affine matrix to convert voxel coordinates to world coordinates
     seeds_count : int
         Number of seeds to generate per voxel for each slice
+
+    Returns
+    -------
+    seeds : `numpy.ndarray`
+        Tracking seeds
+    bundle_idx: `numpy.ndarray`
+        Corresponding bundle for all seeds
     """
 
     # For each slice of the head and tail masks, create seeds
     seeds = []
+    bundle_idx = []
     for i in range(head_tail.shape[-1]):
+        # Get the corresponding bundle mask
         ht_i = head_tail[..., i]
+        # Generate seeds from it
         bundle_seeds = track_utils.random_seeds_from_mask(
-            ht_i.astype(bool), affine, seeds_count=1)
-        seeds.append(bundle_seeds)
-    assert False
+            ht_i.astype(bool), affine, seeds_count=seed_count)
+        # Add to list of seeds, keep track of the corresponding bundle
+        seeds.extend(bundle_seeds)
+        bundle_idx.extend(np.ones((bundle_seeds.shape[0])) * i)
 
-    return seeds
+    # Convert to np.ndarray for ease of handling
+    seeds, bundle_idx = np.asarray(seeds), np.asarray(bundle_idx)
+    # Shuffle to ensure proper coverage in batches
+    idices = np.arange(seeds.shape[0])
+    print(seeds.shape, bundle_idx.shape)
+    return seeds[idices], bundle_idx[idices]

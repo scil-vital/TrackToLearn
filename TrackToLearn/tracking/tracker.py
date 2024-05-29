@@ -117,32 +117,32 @@ class Tracker(object):
 
                 for item in batch_tractogram:
                     streamline = item.streamline
-                    if scaled_min_length <= length(streamline) \
-                            <= scaled_max_length:
+                    # if scaled_min_length <= length(streamline) \
+                    #         <= scaled_max_length:
 
-                        if self.compress:
-                            streamline = compress_streamlines(
-                                streamline, compress_th_vox)
+                    if self.compress:
+                        streamline = compress_streamlines(
+                            streamline, compress_th_vox)
 
-                        if tracts_format is TrkFile:
-                            streamline += 0.5
-                            streamline *= vox_size
-                        else:
-                            # Streamlines are dumped in true world space with
-                            # origin center as expected by .tck files.
-                            streamline = np.dot(
-                                streamline,
-                                affine[:3, :3]) + \
-                                affine[:3, 3]
+                    if tracts_format is TrkFile:
+                        streamline += 0.5
+                        streamline *= vox_size
+                    else:
+                        # Streamlines are dumped in true world space with
+                        # origin center as expected by .tck files.
+                        streamline = np.dot(
+                            streamline,
+                            affine[:3, :3]) + \
+                            affine[:3, 3]
 
-                        # flag = item.data_for_streamline['flags']
-                        seed_dict = {}
-                        if self.save_seeds:
-                            seed = item.data_for_streamline['seeds']
-                            seed_dict = {'seeds': seed}
+                    # flag = item.data_for_streamline['flags']
+                    seed_dict = {}
+                    if self.save_seeds:
+                        seed = item.data_for_streamline['seeds']
+                        seed_dict = {'seeds': seed}
 
-                        yield TractogramItem(
-                            streamline, seed_dict, {})
+                    yield TractogramItem(
+                        streamline, seed_dict, {})
 
         tractogram = LazyTractogram.from_data_func(tracking_generator)
         tractogram.affine_to_rasmm = affine
@@ -184,7 +184,7 @@ class Tracker(object):
         state = env.nreset(self.n_actor)
 
         # Track and train forward
-        reward, losses, length, reward_factors = \
+        reward, losses, lens, reward_factors = \
             self.alg._episode(state, env)
         # Get the streamlines generated from forward training
         train_tractogram = env.get_streamlines()
@@ -231,13 +231,12 @@ class Tracker(object):
         cummulative_reward = 0
 
         def _generate_streamlines_and_rewards():
-            all_seeds = np.concatenate(env.seeds, axis=0)
             # Track for every seed in the environment
             for i, start in enumerate(
-                    tqdm(range(0, len(all_seeds), 50000))):
+                    tqdm(range(0, len(env.seeds), 50000))):
 
                 # Last batch might not be "full"
-                end = min(start + self.n_actor, len(all_seeds))
+                end = min(start + self.n_actor, len(env.seeds))
 
                 state = env.reset(start, end)
 
