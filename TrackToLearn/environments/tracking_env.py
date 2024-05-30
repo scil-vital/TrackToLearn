@@ -115,6 +115,8 @@ class TrackingEnvironment(BaseEnv):
 
         self.initial_points = self.seeds[start:end]
         self.strm_bundle = self.bundle_idx[start:end]
+
+        print(np.unique(self.strm_bundle))
         N = self.initial_points.shape[0]
 
         self.streamlines = np.zeros(

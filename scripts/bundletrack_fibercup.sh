@@ -23,10 +23,10 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.95 # Gamma for reward discounting
+gamma=0.6 # Gamma for reward discounting
 
 # Env parameters
-npv=100 # Seed per voxel
+npv=10 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 step=0.5
 
