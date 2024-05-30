@@ -29,6 +29,7 @@ class PeaksAlignmentReward(Reward):
     def __call__(
         self,
         streamlines: np.ndarray,
+        bundle_idx: np.ndarray,
         dones: np.ndarray
     ):
         """
@@ -36,6 +37,10 @@ class PeaksAlignmentReward(Reward):
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
             Streamline coordinates in voxel space
+        bundle_idx : `numpy.ndarray` of shape (n_streamlines,)
+            Bundle index of each streamline
+        dones : `numpy.ndarray` of shape (n_streamlines,)
+            Whether each streamline has reached the end of the episode
 
         Returns
         -------

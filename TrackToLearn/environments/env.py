@@ -13,15 +13,13 @@ from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
+from TrackToLearn.environments.bundle_reward import BundleReward
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_in_neighborhood)
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
-from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    # AngularErrorCriterion,
-    BundleStoppingCriterion, OracleStoppingCriterion,
-    StoppingFlags)
+    BundleStoppingCriterion, StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
     is_too_curvy, is_too_long, seeds_from_head_tail)
 from TrackToLearn.utils.utils import normalize_vectors
@@ -209,13 +207,6 @@ class BaseEnv(object):
         # Tracking seeds
         self.seeds, self.bundle_idx = seeds_from_head_tail(
             self.head_tail, np.eye(4), seed_count=self.npv)
-        # self.seeds = track_utils.random_seeds_from_mask(
-        #     self.seeding_data,
-        #     np.eye(4),
-        #     seeds_count=self.npv)
-        # print(
-        #     '{} has {} seeds.'.format(self.__class__.__name__,
-        #                               len(self.seeds)))
 
         # ===========================================
         # Stopping criteria
@@ -238,27 +229,6 @@ class BaseEnv(object):
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=self.theta)
 
-        # # Angle between peaks and segments (angular error criterion)
-        # self.stopping_criteria[
-        #     StoppingFlags.STOPPING_ANGULAR_ERROR] = AngularErrorCriterion(
-        #     self.epsilon,
-        #     self.peaks)
-
-        # # Stopping criterion according to an oracle
-        # if self.oracle_checkpoint and self.oracle_stopping_criterion:
-        #     self.stopping_criteria[
-        #         StoppingFlags.STOPPING_ORACLE] = OracleStoppingCriterion(
-        #         self.oracle_checkpoint,
-        #         self.min_nb_steps * 5,
-        #         self.reference,
-        #         self.affine_vox2rasmm,
-        #         self.device)
-
-        # # Mask criterion (either binary or CMC)
-        # binary_criterion = BinaryStoppingCriterion(
-        #     self.tracking_mask,
-        #     self.binary_stopping_threshold)
-
         bundle_criterion = BundleStoppingCriterion(
             self.bundles_mask,
             self.binary_stopping_threshold)
@@ -274,16 +244,15 @@ class BaseEnv(object):
         if self.compute_reward:
             # Reward streamline according to alignment with local peaks
             peaks_reward = PeaksAlignmentReward(self.peaks)
-            # oracle_reward = OracleReward(self.oracle_checkpoint,
-            #                              self.min_nb_steps,
-            #                              self.reference,
-            #                              self.affine_vox2rasmm,
-            #                              self.device)
+
+            bundle_reward = BundleReward(
+                self.head_tail, self.bundles_mask, self.min_nb_steps, 0.5)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(
-                [peaks_reward],
-                [self.alignment_weighting])
+                [peaks_reward, bundle_reward],
+                [self.alignment_weighting,
+                 10])
 
     @classmethod
     def from_dataset(

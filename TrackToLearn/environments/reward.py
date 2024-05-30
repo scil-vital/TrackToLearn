@@ -71,7 +71,7 @@ class RewardFunction():
 
         for i, (w, f) in enumerate(zip(self.weights, self.factors)):
             if w > 0:
-                rewards_factors[i] = w * f(streamlines, dones)
+                rewards_factors[i] = w * f(streamlines, bundles_idx, dones)
 
         info = {}
         for i, f in enumerate(self.factors):
