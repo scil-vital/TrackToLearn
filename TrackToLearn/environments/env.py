@@ -129,6 +129,10 @@ class BaseEnv(object):
         # "Sparse" reward parameters
         self.oracle_bonus = env_dto['oracle_bonus']
 
+        # Bundle reward parameters
+        self.bundle_coverage_bonus = 0.5
+        self.bundle_endpoint_bonus = 10
+
         # Other parameters
         self.rng = env_dto['rng']
         self.device = env_dto['device']
@@ -257,8 +261,8 @@ class BaseEnv(object):
             self.reward_function = RewardFunction(
                 [peaks_reward, bundle_coverage_reward, bundle_reward],
                 [self.alignment_weighting,
-                 1,
-                 10])
+                 self.bundle_coverage_bonus,
+                 self.bundle_endpoint_bonus])
 
     @classmethod
     def from_dataset(

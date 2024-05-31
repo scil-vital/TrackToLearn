@@ -48,6 +48,7 @@ class BundleCoverageReward(Reward):
             bundle_mask = map_coordinates(
                 self.bundle_mask[..., i], coordinates.T, order=0,
                 mode='nearest')
+
             # Get the voxels that are not covered
             not_covered = coverage == 0
             in_wm = bundle_mask > 0
