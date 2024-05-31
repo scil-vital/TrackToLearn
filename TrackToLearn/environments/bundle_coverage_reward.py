@@ -62,5 +62,4 @@ class BundleCoverageReward(Reward):
         return rewards
 
     def reset(self):
-
-        pass
+        self.coverage = np.zeros_like(self.bundle_mask)
