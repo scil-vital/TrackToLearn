@@ -13,6 +13,8 @@ from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis)
+from TrackToLearn.environments.bundle_coverage_reward import \
+    BundleCoverageReward
 from TrackToLearn.environments.bundle_reward import BundleReward
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_in_neighborhood)
@@ -245,13 +247,17 @@ class BaseEnv(object):
             # Reward streamline according to alignment with local peaks
             peaks_reward = PeaksAlignmentReward(self.peaks)
 
+            # Reward streamlines according to coverage of the bundle mask
+            bundle_coverage_reward = BundleCoverageReward(self.bundles_mask)
+
             bundle_reward = BundleReward(
                 self.head_tail, self.bundles_mask, self.min_nb_steps, 0.5)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(
-                [peaks_reward, bundle_reward],
+                [peaks_reward, bundle_coverage_reward, bundle_reward],
                 [self.alignment_weighting,
+                 1,
                  10])
 
     @classmethod
