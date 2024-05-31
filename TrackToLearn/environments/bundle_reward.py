@@ -58,15 +58,24 @@ class BundleReward(Reward):
             Rewards for each streamline.
         """
         reward = np.zeros(len(streamlines), dtype=bool)
+        head_tail = np.zeros(len(streamlines), dtype=bool)
+        bundle = np.zeros(len(streamlines), dtype=bool)
 
         if streamlines.shape[1] >= self.min_nb_steps:
 
             for i in range(self.N):
                 b_i = bundle_idx == i
                 coords = streamlines[b_i][:, -1, :].T - 0.5
-                mask = map_coordinates(
+                head_tail_mask = map_coordinates(
                     self.bundle_endpoint[i], coords, prefilter=False
                 ) > self.threshold
-                reward[b_i] = mask
+                head_tail[b_i] = head_tail_mask
+
+                bundle_mask = map_coordinates(
+                    self.bundle_mask[i], coords, prefilter=False
+                ) > self.threshold
+                bundle[b_i] = bundle_mask
+
+        reward = np.logical_and(head_tail, np.logical_not(bundle))
 
         return reward * dones
