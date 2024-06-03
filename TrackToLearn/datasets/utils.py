@@ -157,6 +157,18 @@ def set_sh_order_basis(
     sh_order, full_basis = get_sh_order_and_fullness(n_coefs)
     sh_order = int(sh_order)
 
+    if "_legacy" in sh_basis:
+        sh_basis = sh_basis.replace("_legacy", "")
+        is_legacy = True
+    else:
+        is_legacy = False
+
+    if "_legacy" in target_basis:
+        target_basis = target_basis.replace("_legacy", "")
+        is_target_legacy = True
+    else:
+        is_target_legacy = False
+
     # If SH in full basis, convert them
     if full_basis is True:
         print('SH coefficients are in "full" basis, only even coefficients '
@@ -164,7 +176,7 @@ def set_sh_order_basis(
         _, orders = sph_harm_ind_list(sh_order, full_basis)
         sh = sh[..., orders % 2 == 0]
 
-    # If SH are not of order 6, convert them
+    # If SH are not of target order, convert them
     if sh_order != target_order:
         print('SH coefficients are of order {}, '
               'converting them to order {}.'.format(sh_order, target_order))
@@ -183,6 +195,7 @@ def set_sh_order_basis(
         print('SH coefficients are in the {} basis, '
               'converting them to {}.'.format(sh_basis, target_basis))
         sh = convert_sh_basis(
-            sh, sphere, input_basis=sh_basis, nbr_processes=1)
+            sh, sphere, input_basis=sh_basis, is_input_legacy=is_legacy,
+            output_basis=is_target_legacy, nbr_processes=1)
 
     return sh

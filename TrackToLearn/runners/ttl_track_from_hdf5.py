@@ -23,7 +23,7 @@ from TrackToLearn.experiment.experiment import (
     add_tractometer_args)
 from TrackToLearn.tracking.tracker import Tracker
 from TrackToLearn.experiment.experiment import Experiment
-
+from TrackToLearn.utils.torch_utils import get_device
 
 class TrackToLearnValidation(Experiment):
     """ TrackToLearn validing script. Should work on any model trained with a
@@ -82,14 +82,12 @@ class TrackToLearnValidation(Experiment):
             hyperparams = json.load(json_file)
             self.algorithm = hyperparams['algorithm']
             self.step_size = float(hyperparams['step_size'])
-            self.add_neighborhood = hyperparams['add_neighborhood']
             self.voxel_size = float(hyperparams['voxel_size'])
             self.theta = hyperparams['max_angle']
             self.epsilon = hyperparams.get('max_angular_error', 90)
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_signal = hyperparams['n_signal']
             self.n_dirs = hyperparams['n_dirs']
-            self.interface_seeding = hyperparams['interface_seeding']
             self.cmc = hyperparams.get('cmc', False)
             self.binary_stopping_threshold = hyperparams.get(
                 'binary_stopping_threshold', 0.5)
@@ -100,8 +98,7 @@ class TrackToLearnValidation(Experiment):
 
         self.comet_experiment = None
 
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = get_device()
 
         self.random_seed = valid_dto['rng_seed']
         torch.manual_seed(self.random_seed)

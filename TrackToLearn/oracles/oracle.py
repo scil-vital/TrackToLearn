@@ -3,6 +3,11 @@ import torch
 from dipy.tracking.streamline import set_number_of_points
 
 from TrackToLearn.oracles.transformer_oracle import TransformerOracle
+from TrackToLearn.utils.torch_utils import get_device_str, get_device
+import contextlib
+
+autocast_context = torch.cuda.amp.autocast if \
+    torch.cuda.is_available() else contextlib.nullcontext
 
 
 class OracleSingleton:
@@ -15,7 +20,7 @@ class OracleSingleton:
         return cls._self
 
     def __init__(self, checkpoint: str, device: str, batch_size=4096):
-        self.checkpoint = torch.load(checkpoint)
+        self.checkpoint = torch.load(checkpoint, map_location=get_device())
 
         hyper_parameters = self.checkpoint["hyper_parameters"]
         # The model's class is saved in hparams
@@ -38,9 +43,8 @@ class OracleSingleton:
         N = len(streamlines)
         # Placeholders for input and output data
         placeholder = torch.zeros(
-            (self.batch_size, 127, 3), pin_memory=True, requires_grad=False)
-        result = torch.zeros((N), dtype=torch.float, device=self.device,
-                             requires_grad=False)
+            (self.batch_size, 127, 3), pin_memory=get_device_str() == "cuda")
+        result = torch.zeros((N), dtype=torch.float, device=self.device)
 
         # Get the first batch
         batch = streamlines[:self.batch_size]
@@ -71,7 +75,7 @@ class OracleSingleton:
                 # Put the directions in pinned memory
                 placeholder[:end-start] = torch.from_numpy(dirs)
 
-            with torch.cuda.amp.autocast():
+            with autocast_context():
                 with torch.no_grad():
                     predictions = self.model(input_data)
                     result[

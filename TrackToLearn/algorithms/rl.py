@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from TrackToLearn.environments.env import BaseEnv
-
+from TrackToLearn.utils.torch_utils import get_device
 
 class RLAlgorithm(object):
     """
@@ -18,7 +18,7 @@ class RLAlgorithm(object):
         gamma: float = 0.99,
         batch_size: int = 10000,
         rng: np.random.RandomState = None,
-        device: torch.device = "cuda:0",
+        device: torch.device = get_device(),
     ):
         """
         Parameters

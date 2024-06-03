@@ -5,9 +5,9 @@ import torch
 from TrackToLearn.trainers.sac_auto_train import (
     parse_args,
     SACAutoTrackToLearnTraining)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-assert torch.cuda.is_available()
+from TrackToLearn.utils.torch_utils import get_device, assert_accelerator
+device = get_device()
+assert_accelerator()
 
 
 def main():

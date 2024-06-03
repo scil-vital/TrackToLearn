@@ -125,7 +125,7 @@ class Tracker(object):
                             streamline, compress_th_vox)
 
                     if tracts_format is TrkFile:
-                        streamline += 0.5
+                        # streamline += 0.5
                         streamline *= vox_size
                     else:
                         # Streamlines are dumped in true world space with

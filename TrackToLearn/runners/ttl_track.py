@@ -23,6 +23,7 @@ from TrackToLearn.datasets.utils import MRIDataVolume
 
 from TrackToLearn.experiment.experiment import Experiment
 from TrackToLearn.tracking.tracker import Tracker
+from TrackToLearn.utils.torch_utils import get_device
 
 # Define the example model paths from the install folder.
 # Hackish ? I'm not aware of a better solution but I'm
@@ -69,7 +70,7 @@ class TrackToLearnTrack(Experiment):
         self.max_length = track_dto['max_length']
 
         self.compress = track_dto['compress'] or 0.0
-        self.sh_basis = track_dto['sh_basis']
+        self.sh_basis = track_dto['sh_basis'][0]
         self.save_seeds = track_dto['save_seeds']
 
         # Tractometer parameters
@@ -79,9 +80,7 @@ class TrackToLearnTrack(Experiment):
         self.compute_reward = False
         self.render = False
 
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available()
-            else "cpu")
+        self.device = get_device()
 
         self.fa_map = None
         if 'fa_map_file' in track_dto:
@@ -103,6 +102,7 @@ class TrackToLearnTrack(Experiment):
             self.epsilon = hyperparams['epsilon']
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_dirs = hyperparams['n_dirs']
+            self.target_sh_order = hyperparams.get('target_sh_order', 8.0)
 
         self.alignment_weighting = 0.0
         # Oracle parameters

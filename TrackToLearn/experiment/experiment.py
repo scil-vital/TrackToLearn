@@ -126,7 +126,9 @@ class Experiment(object):
             'tractometer_validator': self.tractometer_validator,
             'binary_stopping_threshold': self.binary_stopping_threshold,
             'compute_reward': self.compute_reward,
-            'device': self.device
+            'device': self.device,
+            'target_sh_order': self.target_sh_order
+            if hasattr(self, 'target_sh_order') else None,
         }
 
         if noisy:
@@ -378,6 +380,9 @@ def add_experiment_args(parser: ArgumentParser):
                         help='Seed to fix general randomness')
     parser.add_argument('--use_comet', action='store_true',
                         help='Use comet to display training or not')
+    parser.add_argument('--comet_offline_dir', type=str, help='Comet offline '
+                        'directory. If enabled, logs will be saved to this '
+                        'directory and the experiment will be ran offline.')
 
 
 def add_data_args(parser: ArgumentParser):

@@ -7,12 +7,14 @@ import torch
 from dipy.direction.peaks import reshape_peaks_for_visualization
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
+
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
-                                         set_sh_order_basis)
+                                         set_sh_order_basis,
+                                         get_sh_order_and_fullness)
 from TrackToLearn.environments.bundle_coverage_reward import \
     BundleCoverageReward
 from TrackToLearn.environments.bundle_reward import BundleReward
@@ -27,6 +29,10 @@ from TrackToLearn.environments.utils import (  # is_looping,
 from TrackToLearn.utils.utils import normalize_vectors
 
 # from dipy.io.utils import get_reference_info
+
+
+def collate_fn(data):
+    return data
 
 
 class BaseEnv(object):
@@ -77,9 +83,6 @@ class BaseEnv(object):
         if type(subject_data) is str:
             self.dataset_file = subject_data
             self.split = split_id
-
-            def collate_fn(data):
-                return data
 
             self.dataset = SubjectDataset(
                 self.dataset_file, self.split)
@@ -136,6 +139,7 @@ class BaseEnv(object):
         # Other parameters
         self.rng = env_dto['rng']
         self.device = env_dto['device']
+        self.target_sh_order = env_dto['target_sh_order']
 
         # Load one subject as an example
         self.load_subject()
@@ -170,6 +174,10 @@ class BaseEnv(object):
             # Volumes and masks
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
+
+            self.bundles_mask = bundles.data.astype(np.uint8)
+            self.head_tail = head_tail.data.astype(np.uint8)
+
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
              reference, bundles, head_tail) = self.subject_data
@@ -181,12 +189,21 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
+            self.bundles_mask = bundles.data[..., None].astype(np.uint8)
+            self.head_tail = head_tail.data[..., None].astype(np.uint8)
+
             self.reference = reference
 
         self.tracking_mask = (
             tracking_mask.data + seeding_mask.data).astype(np.uint8)
-        self.bundles_mask = bundles.data.astype(np.uint8)
-        self.head_tail = head_tail.data.astype(np.uint8)
+
+        # The SH target order is taken from the hyperparameters in the case of
+        # tracking. Otherwise, the SH target order is taken from the input
+        # volume by default.
+        if self.target_sh_order is None:
+            n_coefs = input_volume.shape[-1]
+            sh_order, _ = get_sh_order_and_fullness(n_coefs)
+            self.target_sh_order = sh_order
 
         self.peaks = peaks
         self.seeding_data = seeding_mask.data.astype(np.uint8)
@@ -315,16 +332,19 @@ class BaseEnv(object):
         in_mask = env_dto['in_mask']
         sh_basis = env_dto['sh_basis']
         reference = env_dto['reference']
+        target_sh_order = env_dto['target_sh_order']
 
-        (input_volume, peaks_volume, tracking_mask, seeding_mask) = \
+        (input_volume, peaks_volume, tracking_mask, seeding_mask,
+         bundles, head_tail) = \
             BaseEnv._load_files(
                 in_odf,
                 in_seed,
                 in_mask,
-                sh_basis)
+                sh_basis,
+                target_sh_order)
 
         subj_files = (input_volume, tracking_mask, seeding_mask,
-                      peaks_volume, reference)
+                      peaks_volume, reference, bundles, head_tail)
 
         return cls(subj_files, 'testing', env_dto)
 
@@ -335,6 +355,7 @@ class BaseEnv(object):
         in_seed,
         in_mask,
         sh_basis,
+        target_sh_order=6,
     ):
         """ Load data volumes and masks from files. This is useful for
         tracking from a trained model.
@@ -353,6 +374,8 @@ class BaseEnv(object):
             Path to the tracking mask.
         sh_basis: str
             Basis of the SH coefficients.
+        target_sh_order: int
+            Target SH order. Should come from the hyperparameters file.
 
         Returns
         -------
@@ -378,7 +401,7 @@ class BaseEnv(object):
 
         data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
                                   sh_basis,
-                                  target_order=8,
+                                  target_order=target_sh_order,
                                   target_basis='descoteaux07')
 
         # Compute peaks from signal
@@ -405,7 +428,8 @@ class BaseEnv(object):
         tracking_volume = MRIDataVolume(
             tracking.get_fdata(), tracking.affine)
 
-        return (signal_volume, peaks_volume, tracking_volume, seeding_volume)
+        return (signal_volume, peaks_volume, tracking_volume, seeding_volume,
+                tracking_volume, seeding_volume)
 
     def get_state_size(self):
         """ Returns the size of the state space by computing the size of
@@ -426,6 +450,14 @@ class BaseEnv(object):
         """
 
         return 3
+
+    def get_target_sh_order(self):
+        """ Returns the target SH order. For tracking, this is based on the
+        hyperparameters.json if it's specified. Otherwise, it's extracted from
+        the data directly.
+        """
+
+        return self.target_sh_order
 
     def get_voxel_size(self):
         """ Returns the voxel size by taking the mean value of the diagonal
