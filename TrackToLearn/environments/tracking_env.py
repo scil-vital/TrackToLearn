@@ -70,6 +70,7 @@ class TrackingEnvironment(BaseEnv):
         replace = n_seeds > len(self.seeds)
         seeds = np.random.choice(
             np.arange(len(self.seeds)), size=n_seeds, replace=replace)
+
         self.initial_points = self.seeds[seeds]
         self.strm_bundle = self.bundle_idx[seeds]
 

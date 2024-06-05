@@ -133,7 +133,7 @@ class BaseEnv(object):
         self.oracle_bonus = env_dto['oracle_bonus']
 
         # Bundle reward parameters
-        self.bundle_coverage_bonus = 0.5
+        self.bundle_coverage_bonus = 0.0
         self.bundle_endpoint_bonus = 10
 
         # Other parameters
@@ -525,9 +525,14 @@ class BaseEnv(object):
             self.neighborhood_directions)
         N, S = signal.shape
 
+        continuing_ids = self.strm_bundle[self.continue_idx].astype(int)
+        one_hot = np.zeros((N, int(self.bundle_idx.max()+1)))
+        one_hot[np.arange(N), continuing_ids] = 1
+        bundle_id = torch.from_numpy(one_hot).to(self.device)
+
         # Placeholder for the final imputs
         inputs = torch.zeros(
-            (N, S + (self.n_dirs * P)), device=self.device,
+            (N, S + (self.n_dirs * P) + one_hot.shape[-1]), device=self.device,
             requires_grad=False)
         # Fill the first part of the inputs with the SH coefficients
         inputs[:, :S] = signal
@@ -546,7 +551,8 @@ class BaseEnv(object):
             torch.from_numpy(previous_dirs).to(self.device),
             (N, self.n_dirs * P))
         # Fill the second part of the inputs with the previous directions
-        inputs[:, S:] = dir_inputs
+        inputs[:, S:S+dir_inputs.shape[-1]] = dir_inputs
+        inputs[:, S+dir_inputs.shape[-1]:] = bundle_id
 
         return inputs
 
