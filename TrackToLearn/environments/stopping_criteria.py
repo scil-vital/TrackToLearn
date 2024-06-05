@@ -2,6 +2,9 @@ from enum import Enum
 
 import numpy as np
 from dipy.io.stateful_tractogram import Space, StatefulTractogram, Tractogram
+from dipy.tracking.stopping_criterion import \
+    BinaryStoppingCriterion as DipyStoppingCriterion, \
+    StreamlineStatus
 from scipy.ndimage import map_coordinates, spline_filter
 
 from TrackToLearn.environments.interpolation import (
@@ -113,6 +116,10 @@ class BundleStoppingCriterion(object):
                 bundle_mask[..., i].astype(bool), dtype=float)
             for i in range(self.N)]
 
+        self.bundle_criterion = [
+            DipyStoppingCriterion(bundle_mask[..., i])
+            for i in range(self.N)]
+
         self.threshold = threshold
 
     def __call__(
@@ -136,13 +143,19 @@ class BundleStoppingCriterion(object):
         stopping = np.zeros(len(streamlines), dtype=bool)
 
         for i in range(self.N):
-            b_i = bundles == i
-            coords = streamlines[b_i][:, -1, :].T - 0.5
-            mask = map_coordinates(
-                self.bundle_mask[i], coords,
-                order=0, cval=0.0,
-            ) < self.threshold
-            stopping[b_i] = mask
+            b_i = np.arange(len(streamlines))[bundles == i]
+            # coords = streamlines[b_i][:, -1, :].T - 0.5
+
+            for j, s in enumerate(streamlines[b_i]):
+                point = s[-1].astype(np.double)
+                status = self.bundle_criterion[i].check_point(point)
+                if status != StreamlineStatus.TRACKPOINT:
+                    stopping[b_i[j]] = True
+            # mask = map_coordinates(
+            #     self.bundle_mask[i], coords,
+            #     order=0, cval=0.0,
+            # ) < self.threshold
+            # stopping[b_i] = mask
 
         return stopping
 

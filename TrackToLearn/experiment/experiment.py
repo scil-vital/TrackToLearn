@@ -300,7 +300,7 @@ class Experiment(object):
             streamlines,
             reference,
             Space.RASMM,
-            origin=Origin.TRACKVIS,
+            origin=Origin.NIFTI,
             data_per_streamline=data_per_streamline,
             data_per_point=data_per_point)
 
