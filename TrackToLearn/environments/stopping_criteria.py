@@ -141,6 +141,68 @@ class BundleStoppingCriterion(object):
         return stopping
 
 
+class HeadTailStoppingCriterion(object):
+    """ Defines if tracking should stop based on the head-tail mask """
+
+    def __init__(
+        self,
+        head_tail_mask: np.ndarray,
+        threshold: float = 0.5,
+        min_nb_steps: int = 10,
+    ):
+        """
+        Parameters
+        ----------
+        head_tail_mask : 3D `numpy.ndarray`
+            3D image defining masks for head-tail.
+        threshold : float
+            Voxels with a value higher or equal than this threshold are
+            considered as part of the interior of the mask.
+        min_nb_steps : int
+            Minimum number of steps before checking head-tail mask.
+        """
+
+        self.N = head_tail_mask.shape[-1]
+        self.head_tail_mask = spline_filter(
+            np.ascontiguousarray(
+                head_tail_mask.astype(bool), dtype=float), order=3)
+        self.threshold = threshold
+        self.min_nb_steps = min_nb_steps
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+        bundles: np.ndarray,
+    ):
+        """ Checks which streamlines have their last coordinates inside a
+        head-tail mask.
+
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+
+        Returns
+        -------
+        outside : 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array telling whether a streamline's last coordinate is outside the
+            mask or not.
+        """
+        stopping = np.zeros(len(streamlines), dtype=bool)
+        L = streamlines.shape[1]
+        if L >= self.min_nb_steps:
+
+            for i in range(self.N):
+                b_i = bundles == i
+                coords = streamlines[b_i][:, -1, :].T - 0.5
+                mask = map_coordinates(
+                    self.head_tail_mask[i], coords, prefilter=False
+                ) > self.threshold
+                stopping[b_i] = mask
+
+        return stopping
+
+
 class AngularErrorCriterion(object):
     """ Defines if tracking should stop based on the maximum angular
     distance with the most aligned peak. This is to prevent streamlines

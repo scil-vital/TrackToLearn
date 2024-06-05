@@ -23,7 +23,7 @@ from TrackToLearn.environments.interpolation import (
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    BundleStoppingCriterion, StoppingFlags)
+    BundleStoppingCriterion, HeadTailStoppingCriterion, StoppingFlags)
 from TrackToLearn.environments.utils import (  # is_looping,
     is_too_curvy, is_too_long, seeds_from_head_tail)
 from TrackToLearn.utils.utils import normalize_vectors
@@ -258,6 +258,14 @@ class BaseEnv(object):
 
         self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
             bundle_criterion
+
+        head_tail_criterion = HeadTailStoppingCriterion(
+            self.head_tail,
+            self.binary_stopping_threshold,
+            self.min_nb_steps)
+
+        self.stopping_criteria[StoppingFlags.STOPPING_TARGET] = \
+            head_tail_criterion
 
         # ==========================================
         # Reward function
