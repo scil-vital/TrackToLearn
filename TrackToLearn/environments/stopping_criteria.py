@@ -104,10 +104,15 @@ class BundleStoppingCriterion(object):
             considered as part of the interior of the mask.
         """
         self.N = bundle_mask.shape[-1]
-        self.bundle_mask = [spline_filter(
+        # self.bundle_mask = [spline_filter(
+        #     np.ascontiguousarray(
+        #         bundle_mask[..., i].astype(bool), dtype=float), order=3)
+        #     for i in range(self.N)]
+        self.bundle_mask = [
             np.ascontiguousarray(
-                bundle_mask[..., i].astype(bool), dtype=float), order=3)
+                bundle_mask[..., i].astype(bool), dtype=float)
             for i in range(self.N)]
+
         self.threshold = threshold
 
     def __call__(
@@ -134,7 +139,8 @@ class BundleStoppingCriterion(object):
             b_i = bundles == i
             coords = streamlines[b_i][:, -1, :].T - 0.5
             mask = map_coordinates(
-                self.bundle_mask[i], coords, prefilter=False
+                self.bundle_mask[i], coords,
+                order=0, cval=0.0,
             ) < self.threshold
             stopping[b_i] = mask
 
@@ -163,9 +169,10 @@ class HeadTailStoppingCriterion(object):
         """
 
         self.N = head_tail_mask.shape[-1]
-        self.head_tail_mask = spline_filter(
+        self.head_tail_mask = [spline_filter(
             np.ascontiguousarray(
-                head_tail_mask.astype(bool), dtype=float), order=3)
+                head_tail_mask[..., i].astype(bool), dtype=float), order=3)
+            for i in range(self.N)]
         self.threshold = threshold
         self.min_nb_steps = min_nb_steps
 

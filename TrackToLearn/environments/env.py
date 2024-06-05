@@ -261,7 +261,7 @@ class BaseEnv(object):
 
         head_tail_criterion = HeadTailStoppingCriterion(
             self.head_tail,
-            self.binary_stopping_threshold,
+            1.0,
             self.min_nb_steps)
 
         self.stopping_criteria[StoppingFlags.STOPPING_TARGET] = \
@@ -533,10 +533,8 @@ class BaseEnv(object):
             self.neighborhood_directions)
         N, S = signal.shape
 
-        continuing_ids = self.strm_bundle[self.continue_idx].astype(int)
+        # Bundle ID placeholder
         one_hot = np.zeros((N, int(self.bundle_idx.max()+1)))
-        one_hot[np.arange(N), continuing_ids] = 1
-        bundle_id = torch.from_numpy(one_hot).to(self.device)
 
         # Placeholder for the final imputs
         inputs = torch.zeros(
@@ -560,6 +558,12 @@ class BaseEnv(object):
             (N, self.n_dirs * P))
         # Fill the second part of the inputs with the previous directions
         inputs[:, S:S+dir_inputs.shape[-1]] = dir_inputs
+
+        # Add the bundle id to the state
+        continuing_ids = self.strm_bundle[self.continue_idx].astype(int)
+        one_hot[np.arange(N), continuing_ids] = 1
+        bundle_id = torch.from_numpy(one_hot).to(self.device)
+
         inputs[:, S+dir_inputs.shape[-1]:] = bundle_id
 
         return inputs

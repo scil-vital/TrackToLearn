@@ -229,5 +229,5 @@ def seeds_from_head_tail(head_tail, affine, seed_count=1):
     seeds, bundle_idx = np.asarray(seeds), np.asarray(bundle_idx)
     # Shuffle to ensure proper coverage in batches
     idices = np.arange(seeds.shape[0])
-    print(seeds.shape, bundle_idx.shape)
+
     return seeds[idices], bundle_idx[idices]
