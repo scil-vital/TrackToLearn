@@ -189,6 +189,10 @@ class HeadTailStoppingCriterion(object):
         self.threshold = threshold
         self.min_nb_steps = min_nb_steps
 
+        self.bundle_criterion = [
+            DipyStoppingCriterion(head_tail_mask[..., i])
+            for i in range(self.N)]
+
     def __call__(
         self,
         streamlines: np.ndarray,
@@ -211,14 +215,14 @@ class HeadTailStoppingCriterion(object):
         stopping = np.zeros(len(streamlines), dtype=bool)
         L = streamlines.shape[1]
         if L >= self.min_nb_steps:
-
             for i in range(self.N):
-                b_i = bundles == i
-                coords = streamlines[b_i][:, -1, :].T - 0.5
-                mask = map_coordinates(
-                    self.head_tail_mask[i], coords, prefilter=False
-                ) > self.threshold
-                stopping[b_i] = mask
+                b_i = np.arange(len(streamlines))[bundles == i]
+                # coords = streamlines[b_i][:, -1, :].T - 0.5
+                for j, s in enumerate(streamlines[b_i]):
+                    point = s[-1].astype(np.double)
+                    status = self.bundle_criterion[i].check_point(point)
+                    if status == StreamlineStatus.TRACKPOINT:
+                        stopping[b_i[j]] = True
 
         return stopping
 
