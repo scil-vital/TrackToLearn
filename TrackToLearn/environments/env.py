@@ -178,9 +178,14 @@ class BaseEnv(object):
             self.bundles_mask = bundles.data.astype(bool)
             self.head_tail = head_tail.data.astype(bool)
 
+            if len(self.bundles_mask.shape) == 3:
+                self.bundles_mask = self.bundles_mask[..., None]
+            if len(self.head_tail.shape) == 3:
+                self.head_tail = self.head_tail[..., None]
+
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
-             reference, bundles, head_tail) = self.subject_data
+             reference) = self.subject_data
 
             self.affine_vox2rasmm = input_volume.affine_vox2rasmm
             self.affine_rasmm2vox = np.linalg.inv(self.affine_vox2rasmm)
@@ -189,8 +194,13 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
-            self.bundles_mask = bundles.data[..., None].astype(bool)
-            self.head_tail = head_tail.data[..., None].astype(bool)
+            self.bundles_mask = tracking_mask.data[..., None].astype(bool)
+            self.head_tail = seeding_mask.data[..., None].astype(bool)
+
+            if len(self.bundles_mask.shape) == 3:
+                self.bundles_mask = self.bundles_mask[..., None]
+            if len(self.head_tail.shape) == 3:
+                self.head_tail = self.head_tail[..., None]
 
             self.reference = reference
 
