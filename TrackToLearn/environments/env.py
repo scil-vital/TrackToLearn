@@ -535,7 +535,7 @@ class BaseEnv(object):
         N_bundle = int(self.bundle_idx.max())
 
         bundle_masks_torch = torch.from_numpy(
-            self.bundles_mask).to(self.device)
+            self.bundles_mask.astype(np.float)).to(self.device)
 
         signal = None
         for i in range(N_bundle+1):
