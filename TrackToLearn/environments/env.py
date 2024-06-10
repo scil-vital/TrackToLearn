@@ -175,8 +175,8 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
-            self.bundles_mask = bundles.data.astype(np.uint8)
-            self.head_tail = head_tail.data.astype(np.uint8)
+            self.bundles_mask = bundles.data.astype(bool)
+            self.head_tail = head_tail.data.astype(bool)
 
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
@@ -189,8 +189,8 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
-            self.bundles_mask = bundles.data[..., None].astype(np.uint8)
-            self.head_tail = head_tail.data[..., None].astype(np.uint8)
+            self.bundles_mask = bundles.data[..., None].astype(bool)
+            self.head_tail = head_tail.data[..., None].astype(bool)
 
             self.reference = reference
 
@@ -517,28 +517,45 @@ class BaseEnv(object):
             return []
 
         # Get the last point of each streamline
-        segments = streamlines[:, -1, :][:, None, :]
+        segments = streamlines[:, -1, :]
 
         # Reshape to get a list of coordinates
-        N, H, P = segments.shape
-        flat_coords = np.reshape(segments, (N * H, P))
-        coords = torch.as_tensor(flat_coords).to(self.device)
+        N, P = segments.shape
+        coords = torch.as_tensor(segments).to(self.device) + 0.5
 
-        # Get the SH coefficients at the last point of each streamline
-        # The neighborhood is used to get the SH coefficients around
-        # the last point
-        signal, _ = interpolate_volume_in_neighborhood(
-            self.data_volume,
-            coords,
-            self.neighborhood_directions)
-        N, S = signal.shape
+        # # Get the SH coefficients at the last point of each streamline
+        # # The neighborhood is used to get the SH coefficients around
+        # # the last point
+        # Signal, _ = interpolate_volume_in_neighborhood(
+        #     self.data_volume,
+        #     coords,
+        #     self.neighborhood_directions)
+        # N, S = signal.shape
 
-        # Bundle ID placeholder
-        one_hot = np.zeros((N, int(self.bundle_idx.max()+1)))
+        N_bundle = int(self.bundle_idx.max())
+
+        bundle_masks_torch = torch.from_numpy(
+            self.bundles_mask).to(self.device)
+
+        signal = None
+        for i in range(N_bundle+1):
+            b_i = self.strm_bundle[self.continue_idx] == i
+
+            signal_b_i, _ = interpolate_volume_in_neighborhood(
+                torch.cat((self.data_volume,
+                           bundle_masks_torch[..., i][..., None]),
+                          dim=-1),
+                coords[b_i],
+                self.neighborhood_directions)
+            if signal is None:
+                S = signal_b_i.shape[-1]
+                signal = torch.zeros((N, S),
+                                     device=self.device)
+            signal[b_i] = signal_b_i
 
         # Placeholder for the final imputs
         inputs = torch.zeros(
-            (N, S + (self.n_dirs * P) + one_hot.shape[-1]), device=self.device,
+            (N, S + (self.n_dirs * P)), device=self.device,
             requires_grad=False)
         # Fill the first part of the inputs with the SH coefficients
         inputs[:, :S] = signal
@@ -556,15 +573,9 @@ class BaseEnv(object):
         dir_inputs = torch.reshape(
             torch.from_numpy(previous_dirs).to(self.device),
             (N, self.n_dirs * P))
+
         # Fill the second part of the inputs with the previous directions
-        inputs[:, S:S+dir_inputs.shape[-1]] = dir_inputs
-
-        # Add the bundle id to the state
-        continuing_ids = self.strm_bundle[self.continue_idx].astype(int)
-        one_hot[np.arange(N), continuing_ids] = 1
-        bundle_id = torch.from_numpy(one_hot).to(self.device)
-
-        inputs[:, S+dir_inputs.shape[-1]:] = bundle_id
+        inputs[:, S:] = dir_inputs
 
         return inputs
 

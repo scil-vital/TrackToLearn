@@ -1,6 +1,8 @@
 import numpy as np
 
-from scipy.ndimage import map_coordinates, spline_filter
+from dipy.tracking.stopping_criterion import \
+    BinaryStoppingCriterion as DipyStoppingCriterion, \
+    StreamlineStatus
 
 from TrackToLearn.environments.reward import Reward
 
@@ -31,15 +33,8 @@ class BundleReward(Reward):
         self.N = bundle_endpoint.shape[-1]
         self.min_nb_steps = min_nb_steps
 
-        self.bundle_endpoint = [spline_filter(
-            np.ascontiguousarray(
-                bundle_endpoint[..., i].astype(bool), dtype=float),
-            order=3)
-            for i in range(self.N)]
-
-        self.bundle_mask = [spline_filter(
-            np.ascontiguousarray(
-                bundle_mask[..., i].astype(bool), dtype=float), order=3)
+        self.endpoint_criterion = [
+            DipyStoppingCriterion(bundle_endpoint[..., i])
             for i in range(self.N)]
 
         self.threshold = threshold
@@ -59,23 +54,17 @@ class BundleReward(Reward):
         """
         reward = np.zeros(len(streamlines), dtype=bool)
         head_tail = np.zeros(len(streamlines), dtype=bool)
-        bundle = np.zeros(len(streamlines), dtype=bool)
 
-        if streamlines.shape[1] >= self.min_nb_steps:
-
+        L = streamlines.shape[1]
+        if L >= self.min_nb_steps:
             for i in range(self.N):
-                b_i = bundle_idx == i
-                coords = streamlines[b_i][:, -1, :].T - 0.5
-                head_tail_mask = map_coordinates(
-                    self.bundle_endpoint[i], coords, prefilter=False
-                ) > self.threshold
-                head_tail[b_i] = head_tail_mask
+                b_i = np.arange(len(streamlines))[bundle_idx == i]
+                for j, s in enumerate(streamlines[b_i]):
+                    point = s[-1].astype(np.double)
+                    status = self.endpoint_criterion[i].check_point(point)
+                    if status == StreamlineStatus.TRACKPOINT:
+                        head_tail[b_i[j]] = True
 
-                bundle_mask = map_coordinates(
-                    self.bundle_mask[i], coords, prefilter=False
-                ) > self.threshold
-                bundle[b_i] = bundle_mask
-
-        reward = np.logical_and(head_tail, np.logical_not(bundle))
+        reward = head_tail
 
         return reward * dones

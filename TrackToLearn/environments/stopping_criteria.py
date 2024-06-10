@@ -4,6 +4,7 @@ import numpy as np
 from dipy.io.stateful_tractogram import Space, StatefulTractogram, Tractogram
 from dipy.tracking.stopping_criterion import \
     BinaryStoppingCriterion as DipyStoppingCriterion, \
+    ThresholdStoppingCriterion, \
     StreamlineStatus
 from scipy.ndimage import map_coordinates, spline_filter
 
@@ -107,17 +108,9 @@ class BundleStoppingCriterion(object):
             considered as part of the interior of the mask.
         """
         self.N = bundle_mask.shape[-1]
-        # self.bundle_mask = [spline_filter(
-        #     np.ascontiguousarray(
-        #         bundle_mask[..., i].astype(bool), dtype=float), order=3)
-        #     for i in range(self.N)]
-        self.bundle_mask = [
-            np.ascontiguousarray(
-                bundle_mask[..., i].astype(bool), dtype=float)
-            for i in range(self.N)]
 
         self.bundle_criterion = [
-            DipyStoppingCriterion(bundle_mask[..., i])
+            ThresholdStoppingCriterion(bundle_mask[..., i], threshold)
             for i in range(self.N)]
 
         self.threshold = threshold
@@ -144,18 +137,11 @@ class BundleStoppingCriterion(object):
 
         for i in range(self.N):
             b_i = np.arange(len(streamlines))[bundles == i]
-            # coords = streamlines[b_i][:, -1, :].T - 0.5
-
             for j, s in enumerate(streamlines[b_i]):
                 point = s[-1].astype(np.double)
                 status = self.bundle_criterion[i].check_point(point)
                 if status != StreamlineStatus.TRACKPOINT:
                     stopping[b_i[j]] = True
-            # mask = map_coordinates(
-            #     self.bundle_mask[i], coords,
-            #     order=0, cval=0.0,
-            # ) < self.threshold
-            # stopping[b_i] = mask
 
         return stopping
 
@@ -182,14 +168,10 @@ class HeadTailStoppingCriterion(object):
         """
 
         self.N = head_tail_mask.shape[-1]
-        self.head_tail_mask = [spline_filter(
-            np.ascontiguousarray(
-                head_tail_mask[..., i].astype(bool), dtype=float), order=3)
-            for i in range(self.N)]
         self.threshold = threshold
         self.min_nb_steps = min_nb_steps
 
-        self.bundle_criterion = [
+        self.head_tail_criterion = [
             DipyStoppingCriterion(head_tail_mask[..., i])
             for i in range(self.N)]
 
@@ -217,10 +199,9 @@ class HeadTailStoppingCriterion(object):
         if L >= self.min_nb_steps:
             for i in range(self.N):
                 b_i = np.arange(len(streamlines))[bundles == i]
-                # coords = streamlines[b_i][:, -1, :].T - 0.5
                 for j, s in enumerate(streamlines[b_i]):
                     point = s[-1].astype(np.double)
-                    status = self.bundle_criterion[i].check_point(point)
+                    status = self.head_tail_criterion[i].check_point(point)
                     if status == StreamlineStatus.TRACKPOINT:
                         stopping[b_i[j]] = True
 

@@ -42,7 +42,8 @@ class BundleCoverageReward(Reward):
 
             # Get the coverage of the bundle
             coverage = map_coordinates(
-                self.coverage[..., i], coordinates.T, order=0, mode='nearest')
+                self.coverage[..., i], coordinates.T, order=0,
+                mode='nearest')
 
             # Get the bundle mask at the coordinates
             bundle_mask = map_coordinates(
