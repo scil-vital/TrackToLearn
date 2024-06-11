@@ -417,7 +417,7 @@ class BaseEnv(object):
                   'ran robustly. You are entering undefined behavior '
                   'territory.')
 
-        data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
+        data = set_sh_order_basis(signal.get_fdata(dtype=float),
                                   sh_basis,
                                   target_order=target_sh_order,
                                   target_basis='descoteaux07')
@@ -545,7 +545,7 @@ class BaseEnv(object):
         N_bundle = int(self.bundle_idx.max())
 
         bundle_masks_torch = torch.from_numpy(
-            self.bundles_mask.astype(np.float)).to(self.device)
+            self.bundles_mask.astype(float)).to(self.device)
 
         signal = None
         for i in range(N_bundle+1):
@@ -571,7 +571,7 @@ class BaseEnv(object):
         inputs[:, :S] = signal
 
         # Placeholder for the previous directions
-        previous_dirs = np.zeros((N, self.n_dirs, P), dtype=np.float32)
+        previous_dirs = np.zeros((N, self.n_dirs, P), dtype=float)
         if L > 1:
             # Compute directions from the streamlines
             dirs = np.diff(streamlines, axis=1)
