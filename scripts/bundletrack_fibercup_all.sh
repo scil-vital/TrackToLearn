@@ -5,7 +5,7 @@ set -e  # exit if any command fails
 DATASET_FOLDER=${TRACK_TO_LEARN_DATA}/
 WORK_DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}/
 
-SUBJECT_ID=fibercup
+SUBJECT_ID=fibercup_all
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 
@@ -22,7 +22,7 @@ reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/dti/${SUBJECT_ID}__fa.nii.
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
-lr=0.0001 # Learning rate
+lr=0.0005 # Learning rate
 gamma=0.65 # Gamma for reward discounting
 
 # Env parameters

@@ -22,15 +22,12 @@ reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/dti/${SUBJECT_ID}__fa.nii.
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
-lr=0.0001 # Learning rate
-gamma=0.65 # Gamma for reward discounting
-
 # Env parameters
 npv=33 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 step=0.5
 
-EXPERIMENT=BundleTrackFiberCup
+EXPERIMENT=BundleTrackFiberCupSearch
 
 ID=$1_$(date +"%F-%H_%M_%S")
 
@@ -41,17 +38,15 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python -O TrackToLearn/trainers/sac_auto_train.py \
+  python -O TrackToLearn/searchers/sac_auto_searcher.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
     "${dataset_file}" \
-    --lr=${lr} \
-    --gamma=${gamma} \
     --npv=${npv} \
     --theta=${theta} \
     --step=${step} \
-    --n_dirs=4 \
+    --n_dirs=100 \
     --tractometer_validator \
     --tractometer_dilate=2 \
     --scoring_data=${scoring_data} \

@@ -29,6 +29,9 @@ def main():
             "gamma": {
                 "type": "discrete",
                 "values": [0.5, 0.75, 0.85, 0.90, 0.95, 0.99]},
+            "n_dirs": {
+                "type": "discrete",
+                "values": [4, 100]},
             "alpha": {
                 "type": "discrete",
                 "values": [0.2]},
@@ -55,12 +58,14 @@ def main():
         lr = experiment.get_parameter("lr")
         gamma = experiment.get_parameter("gamma")
         alpha = experiment.get_parameter("alpha")
+        n_dirs = experiment.get_parameter("n_dirs")
 
         arguments = vars(args)
         arguments.update({
             'lr': lr,
             'gamma': gamma,
-            'alpha': alpha
+            'alpha': alpha,
+            'n_dirs': n_dirs,
         })
 
         sac_experiment = SACAutoTrackToLearnTraining(
