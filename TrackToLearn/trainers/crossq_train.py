@@ -6,18 +6,17 @@ from argparse import RawTextHelpFormatter
 
 import comet_ml  # noqa: F401 ugh
 import torch
-
 from comet_ml import Experiment as CometExperiment
 from comet_ml import OfflineExperiment as CometOfflineExperiment
 
-from TrackToLearn.algorithms.sac_auto import SACAuto
+from TrackToLearn.algorithms.crossq import CrossQ
 from TrackToLearn.trainers.train import (TrackToLearnTraining,
                                          add_training_args)
 from TrackToLearn.utils.torch_utils import get_device
 device = get_device()
 
 
-class SACAutoTrackToLearnTraining(TrackToLearnTraining):
+class CrossQTrackToLearnTraining(TrackToLearnTraining):
     """
     Train a RL tracking agent using SAC with automatic entropy adjustment.
     """
@@ -52,7 +51,7 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
         """
 
         self.hyperparameters.update(
-            {'algorithm': 'SACAuto',
+            {'algorithm': 'CrossQ',
              'alpha': self.alpha,
              'batch_size': self.batch_size,
              'replay_size': self.replay_size})
@@ -60,7 +59,7 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
         super().save_hyperparameters()
 
     def get_alg(self, max_nb_steps: int):
-        alg = SACAuto(
+        alg = CrossQ(
             self.input_size,
             self.action_size,
             self.hidden_dims,
@@ -107,18 +106,20 @@ def main():
     # Create comet-ml experiment
     if offline:
         experiment = CometOfflineExperiment(project_name=args.experiment,
-                                    workspace=args.workspace, parse_args=False,
-                                    auto_metric_logging=False,
-                                    disabled=not args.use_comet,
-                                    offline_directory=args.comet_offline_dir)
+                                            workspace=args.workspace,
+                                            parse_args=False,
+                                            auto_metric_logging=False,
+                                            disabled=not args.use_comet,
+                                            offline_directory=args.comet_offline_dir)
     else:
         experiment = CometExperiment(project_name=args.experiment,
-                                    workspace=args.workspace, parse_args=False,
-                                    auto_metric_logging=False,
-                                    disabled=not args.use_comet)
+                                     workspace=args.workspace,
+                                     parse_args=False,
+                                     auto_metric_logging=False,
+                                     disabled=not args.use_comet)
 
     # Create and run experiment
-    sac_auto_experiment = SACAutoTrackToLearnTraining(
+    sac_auto_experiment = CrossQTrackToLearnTraining(
         # Dataset params
         vars(args),
         experiment

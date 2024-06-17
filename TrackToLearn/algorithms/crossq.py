@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from typing import Tuple
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
-from TrackToLearn.algorithms.shared.offpolicy import SACActorCritic
+from TrackToLearn.algorithms.shared.offpolicy import CrossQActorCritic
 from TrackToLearn.algorithms.shared.replay import OffPolicyReplayBuffer
 from TrackToLearn.utils.torch_utils import get_device
 
@@ -86,7 +86,7 @@ class CrossQ(SACAuto):
         self.rng = rng
 
         # Initialize main agent
-        self.agent = SACActorCritic(
+        self.agent = CrossQActorCritic(
             input_size, action_size, hidden_dims, device,
         )
 
@@ -164,16 +164,20 @@ class CrossQ(SACAuto):
         state, action, next_state, reward, not_done = \
             batch
 
+        self.agent.critic.eval()
+        self.agent.actor.eval()
+
         self.agent.actor.train()
         # Compute \pi_\theta(s_t) and log \pi_\theta(s_t)
         pi, logp_pi = self.agent.act(
             state, probabilistic=1.0)
+        self.agent.actor.eval()
+
         # Compute the temperature loss and the temperature
         alpha_loss = -(self.log_alpha * (
             logp_pi + self.target_entropy).detach()).mean()
         alpha = self.log_alpha.exp()
 
-        self.agent.critic.eval()
         # Compute the Q values and the minimum Q value
         q1, q2 = self.agent.critic(state, pi)
         q_pi = torch.min(q1, q2)
@@ -191,13 +195,12 @@ class CrossQ(SACAuto):
         alpha_loss.backward()
         self.alpha_optimizer.step()
 
-        self.agent.actor.eval()
-        self.agent.critic.train()
-
         with torch.no_grad():
+            self.agent.critic.train()
             # Target actions come from *current* agent
             next_action, logp_next_action = self.agent.act(
                 next_state, probabilistic=1.0)
+            self.agent.critic.eval()
 
             state_cat = torch.cat([state, next_state], dim=0)
             action_cat = torch.cat([action, next_action], dim=0)
@@ -209,7 +212,6 @@ class CrossQ(SACAuto):
         q2, next_q2 = torch.chunk(target_Q2, 2)
         target_Q = torch.min(next_q1, next_q2)
 
-        self.agent.critic.eval()
         # Compute the backup which is the Q-learning "target"
         backup = reward + self.gamma * not_done * \
             (target_Q - alpha * logp_next_action).detach()

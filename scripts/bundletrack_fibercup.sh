@@ -22,7 +22,7 @@ reference=$WORK_DATASET_FOLDER/datasets/${SUBJECT_ID}/dti/${SUBJECT_ID}__fa.nii.
 max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
-lr=0.0001 # Learning rate
+lr=0.001 # Learning rate
 gamma=0.65 # Gamma for reward discounting
 
 # Env parameters
@@ -41,7 +41,7 @@ do
 
   DEST_FOLDER="$WORK_EXPERIMENTS_FOLDER"/"$EXPERIMENT"/"$ID"/"$rng_seed"
 
-  python -O TrackToLearn/trainers/sac_auto_train.py \
+  python -O TrackToLearn/trainers/crossq_train.py \
     $DEST_FOLDER \
     "$EXPERIMENT" \
     "$ID" \
