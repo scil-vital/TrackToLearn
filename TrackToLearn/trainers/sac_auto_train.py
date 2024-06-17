@@ -9,6 +9,7 @@ import torch
 from comet_ml import Experiment as CometExperiment
 from comet_ml import OfflineExperiment as CometOfflineExperiment
 
+from TrackToLearn.algorithms.crossq import CrossQ
 from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.trainers.train import (TrackToLearnTraining,
                                          add_training_args)
@@ -59,7 +60,7 @@ class SACAutoTrackToLearnTraining(TrackToLearnTraining):
         super().save_hyperparameters()
 
     def get_alg(self, max_nb_steps: int):
-        alg = SACAuto(
+        alg = CrossQ(
             self.input_size,
             self.action_size,
             self.hidden_dims,

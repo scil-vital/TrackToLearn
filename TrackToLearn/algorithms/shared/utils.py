@@ -3,6 +3,8 @@ import torch
 
 from torch import nn
 
+from TrackToLearn.algorithms.utils import BatchRenorm1d
+
 
 def add_item_to_means(means, dic):
     return {k: means[k] + [dic[k]] for k in dic.keys()}
@@ -36,6 +38,23 @@ def stack_states(full, single):
 
 def format_widths(widths_str):
     return np.asarray([int(i) for i in widths_str.split('-')])
+
+
+def make_fc_bn_network(
+    widths, input_size, output_size, activation=nn.ReLU,
+    last_activation=nn.Identity
+):
+    layers = [
+        BatchRenorm1d(input_size), nn.Linear(input_size, widths[0]),
+        activation()]
+    for i in range(len(widths[:-1])):
+        layers.extend(
+            [BatchRenorm1d(widths[i]), nn.Linear(widths[i], widths[i+1]),
+             activation()])
+    # no activ. on last layer
+    layers.extend([
+        BatchRenorm1d(widths[-1]), nn.Linear(widths[-1], output_size)])
+    return nn.Sequential(*layers)
 
 
 def make_fc_network(

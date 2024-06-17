@@ -352,8 +352,7 @@ class BaseEnv(object):
         reference = env_dto['reference']
         target_sh_order = env_dto['target_sh_order']
 
-        (input_volume, peaks_volume, tracking_mask, seeding_mask,
-         bundles, head_tail) = \
+        (input_volume, peaks_volume, tracking_mask, seeding_mask) = \
             BaseEnv._load_files(
                 in_odf,
                 in_seed,
@@ -362,7 +361,7 @@ class BaseEnv(object):
                 target_sh_order)
 
         subj_files = (input_volume, tracking_mask, seeding_mask,
-                      peaks_volume, reference, bundles, head_tail)
+                      peaks_volume, reference)
 
         return cls(subj_files, 'testing', env_dto)
 
@@ -446,8 +445,7 @@ class BaseEnv(object):
         tracking_volume = MRIDataVolume(
             tracking.get_fdata(), tracking.affine)
 
-        return (signal_volume, peaks_volume, tracking_volume, seeding_volume,
-                tracking_volume, seeding_volume)
+        return (signal_volume, peaks_volume, tracking_volume, seeding_volume)
 
     def get_state_size(self):
         """ Returns the size of the state space by computing the size of
