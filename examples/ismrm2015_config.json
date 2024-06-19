@@ -1,0 +1,35 @@
+{
+    "training": {
+        "ismrm2015": {
+            "inputs": [
+                "ismrm2015/fodfs/ismrm2015_fodf.nii.gz"
+            ],
+            "peaks": "ismrm2015/fodfs/ismrm2015_peaks.nii.gz",
+            "tracking": "ismrm2015/masks/ismrm2015_wm.nii.gz",
+            "seeding": "ismrm2015/maps/interface.nii.gz",
+            "anat": "ismrm2015/anat/ismrm2015_T1.nii.gz"
+        }
+    },
+    "validation": {
+        "ismrm2015": {
+            "inputs": [
+                "ismrm2015/fodfs/ismrm2015_fodf.nii.gz"
+            ],
+            "peaks": "ismrm2015/fodfs/ismrm2015_peaks.nii.gz",
+            "tracking": "ismrm2015/masks/ismrm2015_wm.nii.gz",
+            "seeding": "ismrm2015/maps/interface.nii.gz",
+            "anat": "ismrm2015/anat/ismrm2015_T1.nii.gz"
+        }
+    },
+    "testing": {
+        "ismrm2015": {
+            "inputs": [
+                "ismrm2015/fodfs/ismrm2015_fodf.nii.gz"
+            ],
+            "peaks": "ismrm2015/fodfs/ismrm2015_peaks.nii.gz",
+            "tracking": "ismrm2015/masks/ismrm2015_wm.nii.gz",
+            "seeding": "ismrm2015/maps/interface.nii.gz",
+            "anat": "ismrm2015/anat/ismrm2015_T1.nii.gz"
+        }
+    }
+}

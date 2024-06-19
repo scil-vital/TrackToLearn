@@ -148,6 +148,11 @@ def set_sh_order_basis(
     sh_order, full_basis = get_sh_order_and_fullness(n_coefs)
     sh_order = int(sh_order)
 
+    is_legacy = False
+    if '_legacy' in sh_basis:
+        sh_basis = sh_basis[:-7]
+        is_legacy = True
+
     # If SH in full basis, convert them
     if full_basis is True:
         print('SH coefficients are in "full" basis, only even coefficients '
@@ -174,6 +179,7 @@ def set_sh_order_basis(
         print('SH coefficients are in the {} basis, '
               'converting them to {}.'.format(sh_basis, target_basis))
         sh = convert_sh_basis(
-            sh, sphere, input_basis=sh_basis, nbr_processes=1)
+            sh, sphere, input_basis=sh_basis, nbr_processes=1,
+            is_input_legacy=is_legacy)
 
     return sh

@@ -4,17 +4,12 @@ from typing import Callable, Dict, Tuple
 import nibabel as nib
 import numpy as np
 import torch
-from dipy.core.sphere import HemiSphere
-from dipy.data import get_sphere
 from dipy.direction.peaks import reshape_peaks_for_visualization
 from dipy.tracking import utils as track_utils
 from dwi_ml.data.processing.volume.interpolation import \
     interpolate_volume_in_neighborhood
 from dwi_ml.data.processing.space.neighborhood import \
     get_neighborhood_vectors_axes
-from scilpy.reconst.utils import (find_order_from_nb_coeff,
-                                  get_maximas)
-from dipy.reconst.shm import sh_to_sf_matrix
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
@@ -34,8 +29,10 @@ from TrackToLearn.utils.utils import normalize_vectors
 
 # from dipy.io.utils import get_reference_info
 
+
 def collate_fn(data):
     return data
+
 
 class BaseEnv(object):
     """
@@ -158,7 +155,7 @@ class BaseEnv(object):
                 self.loader_iter = iter(self.loader)
                 (sub_id, input_volume, tracking_mask, seeding_mask,
                  peaks, reference) = next(self.loader_iter)[0]
-            
+
             self.subject_id = sub_id
             # Affines
             self.reference = reference
@@ -407,28 +404,6 @@ class BaseEnv(object):
         npeaks = 5
         odf_shape_3d = data.shape[:-1]
         peak_dirs = np.zeros((odf_shape_3d + (npeaks, 3)))
-        peak_values = np.zeros((odf_shape_3d + (npeaks, )))
-
-        sphere = HemiSphere.from_sphere(get_sphere("repulsion724")
-                                        ).subdivide(0)
-
-        b_matrix, _ = sh_to_sf_matrix(sphere, find_order_from_nb_coeff(data), "descoteaux07")
-
-        for idx in np.argwhere(np.sum(data, axis=-1)):
-            idx = tuple(idx)
-            directions, values, indices = get_maximas(data[idx],
-                                                      sphere, b_matrix,
-                                                      0.1, 0)
-            if values.shape[0] != 0:
-                n = min(npeaks, values.shape[0])
-                peak_dirs[idx][:n] = directions[:n]
-                peak_values[idx][:n] = values[:n]
-
-        X, Y, Z, N, P = peak_dirs.shape
-        peak_values = np.divide(peak_values, peak_values[..., 0, None],
-                                out=np.zeros_like(peak_values),
-                                where=peak_values[..., 0, None] != 0)
-        peak_dirs[...] *= peak_values[..., :, None]
         peak_dirs = reshape_peaks_for_visualization(peak_dirs)
 
         # Load rest of volumes
@@ -467,7 +442,7 @@ class BaseEnv(object):
         """
 
         return 3
-    
+
     def get_target_sh_order(self):
         """ Returns the target SH order. For tracking, this is based on the hyperparameters.json if it's specified.
         Otherwise, it's extracted from the data directly.
