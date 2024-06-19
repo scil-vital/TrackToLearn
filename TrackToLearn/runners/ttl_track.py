@@ -70,7 +70,7 @@ class TrackToLearnTrack(Experiment):
         self.max_length = track_dto['max_length']
 
         self.compress = track_dto['compress'] or 0.0
-        self.sh_basis = track_dto['sh_basis']
+        self.sh_basis = track_dto['sh_basis'][0]
         self.save_seeds = track_dto['save_seeds']
 
         # Tractometer parameters
