@@ -183,6 +183,9 @@ class BaseEnv(object):
             if len(self.head_tail.shape) == 3:
                 self.head_tail = self.head_tail[..., None]
 
+            self.bundle_masks_torch = torch.from_numpy(
+                self.bundles_mask.astype(float)).to(self.device)
+
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
              reference) = self.subject_data
@@ -202,7 +205,12 @@ class BaseEnv(object):
             if len(self.head_tail.shape) == 3:
                 self.head_tail = self.head_tail[..., None]
 
+            self.bundle_masks_torch = torch.from_numpy(
+                self.bundles_mask.astype(float)).to(self.device)
+
             self.reference = reference
+
+        self.N_bundle = int(self.bundles_mask.shape[-1])
 
         self.tracking_mask = (
             tracking_mask.data + seeding_mask.data).astype(np.uint8)
@@ -540,33 +548,22 @@ class BaseEnv(object):
         #     self.neighborhood_directions)
         # N, S = signal.shape
 
-        N_bundle = int(self.bundle_idx.max())
+        b_i = self.strm_bundle[self.continue_idx].squeeze()
 
-        bundle_masks_torch = torch.from_numpy(
-            self.bundles_mask.astype(float)).to(self.device)
+        signal_fodf, _ = interpolate_volume_in_neighborhood(
+            self.data_volume,
+            coords,
+            self.neighborhood_directions)
 
-        signal = None
-        for i in range(N_bundle+1):
-            b_i = self.strm_bundle[self.continue_idx] == i
+        signal_b = interpolate_volume_in_neighborhood(
+            self.bundle_masks_torch,
+            coords,
+            self.neighborhood_directions)[0].reshape(
+                (N, 7, self.N_bundle)).swapaxes(1, 2)
 
-            signal_b_i, _ = interpolate_volume_in_neighborhood(
-                torch.cat((self.data_volume,
-                           bundle_masks_torch[..., i][..., None]),
-                          dim=-1),
-                coords[b_i],
-                self.neighborhood_directions)
-            if signal is None:
-                S = signal_b_i.shape[-1]
-                signal = torch.zeros((N, S),
-                                     device=self.device)
-            signal[b_i] = signal_b_i
-
-        # Placeholder for the final imputs
-        inputs = torch.zeros(
-            (N, S + (self.n_dirs * P)), device=self.device,
-            requires_grad=False)
-        # Fill the first part of the inputs with the SH coefficients
-        inputs[:, :S] = signal
+        signal_b_i = signal_b[torch.arange(N), b_i]
+        signal = torch.cat((signal_fodf, signal_b_i), dim=-1)
+        S = signal.shape[-1]
 
         # Placeholder for the previous directions
         previous_dirs = np.zeros((N, self.n_dirs, P), dtype=float)
@@ -581,6 +578,14 @@ class BaseEnv(object):
         dir_inputs = torch.reshape(
             torch.from_numpy(previous_dirs).to(self.device),
             (N, self.n_dirs * P))
+
+        # Placeholder for the final imputs
+        inputs = torch.zeros(
+            (N, S + (self.n_dirs * P)), device=self.device,
+            requires_grad=False)
+
+        # Fill the first part of the inputs with the SH coefficients
+        inputs[:, :S] = signal
 
         # Fill the second part of the inputs with the previous directions
         inputs[:, S:] = dir_inputs
