@@ -197,8 +197,8 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
-            self.bundles_mask = tracking_mask.data[..., None].astype(bool)
-            self.head_tail = seeding_mask.data[..., None].astype(bool)
+            self.bundles_mask = tracking_mask.data.astype(bool)
+            self.head_tail = seeding_mask.data.astype(bool)
 
             if len(self.bundles_mask.shape) == 3:
                 self.bundles_mask = self.bundles_mask[..., None]

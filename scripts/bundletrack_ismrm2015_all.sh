@@ -5,7 +5,7 @@ set -e  # exit if any command fails
 DATASET_FOLDER=${TRACK_TO_LEARN_DATA}/
 WORK_DATASET_FOLDER=${LOCAL_TRACK_TO_LEARN_DATA}/
 
-SUBJECT_ID=fibercup
+SUBJECT_ID=ismrm2015_2mm
 EXPERIMENTS_FOLDER=${DATASET_FOLDER}/experiments
 WORK_EXPERIMENTS_FOLDER=${WORK_DATASET_FOLDER}/experiments
 
@@ -23,14 +23,14 @@ max_ep=1000 # Chosen empirically
 log_interval=50 # Log at n episodes
 
 lr=0.0005 # Learning rate
-gamma=0.65 # Gamma for reward discounting
+gamma=0.75 # Gamma for reward discounting
 
 # Env parameters
-npv=33 # Seed per voxel
+npv=2 # Seed per voxel
 theta=30 # Maximum angle for streamline curvature
 step=0.5
 
-EXPERIMENT=BundleTrackFiberCup
+EXPERIMENT=BundleTrackISMRM2015
 
 ID=$1_$(date +"%F-%H_%M_%S")
 

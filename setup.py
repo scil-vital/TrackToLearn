@@ -11,7 +11,7 @@ with open('requirements.txt') as f:
         external_dependencies.append(dependency)
 
 setup(
-    name='Track-to-Learn',
+    name='TrackToLearn',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see

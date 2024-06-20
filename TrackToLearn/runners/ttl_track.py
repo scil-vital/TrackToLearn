@@ -59,7 +59,7 @@ class TrackToLearnTrack(Experiment):
         self.reference_file = track_dto['in_mask']
         self.out_tractogram = track_dto['out_tractogram']
 
-        self.noise = track_dto['noise']
+        self.prob = track_dto['prob']
 
         self.binary_stopping_threshold = \
             track_dto['binary_stopping_threshold']
@@ -171,7 +171,7 @@ class TrackToLearnTrack(Experiment):
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, self.n_actor, compress=self.compress,
+            alg, self.n_actor, prob=self.prob, compress=self.compress,
             min_length=self.min_length, max_length=self.max_length,
             save_seeds=self.save_seeds)
 
@@ -261,14 +261,9 @@ def add_track_args(parser):
                          metavar='M',
                          help='Maximum length of a streamline in mm. '
                          '[%(default)s]')
-    track_g.add_argument('--noise', default=0.0, type=float, metavar='sigma',
-                         help='Add noise ~ N (0, `noise`) to the agent\'s\n'
-                         'output to make tracking more probabilistic.\n'
-                         'Should be between 0.0 and 0.1.'
+    track_g.add_argument('--prob', default=1.0, type=float, metavar='sigma',
+                         help='"Probabilistic"-ness of the tracking procedure.'
                          '[%(default)s]')
-    track_g.add_argument('--fa_map', type=str, default=None,
-                         help='Scale the added noise (see `--noise`) according'
-                         '\nto the provided FA map (.nii.gz). Optional.')
     track_g.add_argument(
         '--binary_stopping_threshold',
         type=float, default=0.1,

@@ -14,8 +14,6 @@ from nibabel.streamlines import Tractogram
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.environments.tracking_env import (
     TrackingEnvironment)
-from TrackToLearn.environments.noisy_tracking_env import (
-    NoisyTrackingEnvironment)
 from TrackToLearn.environments.stopping_criteria import (
     is_flag_set, StoppingFlags)
 from TrackToLearn.utils.utils import LossHistory
@@ -114,7 +112,6 @@ class Experiment(object):
             'epsilon': self.epsilon,
             'min_length': self.min_length,
             'max_length': self.max_length,
-            'noise': self.noise,
             'npv': self.npv,
             'rng': self.rng,
             'alignment_weighting': self.alignment_weighting,
@@ -130,15 +127,9 @@ class Experiment(object):
             'target_sh_order': self.target_sh_order
             if hasattr(self, 'target_sh_order') else None,
         }
-
-        if noisy:
-            class_dict = {
-                'tracking_env': NoisyTrackingEnvironment
-            }
-        else:
-            class_dict = {
-                'tracking_env': TrackingEnvironment
-            }
+        class_dict = {
+            'tracking_env': TrackingEnvironment
+        }
         return class_dict, env_dto
 
     def get_env(self) -> Tuple[BaseEnv, BaseEnv]:
