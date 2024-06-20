@@ -3,7 +3,6 @@ import torch
 
 import torch.nn.functional as F
 
-from os.path import join as pjoin
 from torch import nn
 from torch.distributions.normal import Normal
 
@@ -282,7 +281,7 @@ class CrossQCritic(DoubleCritic):
         state_dim: int,
         action_dim: int,
         hidden_dims: str,
-        critic_size_factor=1,
+        critic_size_factor=2
     ):
         """
         Parameters:
@@ -393,22 +392,7 @@ class ActorCritic(object):
         """
         return self.actor.state_dict(), self.critic.state_dict()
 
-    def save(self, path: str, filename: str):
-        """ Save policy at specified path and filename
-        Parameters:
-        -----------
-            path: string
-                Path to folder that will contain saved state dicts
-            filename: string
-                Name of saved models. Suffixes for actors and critics
-                will be appended
-        """
-        torch.save(
-            self.critic.state_dict(), pjoin(path, filename + "_critic.pth"))
-        torch.save(
-            self.actor.state_dict(), pjoin(path, filename + "_actor.pth"))
-
-    def load(self, path: str, filename: str):
+    def load(self, checkpoint):
         """ Load policy from specified path and filename
         Parameters:
         -----------
@@ -419,11 +403,9 @@ class ActorCritic(object):
                 will be appended
         """
         self.critic.load_state_dict(
-            torch.load(pjoin(path, filename + '_critic.pth'),
-                       map_location=self.device))
+            checkpoint['critic'])
         self.actor.load_state_dict(
-            torch.load(pjoin(path, filename + '_actor.pth'),
-                       map_location=self.device))
+            checkpoint['actor'])
 
     def eval(self):
         """ Switch actors and critics to eval mode

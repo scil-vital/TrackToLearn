@@ -180,7 +180,17 @@ class TrackToLearnTraining(Experiment):
         directory = pjoin(self.experiment_path, "model")
         if not os.path.exists(directory):
             os.makedirs(directory)
-        alg.agent.save(directory, "last_model_state")
+
+        ckpt = {
+            'hyperparameters': self.hyperparameters
+        }
+        actor_state, critic_state = alg.agent.state_dict()
+        ckpt.update({
+            'actor': actor_state,
+            'critic': critic_state
+        })
+
+        torch.save(ckpt, pjoin(directory, 'last_model_state.ckpt'))
 
     def rl_train(
         self,

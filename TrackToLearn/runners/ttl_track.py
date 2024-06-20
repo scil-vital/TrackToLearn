@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import nibabel as nib
 import numpy as np
 import os
@@ -8,7 +7,6 @@ import random
 import torch
 
 from argparse import RawTextHelpFormatter
-from os.path import join
 
 from dipy.io.utils import get_reference_info, create_tractogram_header
 from nibabel.streamlines import detect_format
@@ -31,7 +29,7 @@ from TrackToLearn.utils.torch_utils import get_device
 _ROOT = os.sep.join(os.path.normpath(
     os.path.dirname(__file__)).split(os.sep)[:-2])
 DEFAULT_MODEL = os.path.join(
-    _ROOT, 'models')
+    _ROOT, 'models', 'last_model_state.ckpt')
 
 
 class TrackToLearnTrack(Experiment):
@@ -90,19 +88,17 @@ class TrackToLearnTrack(Experiment):
                 data=fa_image.get_fdata(),
                 affine_vox2rasmm=fa_image.affine)
 
-        self.agent = track_dto['agent']
-        self.hyperparameters = track_dto['hyperparameters']
+        self.checkpoint = torch.load(track_dto['checkpoint'])
 
-        with open(self.hyperparameters, 'r') as json_file:
-            hyperparams = json.load(json_file)
-            self.algorithm = hyperparams['algorithm']
-            self.step_size = float(hyperparams['step_size'])
-            self.voxel_size = hyperparams.get('voxel_size', 2.0)
-            self.theta = hyperparams['max_angle']
-            self.epsilon = hyperparams['epsilon']
-            self.hidden_dims = hyperparams['hidden_dims']
-            self.n_dirs = hyperparams['n_dirs']
-            self.target_sh_order = hyperparams.get('target_sh_order', 8.0)
+        hyperparams = self.checkpoint['hyperparameters']
+        self.algorithm = hyperparams['algorithm']
+        self.step_size = float(hyperparams['step_size'])
+        self.voxel_size = hyperparams.get('voxel_size', 2.0)
+        self.theta = hyperparams['max_angle']
+        self.epsilon = hyperparams['epsilon']
+        self.hidden_dims = hyperparams['hidden_dims']
+        self.n_dirs = hyperparams['n_dirs']
+        self.target_sh_order = hyperparams.get('target_sh_order', 8.0)
 
         self.alignment_weighting = 0.0
         # Oracle parameters
@@ -166,7 +162,7 @@ class TrackToLearnTrack(Experiment):
             device=self.device)
 
         # Load pretrained policies
-        alg.agent.load(self.agent, 'last_model_state')
+        alg.agent.load(self.checkpoint)
 
         # Initialize Tracker, which will handle streamline generation
 
@@ -232,17 +228,12 @@ def add_track_args(parser):
     add_out_options(parser)
 
     agent_group = parser.add_argument_group('Tracking agent options')
-    agent_group.add_argument('--agent', type=str,
-                             help='Path to the folder containing .pth files.\n'
+    agent_group.add_argument('--checkpoint', type=str,
+                             help='Path to the folder containing .ckpt'
+                             ' files.\n'
                              'If not set, will default to the example '
                              'models.\n'
                              '[{}]'.format(DEFAULT_MODEL))
-    agent_group.add_argument(
-        '--hyperparameters', type=str,
-        help='Path to the .json file containing the '
-        'hyperparameters of your tracking agent. \n'
-        'If not set, will default to the example models.\n'
-        '[{}]'.format(DEFAULT_MODEL))
     agent_group.add_argument('--n_actor', type=int, default=10000, metavar='N',
                              help='Number of streamlines to track simultaneous'
                              'ly.\nLimited by the size of your GPU and RAM. A '
@@ -273,19 +264,6 @@ def add_track_args(parser):
                         help='Random number generator seed [%(default)s].')
 
 
-def verify_agent_option(parser, args):
-
-    if (args.agent is not None and args.hyperparameters is None) or \
-       (args.agent is None and args.hyperparameters is not None):
-        parser.error('You must specify both --agent and --hyperparameters '
-                     'arguments or use the default model.')
-
-    if args.agent is None:
-        args.agent = DEFAULT_MODEL
-        args.hyperparameters = join(
-            DEFAULT_MODEL, 'hyperparameters.json')
-
-
 def parse_args():
     """ Generate a tractogram from a trained model. """
     parser = argparse.ArgumentParser(
@@ -304,7 +282,6 @@ def parse_args():
 
     verify_streamline_length_options(parser, args)
     verify_compression_th(args.compress)
-    verify_agent_option(parser, args)
 
     return args
 
