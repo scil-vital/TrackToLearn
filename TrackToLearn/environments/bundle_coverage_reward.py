@@ -1,7 +1,7 @@
 import numpy as np
 
-from scipy.ndimage import map_coordinates
-
+from TrackToLearn.environments.interpolation import (
+    nearest_neighbor_interpolation)
 from TrackToLearn.environments.reward import Reward
 
 
@@ -29,37 +29,31 @@ class BundleCoverageReward(Reward):
     ):
         """ Compute the reward for each streamline. """
 
+        bundle_idx = bundle_idx.astype(int)
+        all_idx = np.arange(bundle_idx.shape[0])
+
         rewards = np.zeros(len(streamlines))
 
-        # For all bundles in the bundle mask
-        for i in range(self.N):
-            # Get the streamlines that are in the current bundle
-            b_i = bundle_idx == i
-            bundle_streamlines = streamlines[b_i]
+        # Get the coordinates of the streamlines
+        coordinates = (streamlines[:, -1] + 0.5)
+        upper = (np.asarray(self.coverage.shape[:3]) - 1)
+        coordinates = np.clip(coordinates.astype(int), 0, upper).astype(int)
+        indices = np.concatenate((coordinates,
+                                 bundle_idx[..., None]), axis=-1).T
 
-            # Get the coordinates of the streamlines
-            coordinates = bundle_streamlines[:, -1]
+        # Get the coverage of the bundle
+        coverage = nearest_neighbor_interpolation(
+            self.coverage, coordinates)
+        bundle_mask = nearest_neighbor_interpolation(
+            self.bundle_mask, coordinates)
 
-            # Get the coverage of the bundle
-            coverage = map_coordinates(
-                self.coverage[..., i], coordinates.T, order=0,
-                mode='nearest')
+        # Get the voxels that are not covered
+        not_covered = (coverage[all_idx, bundle_idx] == 0).squeeze()
+        in_wm = (bundle_mask[all_idx, bundle_idx] > 0).squeeze()
 
-            # Get the bundle mask at the coordinates
-            bundle_mask = map_coordinates(
-                self.bundle_mask[..., i], coordinates.T, order=0,
-                mode='nearest')
-
-            # Get the voxels that are not covered
-            not_covered = coverage == 0
-            in_wm = bundle_mask > 0
-
-            # Compute the reward
-            rewards[b_i] = not_covered * in_wm
-
-            # Update the coverage of the bundle using the coordinates
-            indices = coordinates.astype(int)
-            self.coverage[indices.T, i] = 1
+        # Compute the reward
+        rewards = not_covered * in_wm
+        self.coverage[tuple(indices)] = 1
 
         return rewards
 
