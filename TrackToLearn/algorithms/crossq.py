@@ -196,25 +196,26 @@ class CrossQ(SACAuto):
         self.alpha_optimizer.step()
 
         with torch.no_grad():
-            self.agent.critic.train()
             # Target actions come from *current* agent
             next_action, logp_next_action = self.agent.act(
                 next_state, probabilistic=1.0)
-            self.agent.critic.eval()
 
-            state_cat = torch.cat([state, next_state], dim=0)
-            action_cat = torch.cat([action, next_action], dim=0)
+        state_cat = torch.cat([state, next_state], dim=0)
+        action_cat = torch.cat([action, next_action], dim=0)
 
         # Compute the next Q values using the target agent
-        target_Q1, target_Q2 = self.agent.critic(
+        self.agent.critic.train()
+        Q1_w_next, Q2_w_next = self.agent.critic(
             state_cat, action_cat)
-        q1, next_q1 = torch.chunk(target_Q1, 2)
-        q2, next_q2 = torch.chunk(target_Q2, 2)
-        target_Q = torch.min(next_q1, next_q2)
+        self.agent.critic.eval()
+
+        q1, next_q1 = torch.chunk(Q1_w_next, 2)
+        q2, next_q2 = torch.chunk(Q2_w_next, 2)
+        target_Q = torch.min(next_q1, next_q2) - alpha * logp_next_action
 
         # Compute the backup which is the Q-learning "target"
         backup = reward + self.gamma * not_done * \
-            (target_Q - alpha * logp_next_action).detach()
+            (target_Q).detach()
 
         # MSE loss against Bellman backup
         loss_q1 = F.mse_loss(q1, backup).mean()
