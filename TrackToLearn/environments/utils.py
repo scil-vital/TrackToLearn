@@ -231,3 +231,51 @@ def seeds_from_head_tail(head_tail, affine, seed_count=1):
     idices = np.arange(seeds.shape[0])
 
     return seeds[idices], bundle_idx[idices]
+
+
+def seeds_from_gm_atlas(atlas, interface, affine, seed_count=1):
+    """  Create seeds from an atlas of gray matter regions.
+
+    Parameters
+    ----------
+    atlas : `numpy.ndarray` of shape (x, y, z)
+        Gray matter atlas with each region being a different integer
+    interface : `numpy.ndarray` of shape (x, y, z)
+        Interface mask
+    affine : `numpy.ndarray` of shape (4, 4)
+        Affine matrix to convert voxel coordinates to world coordinates
+    seeds_count : int
+        Number of seeds to generate per voxel for each slice.
+
+    Returns
+    -------
+    seeds : `numpy.ndarray`
+        Tracking seeds
+    roi_idx: `numpy.ndarray`
+        Corresponding ROI for all seeds
+    """
+
+    # Get the unique regions in the atlas
+    regions = np.unique(atlas)
+    # Remove 0 as it is not a region
+    regions = regions[regions != 0]
+
+    # For each region, create seeds
+    seeds = []
+    roi_idx = []
+    for i, region in enumerate(regions):
+        # Get the corresponding region mask
+        region_mask = atlas == region
+        # Generate seeds from it
+        region_seeds = track_utils.random_seeds_from_mask(
+            region_mask, affine, seeds_count=seed_count)
+        # Add to list of seeds, keep track of the corresponding region
+        seeds.extend(region_seeds)
+        roi_idx.extend(np.ones((region_seeds.shape[0])) * i)
+
+    # Convert to np.ndarray for ease of handling
+    seeds, roi_idx = np.asarray(seeds), np.asarray(roi_idx)
+    # Shuffle to ensure proper coverage in batches
+    idices = np.arange(seeds.shape[0])
+
+    return seeds[idices], roi_idx[idices]

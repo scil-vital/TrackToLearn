@@ -99,12 +99,12 @@ def add_subject_to_hdf5(
     tracking_file = config['tracking']
     seeding_file = config['seeding']
     anat_file = config['anat']
-    bundle_file = config['bundles']
-    head_tail_file = config['head_tail']
+    wm_atlas_file = config['wm_atlas']
+    gm_atlas_file = config['gm_atlas']
 
     # Process subject's data
     process_subject(hdf_subject, input_files, peaks_file, tracking_file,
-                    seeding_file, anat_file, bundle_file, head_tail_file)
+                    seeding_file, anat_file, wm_atlas_file, gm_atlas_file)
 
 
 def process_subject(
@@ -114,8 +114,8 @@ def process_subject(
     tracking: str,
     seeding: str,
     anat: str,
-    bundle: str,
-    head_tail: str
+    wm_atlas: str,
+    gm_atlas: str
 ):
     """ Process a subject's data and save it in the hdf5 file.
 
@@ -167,11 +167,11 @@ def process_subject(
     anat_image = nib.load(anat)
     add_volume_to_hdf5(hdf_subject, anat_image, 'anat_volume')
 
-    bundle_image = nib.load(bundle)
-    add_volume_to_hdf5(hdf_subject, bundle_image, 'bundle_volume')
+    wm_atlas_image = nib.load(wm_atlas)
+    add_volume_to_hdf5(hdf_subject, wm_atlas_image, 'wm_atlas_volume')
 
-    head_tail_image = nib.load(head_tail)
-    add_volume_to_hdf5(hdf_subject, head_tail_image, 'head_tail_volume')
+    gm_atlas_image = nib.load(gm_atlas)
+    add_volume_to_hdf5(hdf_subject, gm_atlas_image, 'gm_atlas_volume')
 
 
 def add_volume_to_hdf5(hdf_subject, volume_img, volume_name):

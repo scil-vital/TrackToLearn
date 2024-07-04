@@ -57,8 +57,8 @@ class SubjectData(object):
         tracking=None,
         seeding=None,
         reference=None,
-        bundles=None,
-        head_tail=None,
+        wm_atlas=None,
+        gm_atlas=None,
     ):
         self.subject_id = subject_id
         self.input_dv = input_dv
@@ -66,8 +66,8 @@ class SubjectData(object):
         self.tracking = tracking
         self.seeding = seeding
         self.reference = reference
-        self.bundles = bundles
-        self.head_tail = head_tail
+        self.wm_atlas = wm_atlas
+        self.gm_atlas = gm_atlas
 
     @classmethod
     def from_hdf_subject(cls, hdf_file, subject_id):
@@ -81,17 +81,17 @@ class SubjectData(object):
             hdf_subject, 'seeding_volume', 'tracking_volume')
         anatomy = MRIDataVolume.from_hdf_group(
             hdf_subject, 'anat_volume', 'tracking_volume')
-        bundles = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'bundle_volume', 'tracking_volume')
-        head_tail = MRIDataVolume.from_hdf_group(
-            hdf_subject, 'head_tail_volume', 'tracking_volume')
+        wm_atlas = MRIDataVolume.from_hdf_group(
+            hdf_subject, 'wm_atlas_volume', 'tracking_volume')
+        gm_atlas = MRIDataVolume.from_hdf_group(
+            hdf_subject, 'gm_atlas_volume', 'tracking_volume')
 
         reference = nib.Nifti1Image(anatomy.data, anatomy.affine_vox2rasmm)
 
         return cls(
             subject_id, input_dv=input_dv, tracking=tracking,
             seeding=seeding, reference=reference, peaks=peaks,
-            bundles=bundles, head_tail=head_tail)
+            wm_atlas=wm_atlas, gm_atlas=gm_atlas)
 
 
 def convert_length_mm2vox(

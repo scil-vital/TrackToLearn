@@ -72,7 +72,7 @@ class TrackingEnvironment(BaseEnv):
             np.arange(len(self.seeds)), size=n_seeds, replace=replace)
 
         self.initial_points = self.seeds[seeds]
-        self.strm_bundle = self.bundle_idx[seeds]
+        self.strm_roi = self.roi_idx[seeds]
 
         self.streamlines = np.zeros(
             (n_seeds, self.max_nb_steps + 1, 3), dtype=np.float32)
@@ -115,7 +115,7 @@ class TrackingEnvironment(BaseEnv):
         super().reset()
 
         self.initial_points = self.seeds[start:end]
-        self.strm_bundle = self.bundle_idx[start:end]
+        self.strm_roi = self.roi_idx[start:end]
 
         N = self.initial_points.shape[0]
 
@@ -192,7 +192,7 @@ class TrackingEnvironment(BaseEnv):
         stopping, new_flags = \
             self._is_stopping(
                 self.streamlines[self.continue_idx, :self.length],
-                self.strm_bundle[self.continue_idx])
+                self.strm_roi[self.continue_idx])
 
         # See which trajectory is stopping or continuing.
         # TODO: `investigate the use of `not_stopping`.
@@ -215,7 +215,7 @@ class TrackingEnvironment(BaseEnv):
         if self.compute_reward:
             reward, reward_info = self.reward_function(
                 self.streamlines[self.continue_idx, :self.length],
-                self.strm_bundle[self.continue_idx],
+                self.strm_roi[self.continue_idx],
                 self.dones[self.continue_idx])
 
         # Compute the state

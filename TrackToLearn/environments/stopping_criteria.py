@@ -371,3 +371,57 @@ class OracleStoppingCriterion(object):
             return scores.astype(bool)
 
         return np.array([False] * N)
+
+
+class AtlasStoppingCriterion(object):
+    """
+    Defines if a streamline should stop according to the atlas.
+
+    """
+
+    def __init__(
+        self,
+        wm_atlas: np.ndarray,
+        gm_atlas: np.ndarray,
+    ):
+
+        self.wm_atlas = wm_atlas[..., 0][..., None]
+        self.gm_atlas = gm_atlas
+
+        self.boundaries = gm_atlas.shape
+
+    def __call__(
+        self,
+        streamlines: np.ndarray,
+        rois: np.ndarray,
+    ):
+        """
+        Parameters
+        ----------
+        streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
+            Streamline coordinates in voxel space
+        rois: `numpy.ndarray` of shape (n_streamlines,)
+            Array indicating the ROI of each streamline.
+
+        Returns
+        -------
+        dones: 1D boolean `numpy.ndarray` of shape (n_streamlines,)
+            Array indicating if streamlines are done.
+        """
+        # Get the last voxel of each streamline
+        coords = streamlines[:, -1] + 0.5
+
+        # Get the ROI of the last voxel of each streamline
+        wm_roi = nearest_neighbor_interpolation(
+            self.wm_atlas, coords).squeeze()
+        strm_roi_1 = rois // 100
+        strm_roi_2 = rois % 100
+
+        # Check if the streamlines are in the WM ROI
+        strm_continue_roi_1 = strm_roi_1 == wm_roi
+        strm_continue_roi_2 = strm_roi_2 == wm_roi
+
+        stopping = np.logical_not(np.logical_or(strm_continue_roi_1,
+                                                strm_continue_roi_2))
+
+        return stopping

@@ -52,11 +52,11 @@ class SubjectDataset(Dataset):
 
         reference = tracto_data.reference
 
-        bundles = tracto_data.bundles
-        head_tail = tracto_data.head_tail
+        wm_atlas = tracto_data.wm_atlas
+        gm_atlas = tracto_data.gm_atlas
 
         return (subject_id, input_volume, tracking_mask,
-                seeding, peaks, reference, bundles, head_tail)
+                seeding, peaks, reference, wm_atlas, gm_atlas)
 
     def __len__(self):
         """

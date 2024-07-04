@@ -15,17 +15,15 @@ from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis,
                                          get_sh_order_and_fullness)
-from TrackToLearn.environments.bundle_coverage_reward import \
-    BundleCoverageReward
-from TrackToLearn.environments.bundle_reward import BundleReward
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_in_neighborhood)
+# from TrackToLearn.environments.atlas_reward import AtlasReward
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    BundleStoppingCriterion, HeadTailStoppingCriterion, StoppingFlags)
+    StoppingFlags, AtlasStoppingCriterion)
 from TrackToLearn.environments.utils import (  # is_looping,
-    is_too_curvy, is_too_long, seeds_from_head_tail)
+    is_too_curvy, is_too_long, seeds_from_gm_atlas)
 from TrackToLearn.utils.utils import normalize_vectors
 
 # from dipy.io.utils import get_reference_info
@@ -157,12 +155,12 @@ class BaseEnv(object):
 
             try:
                 (sub_id, input_volume, tracking_mask, seeding_mask,
-                 peaks, reference, bundles, head_tail) = \
+                 peaks, reference, wm_atlas, gm_atlas) = \
                     next(self.loader_iter)[0]
             except StopIteration:
                 self.loader_iter = iter(self.loader)
                 (sub_id, input_volume, tracking_mask, seeding_mask,
-                 peaks, reference, bundles, head_tail) = \
+                 peaks, reference, wm_atlas, gm_atlas) = \
                     next(self.loader_iter)[0]
 
             self.subject_id = sub_id
@@ -175,16 +173,8 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
-            self.bundles_mask = bundles.data.astype(bool)
-            self.head_tail = head_tail.data.astype(bool)
-
-            if len(self.bundles_mask.shape) == 3:
-                self.bundles_mask = self.bundles_mask[..., None]
-            if len(self.head_tail.shape) == 3:
-                self.head_tail = self.head_tail[..., None]
-
-            self.bundle_masks_torch = torch.from_numpy(
-                self.bundles_mask.astype(float)).to(self.device)
+            self.wm_atlas = wm_atlas.data.astype(int)
+            self.gm_atlas = gm_atlas.data.astype(bool)
 
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
@@ -197,20 +187,10 @@ class BaseEnv(object):
             self.data_volume = torch.from_numpy(
                 input_volume.data).to(self.device, dtype=torch.float32)
 
-            self.bundles_mask = tracking_mask.data.astype(bool)
-            self.head_tail = seeding_mask.data.astype(bool)
-
-            if len(self.bundles_mask.shape) == 3:
-                self.bundles_mask = self.bundles_mask[..., None]
-            if len(self.head_tail.shape) == 3:
-                self.head_tail = self.head_tail[..., None]
-
-            self.bundle_masks_torch = torch.from_numpy(
-                self.bundles_mask.astype(float)).to(self.device)
+            self.wm_atlas = wm_atlas.data.astype(int)
+            self.gm_atlas = gm_atlas.data.astype(bool)
 
             self.reference = reference
-
-        self.N_bundle = int(self.bundles_mask.shape[-1])
 
         self.tracking_mask = (
             tracking_mask.data + seeding_mask.data).astype(np.uint8)
@@ -246,8 +226,8 @@ class BaseEnv(object):
         ).to(self.device)
 
         # Tracking seeds
-        self.seeds, self.bundle_idx = seeds_from_head_tail(
-            self.head_tail, np.eye(4), seed_count=self.npv)
+        self.seeds, self.roi_idx = seeds_from_gm_atlas(
+            self.gm_atlas, self.seeding_data, np.eye(4), seed_count=self.npv)
 
         # ===========================================
         # Stopping criteria
@@ -270,20 +250,11 @@ class BaseEnv(object):
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=self.theta)
 
-        bundle_criterion = BundleStoppingCriterion(
-            self.bundles_mask,
-            self.binary_stopping_threshold)
+        atlas_criterion = AtlasStoppingCriterion(
+            self.wm_atlas, self.gm_atlas)
 
         self.stopping_criteria[StoppingFlags.STOPPING_MASK] = \
-            bundle_criterion
-
-        head_tail_criterion = HeadTailStoppingCriterion(
-            self.head_tail,
-            1.0,
-            self.min_nb_steps)
-
-        self.stopping_criteria[StoppingFlags.STOPPING_TARGET] = \
-            head_tail_criterion
+            atlas_criterion
 
         # ==========================================
         # Reward function
@@ -294,18 +265,13 @@ class BaseEnv(object):
             # Reward streamline according to alignment with local peaks
             peaks_reward = PeaksAlignmentReward(self.peaks)
 
-            # Reward streamlines according to coverage of the bundle mask
-            bundle_coverage_reward = BundleCoverageReward(self.bundles_mask)
-
-            bundle_reward = BundleReward(
-                self.head_tail, self.bundles_mask, self.min_nb_steps, 0.5)
+            # atlas_reward = AtlasReward(
+            #     self.wm_atlas, self.gm_atlas)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(
-                [peaks_reward, bundle_coverage_reward, bundle_reward],
-                [self.alignment_weighting,
-                 self.bundle_coverage_bonus,
-                 self.bundle_endpoint_bonus])
+                [peaks_reward],
+                [self.alignment_weighting])
 
     @classmethod
     def from_dataset(
@@ -548,21 +514,11 @@ class BaseEnv(object):
         #     self.neighborhood_directions)
         # N, S = signal.shape
 
-        b_i = self.strm_bundle[self.continue_idx].squeeze()
-
-        signal_fodf, _ = interpolate_volume_in_neighborhood(
+        signal, _ = interpolate_volume_in_neighborhood(
             self.data_volume,
             coords,
             self.neighborhood_directions)
 
-        signal_b = interpolate_volume_in_neighborhood(
-            self.bundle_masks_torch,
-            coords,
-            self.neighborhood_directions)[0].reshape(
-                (N, 7, self.N_bundle)).swapaxes(1, 2)
-
-        signal_b_i = signal_b[torch.arange(N), b_i]
-        signal = torch.cat((signal_fodf, signal_b_i), dim=-1)
         S = signal.shape[-1]
 
         # Placeholder for the previous directions
@@ -595,7 +551,7 @@ class BaseEnv(object):
     def _compute_stopping_flags(
         self,
         streamlines: np.ndarray,
-        bundles: np.ndarray,
+        rois: np.ndarray,
         stopping_criteria: Dict[StoppingFlags, Callable]
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """ Checks which streamlines should stop and which ones should
@@ -605,8 +561,8 @@ class BaseEnv(object):
         ----------
         streamlines : `numpy.ndarray` of shape (n_streamlines, n_points, 3)
             Streamline coordinates in voxel space
-        bundles : `numpy.ndarray` of shape (n_streamlines,)
-            Bundle index for each streamline
+        rois: `numpy.ndarray` of shape (n_streamlines,)
+            ROI index for each streamline
         stopping_criteria : dict of int->Callable
             List of functions that take as input streamlines, and output a
             boolean numpy array indicating which streamlines should stop
@@ -627,7 +583,7 @@ class BaseEnv(object):
         # For each possible flag, determine which streamline should stop and
         # keep track of the triggered flag
         for flag, stopping_criterion in stopping_criteria.items():
-            stopped_by_criterion = stopping_criterion(streamlines, bundles)
+            stopped_by_criterion = stopping_criterion(streamlines, rois)
             flags[stopped_by_criterion] |= flag.value
             should_stop[stopped_by_criterion] = True
 
