@@ -70,6 +70,7 @@ class BinaryStoppingCriterion(object):
     def __call__(
         self,
         streamlines: np.ndarray,
+        rois: np.ndarray,
     ):
         """ Checks which streamlines have their last coordinates outside a
         mask.
@@ -84,7 +85,7 @@ class BinaryStoppingCriterion(object):
             Array telling whether a streamline's last coordinate is outside the
             mask or not.
         """
-        coords = streamlines[:, -1, :].T - 0.5
+        coords = streamlines[:, -1, :].T
         return map_coordinates(
             self.mask, coords, prefilter=False
         ) < self.threshold
@@ -385,10 +386,10 @@ class AtlasStoppingCriterion(object):
         gm_atlas: np.ndarray,
     ):
 
-        self.wm_atlas = wm_atlas[..., 0][..., None]
-        self.gm_atlas = gm_atlas
+        self.N = wm_atlas.shape[-1]
 
-        self.boundaries = gm_atlas.shape
+        self.wm_atlas = wm_atlas
+        self.gm_atlas = gm_atlas
 
     def __call__(
         self,
@@ -409,19 +410,19 @@ class AtlasStoppingCriterion(object):
             Array indicating if streamlines are done.
         """
         # Get the last voxel of each streamline
-        coords = streamlines[:, -1] + 0.5
+        coords = streamlines[:, -1]
 
         # Get the ROI of the last voxel of each streamline
         wm_roi = nearest_neighbor_interpolation(
-            self.wm_atlas, coords).squeeze()
-        strm_roi_1 = rois // 100
-        strm_roi_2 = rois % 100
+                self.wm_atlas, coords)
+        strm_roi_1 = wm_roi // 100
+        strm_roi_2 = wm_roi % 100
 
         # Check if the streamlines are in the WM ROI
-        strm_continue_roi_1 = strm_roi_1 == wm_roi
-        strm_continue_roi_2 = strm_roi_2 == wm_roi
-
-        stopping = np.logical_not(np.logical_or(strm_continue_roi_1,
-                                                strm_continue_roi_2))
-
+        strm_continue_roi_1 = np.any(strm_roi_1 == rois[:, None], axis=-1)
+        strm_continue_roi_2 = np.any(strm_roi_2 == rois[:, None], axis=-1)
+        continue_idx = np.logical_or(strm_continue_roi_1,
+                                     strm_continue_roi_2)
+        stopping = np.logical_not(continue_idx)
+        # print(stopping)
         return stopping

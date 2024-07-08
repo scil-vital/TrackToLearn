@@ -263,19 +263,21 @@ def seeds_from_gm_atlas(atlas, interface, affine, seed_count=1):
     # For each region, create seeds
     seeds = []
     roi_idx = []
-    for i, region in enumerate(regions):
+    for region in regions:
         # Get the corresponding region mask
         region_mask = atlas == region
         # Generate seeds from it
         region_seeds = track_utils.random_seeds_from_mask(
             region_mask, affine, seeds_count=seed_count)
         # Add to list of seeds, keep track of the corresponding region
-        seeds.extend(region_seeds)
-        roi_idx.extend(np.ones((region_seeds.shape[0])) * i)
+        # Align to corner
+        seeds.extend(region_seeds + 0.5)
+        seed_roi = np.zeros((region_seeds.shape[0])) + region
+        roi_idx.extend(seed_roi)
 
     # Convert to np.ndarray for ease of handling
     seeds, roi_idx = np.asarray(seeds), np.asarray(roi_idx)
     # Shuffle to ensure proper coverage in batches
     idices = np.arange(seeds.shape[0])
-
+    np.random.shuffle(idices)
     return seeds[idices], roi_idx[idices]

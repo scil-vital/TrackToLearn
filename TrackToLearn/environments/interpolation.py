@@ -137,21 +137,33 @@ def torch_trilinear_interpolation(volume: torch.Tensor,
 def nearest_neighbor_interpolation(
     volume: np.array([[[[]]]]),
     coords: np.ndarray,
+    cval: float = 0
 ) -> np.ndarray:
-    """
+    """ Get the nearest neighbor interpolation of a 3/4D volume, where
+    the output will be of shape (N, D) with N the number of coordinates
+    and N the length of the last dimension of the volume.
+
+    Presumes coordinates are using origin=corner.
     """
     coords = coords
     volume = volume
 
-    if volume.ndim <= 3 or volume.ndim >= 5:
-        raise ValueError("Volume must be 4D!")
+    if volume.ndim <= 2 or volume.ndim >= 5:
+        raise ValueError("Volume must be 3D or 4D!")
 
-    indices_unclipped = np.round(coords).astype(np.int32)
+    indices_unclipped = np.floor(coords).astype(np.int32)
 
     # Clip indices to make sure we don't go out-of-bounds
     upper = (np.asarray(volume.shape[:3]) - 1)
-    indices = np.clip(indices_unclipped, 0, upper).astype(int).T
-    output = volume[tuple(indices)]
+
+    indices = np.clip(indices_unclipped, 0, upper).astype(int)
+    output = volume[tuple(indices.T)]
+
+    check = ~np.all(np.equal(indices_unclipped, indices), axis=1)
+    if volume.ndim == 4:
+        output[check] = np.ones((sum(check), output.shape[-1])) * cval
+    else:
+        output[check] = np.ones((sum(check))) * cval
 
     return output
 

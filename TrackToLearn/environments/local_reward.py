@@ -54,7 +54,7 @@ class PeaksAlignmentReward(Reward):
             return np.ones(len(streamlines), dtype=np.uint8)
 
         X, Y, Z, P = self.peaks.shape
-        idx = (streamlines[:, -2] + 0.5).astype(np.int32)
+        idx = (streamlines[:, -2]).astype(np.int32)
 
         # Get peaks at streamline end
         v = nearest_neighbor_interpolation(self.peaks, idx)

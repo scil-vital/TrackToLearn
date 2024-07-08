@@ -126,6 +126,8 @@ class Experiment(object):
             'device': self.device,
             'target_sh_order': self.target_sh_order
             if hasattr(self, 'target_sh_order') else None,
+            'prior': self.prior,
+            'gm_bonus': self.gm_bonus
         }
         class_dict = {
             'tracking_env': TrackingEnvironment
@@ -291,7 +293,7 @@ class Experiment(object):
             streamlines,
             reference,
             Space.RASMM,
-            origin=Origin.NIFTI,
+            origin=Origin.TRACKVIS,
             data_per_streamline=data_per_streamline,
             data_per_point=data_per_point)
 
@@ -365,7 +367,7 @@ def add_experiment_args(parser: ArgumentParser):
                         help='Name of experiment.')
     parser.add_argument('id', type=str,
                         help='ID of experiment.')
-    parser.add_argument('--workspace', type=str, default='BundleTrack',
+    parser.add_argument('--workspace', type=str, default='AtlasTrack',
                         help='Comet.ml workspace')
     parser.add_argument('--rng_seed', default=1337, type=int,
                         help='Seed to fix general randomness')
@@ -453,3 +455,11 @@ def add_oracle_args(parser: ArgumentParser):
                         help='Stop streamlines according to the Oracle.')
     oracle.add_argument('--oracle_bonus', default=0, type=float,
                         help='Sparse oracle weighting for reward.')
+
+
+def add_atlas_args(parser: ArgumentParser):
+    atlas = parser.add_argument_group('Atlas')
+    atlas.add_argument('--prior', choices=['hard', 'soft'], type=str,
+                       required=True, help='Soft or hard prior.')
+    atlas.add_argument('--gm_bonus', type=int, default=10,
+                       help='GM bonus.')

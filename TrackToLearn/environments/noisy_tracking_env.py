@@ -68,7 +68,7 @@ class NoisyTrackingEnvironment(TrackingEnvironment):
 
             # Get FA at streamline end
             fa = map_coordinates(
-                self.fa_map, idx.T - 0.5, prefilter=False)
+                self.fa_map, idx.T, prefilter=False)
             noise = ((1. - fa) * self.noise)
         else:
             noise = self.rng.normal(0., self.noise, size=directions.shape)

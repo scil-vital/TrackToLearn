@@ -96,6 +96,10 @@ class TrackToLearnTraining(Experiment):
         self.tractometer_reference = train_dto['tractometer_reference']
         self.scoring_data = train_dto['scoring_data']
 
+        # Atlas parameters
+        self.prior = train_dto['prior']
+        self.gm_bonus = train_dto['gm_bonus']
+
         self.compute_reward = True  # Always compute reward during training
         self.fa_map = None
 
@@ -149,6 +153,9 @@ class TrackToLearnTraining(Experiment):
             'oracle_bonus': self.oracle_bonus,
             'oracle_checkpoint': self.oracle_checkpoint,
             'oracle_stopping_criterion': self.oracle_stopping_criterion,
+            # Atlas paraemters
+            'prior': self.prior,
+            'gm_bonus': self.gm_bonus
         }
 
     def save_hyperparameters(self):

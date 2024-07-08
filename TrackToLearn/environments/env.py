@@ -17,11 +17,11 @@ from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          get_sh_order_and_fullness)
 from TrackToLearn.environments.interpolation import (
     interpolate_volume_in_neighborhood)
-# from TrackToLearn.environments.atlas_reward import AtlasReward
+from TrackToLearn.environments.atlas_reward import AtlasGMReward
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.reward import RewardFunction
 from TrackToLearn.environments.stopping_criteria import (
-    StoppingFlags, AtlasStoppingCriterion)
+    StoppingFlags, AtlasStoppingCriterion, BinaryStoppingCriterion)
 from TrackToLearn.environments.utils import (  # is_looping,
     is_too_curvy, is_too_long, seeds_from_gm_atlas)
 from TrackToLearn.utils.utils import normalize_vectors
@@ -174,7 +174,7 @@ class BaseEnv(object):
                 input_volume.data).to(self.device, dtype=torch.float32)
 
             self.wm_atlas = wm_atlas.data.astype(int)
-            self.gm_atlas = gm_atlas.data.astype(bool)
+            self.gm_atlas = gm_atlas.data.astype(int)
 
         else:
             (input_volume, tracking_mask, seeding_mask, peaks,
@@ -188,7 +188,7 @@ class BaseEnv(object):
                 input_volume.data).to(self.device, dtype=torch.float32)
 
             self.wm_atlas = wm_atlas.data.astype(int)
-            self.gm_atlas = gm_atlas.data.astype(bool)
+            self.gm_atlas = gm_atlas.data.astype(int)
 
             self.reference = reference
 
@@ -250,6 +250,9 @@ class BaseEnv(object):
             StoppingFlags.STOPPING_CURVATURE] = \
             functools.partial(is_too_curvy, max_theta=self.theta)
 
+        # atlas_criterion = BinaryStoppingCriterion(
+        #     self.tracking_mask)
+
         atlas_criterion = AtlasStoppingCriterion(
             self.wm_atlas, self.gm_atlas)
 
@@ -265,13 +268,13 @@ class BaseEnv(object):
             # Reward streamline according to alignment with local peaks
             peaks_reward = PeaksAlignmentReward(self.peaks)
 
-            # atlas_reward = AtlasReward(
-            #     self.wm_atlas, self.gm_atlas)
+            atlas_reward = AtlasGMReward(
+                self.gm_atlas, self.min_nb_steps)
 
             # Combine all reward factors into the reward function
             self.reward_function = RewardFunction(
-                [peaks_reward],
-                [self.alignment_weighting])
+                [peaks_reward, atlas_reward],
+                [self.alignment_weighting, 0])
 
     @classmethod
     def from_dataset(
@@ -503,7 +506,7 @@ class BaseEnv(object):
 
         # Reshape to get a list of coordinates
         N, P = segments.shape
-        coords = torch.as_tensor(segments).to(self.device) + 0.5
+        coords = torch.as_tensor(segments).to(self.device)
 
         # # Get the SH coefficients at the last point of each streamline
         # # The neighborhood is used to get the SH coefficients around

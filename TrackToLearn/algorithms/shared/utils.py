@@ -21,7 +21,7 @@ def mean_losses(dic):
 
 
 def mean_rewards(dic):
-    return {k: np.mean(np.asarray(dic[k]), axis=0) for k in dic.keys()}
+    return {k: np.sum(np.asarray(dic[k]), axis=0) for k in dic.keys()}
 
 
 def harvest_states(i, *args):
