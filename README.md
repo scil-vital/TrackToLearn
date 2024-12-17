@@ -165,15 +165,13 @@ A bug in the original implementation prevents the reproduction of the published 
 If you want to reference this work, please use (at least) one of
 
 ```
-@InProceedings{The_TractOracle_MICCAI2024,
-        author = { Théberge, Antoine and Descoteaux, Maxime and Jodoin, Pierre-Marc},
-        title = {{ TractOracle: towards an anatomically-informed reward function for RL-based tractography }},
-        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
-        year = {2024},
-        publisher = {Springer Nature Switzerland},
-        volume = {LNCS 15002},
-        month = {October},
-        page = {476 -- 486}
+@inproceedings{theberge2024tractoracle,
+  title={TractOracle: towards an anatomically-informed reward function for RL-based tractography},
+  author={Th{\'e}berge, Antoine and Descoteaux, Maxime and Jodoin, Pierre-Marc},
+  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+  pages={476--486},
+  year={2024},
+  organization={Springer}
 }
 
 @article{theberge2024matters,
