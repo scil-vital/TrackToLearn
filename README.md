@@ -119,15 +119,15 @@ Contributions are welcome ! There are several TODOs sprinkled through the projec
 
 ### TractOracle-RL (2024b)
 
-> Théberge, A., Descoteaux, M., & Jodoin, P. M. (2024). TractOracle: towards an anatomically-informed reward function for RL-based tractography. Submitted to MICCAI 2024.
+> Théberge, A., Descoteaux, M., & Jodoin, P. M. (2024). TractOracle: towards an anatomically-informed reward function for RL-based tractography. Accepted at MICCAI 2024.
 
 The reference commit to the `main` brain for this work is `0fb20306edc32b6015fbfe9b79677015cd0602cf`. Please use this commit as starting point if you want to build upon Track-to-Learn (TractOracle-RL). See README above for usage.
+
+See the conference paper (open-access version): https://papers.miccai.org/miccai-2024/paper/1898_paper.pdf
 
 See preprint: https://arxiv.org/pdf/2403.17845.pdf
 
 See additional data: https://zenodo.org/doi/10.5281/zenodo.10931313
-
-Conference paper (hopefully) coming soon.
 
 ### What matters in Reinforcement Learning for Tractography (2024a)
 
@@ -165,6 +165,17 @@ A bug in the original implementation prevents the reproduction of the published 
 If you want to reference this work, please use (at least) one of
 
 ```
+@InProceedings{The_TractOracle_MICCAI2024,
+        author = { Théberge, Antoine and Descoteaux, Maxime and Jodoin, Pierre-Marc},
+        title = {{ TractOracle: towards an anatomically-informed reward function for RL-based tractography }},
+        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2024},
+        year = {2024},
+        publisher = {Springer Nature Switzerland},
+        volume = {LNCS 15002},
+        month = {October},
+        page = {476 -- 486}
+}
+
 @article{theberge2024matters,
   title={What matters in reinforcement learning for tractography},
   author={Th{\'e}berge, Antoine and Desrosiers, Christian and Bor{\'e}, Arnaud and Descoteaux, Maxime and Jodoin, Pierre-Marc},
