@@ -8,7 +8,9 @@ from torch import nn
 from torch.distributions.normal import Normal
 
 from TrackToLearn.algorithms.shared.utils import (
-    format_widths, make_fc_network)
+    format_widths, make_fc_network, make_fc_crossq_network)
+
+from TrackToLearn.algorithms.shared.batchrenorm import BatchRenorm1d
 
 
 LOG_STD_MAX = 2
@@ -480,3 +482,130 @@ class SACActorCritic(ActorCritic):
         action, _ = self.act(state, probabilistic)
 
         return action
+
+
+class CrossQActor(MaxEntropyActor):
+    """ Actor module that takes in a state and outputs an action.
+    Its policy is the neural network layers
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+    ):
+        """
+        Parameters:
+        -----------
+            state_dim: int
+                Size of input state
+            action_dim: int
+                Size of output action
+            hidden_dims: str
+                String representing layer widths
+
+        """
+        super(CrossQActor, self).__init__(
+            state_dim, action_dim, hidden_dims)
+
+        self.action_dim = action_dim
+
+        self.hidden_layers = format_widths(hidden_dims)
+
+        self.layers = make_fc_crossq_network(
+            self.hidden_layers, state_dim, action_dim * 2)
+
+    def set_bn_training_mode(self, mode: bool) -> None:
+        """
+        Set the training mode of the BatchRenorm layers.
+        When training is True, the running statistics are updated.
+
+        :param mode: Whether to set the layers in training mode or not
+        """
+        for module in self.modules():
+            if isinstance(module, BatchRenorm1d):
+                module.train(mode)
+
+
+class CrossQDoubleCritic(DoubleCritic):
+    """ Critic module that takes in a pair of state-action and outputs its
+5   q-value according to the network's q function. TD3 uses two critics
+    and takes the lowest value of the two during backprop.
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+        critic_size_factor=1,
+    ):
+        """
+        Parameters:
+        -----------
+            state_dim: int
+                Size of input state
+            action_dim: int
+                Size of output action
+            hidden_dims: str
+                String representing layer widths
+
+        """
+        super(CrossQDoubleCritic, self).__init__(
+            state_dim, action_dim, hidden_dims)
+
+        self.hidden_layers = format_widths(
+            hidden_dims) * critic_size_factor
+
+        self.q1 = make_fc_crossq_network(
+            self.hidden_layers, state_dim + action_dim, 1)
+        self.q2 = make_fc_crossq_network(
+            self.hidden_layers, state_dim + action_dim, 1)
+
+    def set_bn_training_mode(self, mode: bool) -> None:
+        """
+        Set the training mode of the BatchRenorm layers.
+        When training is True, the running statistics are updated.
+
+        :param mode: Whether to set the layers in training mode or not
+        """
+        for module in self.modules():
+            if isinstance(module, BatchRenorm1d):
+                module.train(mode)
+
+
+class CrossQActorCritic(SACActorCritic):
+    """ Module that handles the actor and the critic
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: str,
+        device: torch.device,
+    ):
+        """
+        Parameters:
+        -----------
+            state_dim: int
+                Size of input state
+            action_dim: int
+                Size of output action
+            hidden_dims: str
+                String representing layer widths
+            device: torch.device
+
+        """
+        self.device = device
+        self.actor = CrossQActor(
+            state_dim, action_dim, hidden_dims,
+        ).to(device)
+
+        self.critic = CrossQDoubleCritic(
+            state_dim, action_dim, hidden_dims, critic_size_factor=2,
+        ).to(device)
+
+        self.actor.set_bn_training_mode(False)
+        self.critic.set_bn_training_mode(False)
