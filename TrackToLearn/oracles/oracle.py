@@ -6,19 +6,27 @@ from TrackToLearn.oracles.transformer_oracle import TransformerOracle
 from TrackToLearn.utils.torch_utils import get_device_str, get_device
 import contextlib
 
-autocast_context = torch.cuda.amp.autocast if torch.cuda.is_available() else contextlib.nullcontext
+autocast_context = torch.cuda.amp.autocast if torch.cuda.is_available() \
+    else contextlib.nullcontext
 
-class OracleSingleton:
-    _self = None
+
+class Singleton(object):
+    _instance = None
 
     def __new__(cls, *args, **kwargs):
-        if cls._self is None:
-            print('Instanciating new Oracle, should only happen once.')
-            cls._self = super().__new__(cls)
-        return cls._self
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+
+class OracleSingleton(Singleton):
 
     def __init__(self, checkpoint: str, device: str, batch_size=4096):
+        if hasattr(self, '_instanciated'):
+            return
+        self._instanciated = True
         self.checkpoint = torch.load(checkpoint, map_location=get_device())
+        print('Instanciating new Oracle, should only happen once.')
 
         hyper_parameters = self.checkpoint["hyper_parameters"]
         # The model's class is saved in hparams
@@ -41,7 +49,7 @@ class OracleSingleton:
         N = len(streamlines)
         # Placeholders for input and output data
         placeholder = torch.zeros(
-            (self.batch_size, 127, 3), pin_memory=get_device_str() == "cuda")
+            (self.batch_size, 31, 3), pin_memory=get_device_str() == "cuda")
         result = torch.zeros((N), dtype=torch.float, device=self.device)
 
         # Get the first batch
@@ -49,7 +57,7 @@ class OracleSingleton:
         N_batch = len(batch)
         # Resample streamlines to fixed number of point to set all
         # sequences to same length
-        data = set_number_of_points(batch, 128)
+        data = set_number_of_points(batch, 32)
         # Compute streamline features as the directions between points
         dirs = np.diff(data, axis=1)
         # Send the directions to pinned memory
@@ -67,7 +75,7 @@ class OracleSingleton:
                 batch = streamlines[start:end]
                 # Resample streamlines to fixed number of point to set all
                 # sequences to same length
-                data = set_number_of_points(batch, 128)
+                data = set_number_of_points(batch, 32)
                 # Compute streamline features as the directions between points
                 dirs = np.diff(data, axis=1)
                 # Put the directions in pinned memory

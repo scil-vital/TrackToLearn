@@ -1,9 +1,9 @@
-python TrackToLearn/trainers/crossq_train.py \
+python TrackToLearn/trainers/sac_auto_train.py \
     test_ismrm2015 \
-    crossq \
-    stop_oracle_nobn_actor \
-    ismrm2015_nowm/ismrm2015_nowm_updated.hdf5 \
-    --max_ep=10000 \
+    sac_auto \
+    tractometer_2023-12-06-22_14_45 \
+    ismrm2015/ismrm2015.hdf5 \
+    --max_ep=1000 \
     --log_interval=50 \
     --rng_seed=5555 \
     --npv=10 \
@@ -19,5 +19,4 @@ python TrackToLearn/trainers/crossq_train.py \
     --tractometer_validator \
     --scoring_data=ismrm2015/scoring_data \
     --oracle_validator \
-    --oracle_stopping_criterion \
-    --oracle_checkpoint=epoch\=39-step\=55880.ckpt
+    --oracle_checkpoint=models/epoch_49_ismrm2015v4.ckpt

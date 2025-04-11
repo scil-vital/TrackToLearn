@@ -19,6 +19,7 @@ from scilpy.io.utils import (add_overwrite_arg,
 from scilpy.tracking.utils import verify_streamline_length_options
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
+from TrackToLearn.algorithms.crossq import CrossQ
 from TrackToLearn.datasets.utils import MRIDataVolume
 
 from TrackToLearn.experiment.experiment import Experiment
@@ -151,7 +152,7 @@ class TrackToLearnTrack(Experiment):
         self.action_size = env.get_action_size()
 
         # Load agent
-        algs = {'SACAuto': SACAuto}
+        algs = {'SACAuto': SACAuto, 'CrossQ': CrossQ}
 
         rl_alg = algs[self.algorithm]
         print('Tracking with {} agent.'.format(self.algorithm))

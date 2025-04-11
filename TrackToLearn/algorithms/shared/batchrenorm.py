@@ -9,7 +9,7 @@ class BatchRenorm(torch.jit.ScriptModule):
         self,
         num_features: int,
         eps: float = 1e-3,
-        momentum: float = 0.1,
+        momentum: float = 0.01,
         affine: bool = True,
     ):
         super().__init__()
@@ -61,7 +61,7 @@ class BatchRenorm(torch.jit.ScriptModule):
             dims = [i for i in range(x.dim() - 1)]
             if mask is not None:
                 z = x[~mask]
-                batch_mean = z.mean(0) 
+                batch_mean = z.mean(0)
                 batch_std = z.std(0, unbiased=False) + self.eps
             else:
                 batch_mean = x.mean(dims)

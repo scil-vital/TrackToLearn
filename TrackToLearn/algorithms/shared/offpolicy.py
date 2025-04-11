@@ -513,7 +513,7 @@ class CrossQActor(MaxEntropyActor):
 
         self.hidden_layers = format_widths(hidden_dims)
 
-        self.layers = make_fc_crossq_network(
+        self.layers = make_fc_network(
             self.hidden_layers, state_dim, action_dim * 2)
 
     def set_bn_training_mode(self, mode: bool) -> None:
@@ -523,9 +523,7 @@ class CrossQActor(MaxEntropyActor):
 
         :param mode: Whether to set the layers in training mode or not
         """
-        for module in self.modules():
-            if isinstance(module, BatchRenorm1d):
-                module.train(mode)
+        pass
 
 
 class CrossQDoubleCritic(DoubleCritic):

@@ -2,7 +2,6 @@ import numpy as np
 import torch
 
 from torch import nn
-from torch.nn.utils.parametrizations import weight_norm
 
 from TrackToLearn.algorithms.shared.batchrenorm import BatchRenorm1d
 
@@ -58,10 +57,12 @@ def make_fc_crossq_network(
     widths, input_size, output_size, activation=nn.ReLU,
     last_activation=nn.Identity
 ):
-    layers = [BatchRenorm1d(input_size), weight_norm(nn.Linear(input_size, widths[0])), activation()]
+    layers = [BatchRenorm1d(input_size), nn.Linear(input_size, widths[0]),
+              activation()]
     for i in range(len(widths[:-1])):
         layers.extend(
-            [BatchRenorm1d(widths[i]), weight_norm(nn.Linear(widths[i], widths[i+1])), activation()])
+            [BatchRenorm1d(widths[i]), nn.Linear(widths[i], widths[i+1]),
+             activation()])
     # no activ. on last layer
-    layers.extend([BatchRenorm1d(widths[-1]), weight_norm(nn.Linear(widths[-1], output_size))])
+    layers.extend([BatchRenorm1d(widths[-1]), nn.Linear(widths[-1], output_size)])
     return nn.Sequential(*layers)

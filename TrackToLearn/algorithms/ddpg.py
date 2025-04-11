@@ -13,6 +13,7 @@ from TrackToLearn.algorithms.shared.utils import add_item_to_means
 from TrackToLearn.environments.env import BaseEnv
 from TrackToLearn.utils.torch_utils import get_device
 
+
 class DDPG(RLAlgorithm):
     """
     NOTE: LEGACY CODE. The `_episode` function is used. The actual DDPG
@@ -211,10 +212,12 @@ class DDPG(RLAlgorithm):
             # Train agent after collecting sufficient data
             if self.t >= self.start_timesteps:
 
-                batch = self.replay_buffer.sample(self.batch_size)
-                losses = self.update(
-                    batch)
-                running_losses = add_item_to_means(running_losses, losses)
+                for _ in range(self.utd):
+
+                    batch = self.replay_buffer.sample(self.batch_size)
+                    losses = self.update(
+                        batch)
+                    running_losses = add_item_to_means(running_losses, losses)
 
             self.t += action.shape[0]
 

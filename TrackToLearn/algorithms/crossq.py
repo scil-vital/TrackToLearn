@@ -105,11 +105,13 @@ class CrossQ(SAC):
         # SAC requires a different model for actors and critics
         # Optimizer for actor
         self.actor_optimizer = torch.optim.AdamW(
-            self.agent.actor.parameters(), lr=lr, weight_decay=0)
+            self.agent.actor.parameters(), lr=lr, weight_decay=0,
+            betas=(0.5, 0.999))
 
         # Optimizer for critic
         self.critic_optimizer = torch.optim.AdamW(
-            self.agent.critic.parameters(), lr=lr, weight_decay=0)
+            self.agent.critic.parameters(), lr=lr, weight_decay=0,
+            betas=(0.5, 0.999))
 
         # Temperature
         self.alpha = alpha
@@ -122,6 +124,8 @@ class CrossQ(SAC):
         self.total_it = 0
         self.tau = 0.005
         self.agent_freq = 1
+
+        self.utd = 1
 
         self.batch_size = batch_size
         self.replay_size = replay_size
@@ -164,42 +168,12 @@ class CrossQ(SAC):
 
         batch_size = state.shape[0]
 
-        losses = {}
+        losses = {
+            'actor_loss': torch.tensor(0, device=state.device),
+            'alpha_loss': torch.tensor(0, device=state.device),
+        }
 
         alpha = self.log_alpha.exp()
-        if self.total_it % 1 == 0:
-            # Compute \pi_\theta(s_t) and log \pi_\theta(s_t)
-            self.agent.actor.set_bn_training_mode(True)
-            pi, logp_pi = self.agent.act(
-                state, probabilistic=1.0)
-            self.agent.actor.set_bn_training_mode(False)
-
-            # Compute the temperature loss and the temperature
-            alpha_loss = -(self.log_alpha * (
-                logp_pi + self.target_entropy).detach()).mean()
-
-            # Compute the Q values and the minimum Q value
-            self.agent.critic.set_bn_training_mode(False)
-            q1, q2 = self.agent.critic(state, pi)
-            q_pi = torch.min(q1, q2)
-
-            # Entropy-regularized agent loss
-            actor_loss = (alpha * logp_pi - q_pi).mean()
-
-            # Optimize the temperature
-            self.alpha_optimizer.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optimizer.step()
-
-            # Optimize the actor
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.actor_optimizer.step()
-
-            losses.update({
-                'actor_loss': actor_loss.detach(),
-                'alpha_loss': alpha_loss.detach()
-            })
 
         with torch.no_grad():
             # Target actions come from *current* agent
@@ -218,9 +192,9 @@ class CrossQ(SAC):
 
         current_Q1, target_Q1 = torch.split(q1_cat, batch_size, dim=0)
         current_Q2, target_Q2 = torch.split(q2_cat, batch_size, dim=0)
-        target_Q = torch.min(target_Q1, target_Q2).detach()
 
         with torch.no_grad():
+            target_Q = torch.min(target_Q1, target_Q2).detach()
             # Compute the backup which is the Q-learning "target"
             backup = reward + self.gamma * not_done * \
                 (target_Q - alpha * logp_next_action)
@@ -229,7 +203,46 @@ class CrossQ(SAC):
         loss_q1 = F.mse_loss(current_Q1, backup.detach()).mean()
         loss_q2 = F.mse_loss(current_Q2, backup.detach()).mean()
         # Total critic loss
-        critic_loss = loss_q1 + loss_q2
+        critic_loss = 0.5 * (loss_q1 + loss_q2)
+
+        # Optimize the critic
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        if self.total_it % self.agent_freq == 0:
+            # Compute \pi_\theta(s_t) and log \pi_\theta(s_t)
+            self.agent.actor.set_bn_training_mode(True)
+            pi, logp_pi = self.agent.act(
+                state, probabilistic=1.0)
+            self.agent.actor.set_bn_training_mode(False)
+
+            # Compute the temperature loss and the temperature
+            alpha_loss = -(self.log_alpha * (
+                logp_pi + self.target_entropy).detach()).mean()
+
+            # Optimize the temperature
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
+
+            # Compute the Q values and the minimum Q value
+            self.agent.critic.set_bn_training_mode(False)
+            q1, q2 = self.agent.critic(state, pi)
+            q_pi = torch.min(q1, q2)
+
+            # Entropy-regularized agent loss
+            actor_loss = (alpha * logp_pi - q_pi).mean()
+
+            # Optimize the actor
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+
+            losses.update({
+                'actor_loss': actor_loss.detach(),
+                'alpha_loss': alpha_loss.detach()
+            })
 
         losses.update({
             'critic_loss': critic_loss.detach(),
@@ -240,10 +253,5 @@ class CrossQ(SAC):
             # 'Q2': current_Q2.mean().detach(),
             # 'backup': backup.mean().detach(),
         })
-
-        # Optimize the critic
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
 
         return losses
