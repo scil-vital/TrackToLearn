@@ -123,7 +123,7 @@ class CrossQ(SAC):
         self.start_timesteps = 80000
         self.total_it = 0
         self.tau = 0.005
-        self.agent_freq = 1
+        self.agent_freq = 10
 
         self.utd = 1
 
