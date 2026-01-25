@@ -46,12 +46,12 @@ class OffPolicyReplayBuffer(object):
         self.not_done = torch.zeros(
             (self.max_size, 1), dtype=torch.float32)
 
-        if get_device_str() == "cuda":
-            self.state = self.state.pin_memory()
-            self.action = self.action.pin_memory()
-            self.next_state = self.next_state.pin_memory()
-            self.reward = self.reward.pin_memory()
-            self.not_done = self.not_done.pin_memory()
+        # if get_device_str() == "cuda":
+        #     self.state = self.state.pin_memory()
+        #     self.action = self.action.pin_memory()
+        #     self.next_state = self.next_state.pin_memory()
+        #     self.reward = self.reward.pin_memory()
+        #     self.not_done = self.not_done.pin_memory()
 
     def add(
         self,
@@ -128,12 +128,12 @@ class OffPolicyReplayBuffer(object):
         d = self.not_done.index_select(0, ind).to(
             dtype=torch.float32).squeeze(-1)
         
-        if get_device_str() == "cuda":
-            s = s.pin_memory()
-            a = a.pin_memory()
-            ns = ns.pin_memory()
-            r = r.pin_memory()
-            d = d.pin_memory()
+        # if get_device_str() == "cuda":
+        #     s = s.pin_memory()
+        #     a = a.pin_memory()
+        #     ns = ns.pin_memory()
+        #     r = r.pin_memory()
+        #     d = d.pin_memory()
 
         # Return tensors on the same device as the buffer in pinned memory
         return (s.to(device=self.device, non_blocking=True),

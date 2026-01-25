@@ -1,0 +1,954 @@
+{
+  "testing": {
+    "sub-599469": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599469/dwi/sub-599469_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599469/dwi/sub-599469_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599469/dwi/sub-599469_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-599469/sub-599469__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599469/anat/sub-599469_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-599671": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599671/dwi/sub-599671_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599671/dwi/sub-599671_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599671/dwi/sub-599671_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-599671/sub-599671__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-599671/anat/sub-599671_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-601127": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-601127/dwi/sub-601127_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-601127/dwi/sub-601127_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-601127/dwi/sub-601127_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-601127/sub-601127__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-601127/anat/sub-601127_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-613538": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-613538/dwi/sub-613538_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-613538/dwi/sub-613538_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-613538/dwi/sub-613538_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-613538/sub-613538__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-613538/anat/sub-613538_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-620434": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-620434/dwi/sub-620434_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-620434/dwi/sub-620434_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-620434/dwi/sub-620434_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-620434/sub-620434__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-620434/anat/sub-620434_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-622236": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-622236/dwi/sub-622236_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-622236/dwi/sub-622236_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-622236/dwi/sub-622236_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-622236/sub-622236__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-622236/anat/sub-622236_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-623844": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-623844/dwi/sub-623844_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-623844/dwi/sub-623844_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-623844/dwi/sub-623844_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-623844/sub-623844__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-623844/anat/sub-623844_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-627549": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-627549/dwi/sub-627549_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-627549/dwi/sub-627549_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-627549/dwi/sub-627549_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-627549/sub-627549__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-627549/anat/sub-627549_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-638049": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-638049/dwi/sub-638049_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-638049/dwi/sub-638049_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-638049/dwi/sub-638049_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-638049/sub-638049__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-638049/anat/sub-638049_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-644044": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-644044/dwi/sub-644044_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-644044/dwi/sub-644044_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-644044/dwi/sub-644044_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-644044/sub-644044__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-644044/anat/sub-644044_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-645551": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-645551/dwi/sub-645551_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-645551/dwi/sub-645551_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-645551/dwi/sub-645551_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-645551/sub-645551__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-645551/anat/sub-645551_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-654754": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-654754/dwi/sub-654754_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-654754/dwi/sub-654754_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-654754/dwi/sub-654754_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-654754/sub-654754__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-654754/anat/sub-654754_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-665254": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-665254/dwi/sub-665254_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-665254/dwi/sub-665254_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-665254/dwi/sub-665254_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-665254/sub-665254__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-665254/anat/sub-665254_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-672756": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-672756/dwi/sub-672756_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-672756/dwi/sub-672756_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-672756/dwi/sub-672756_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-672756/sub-672756__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-672756/anat/sub-672756_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-673455": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-673455/dwi/sub-673455_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-673455/dwi/sub-673455_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-673455/dwi/sub-673455_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-673455/sub-673455__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-673455/anat/sub-673455_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-677968": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-677968/dwi/sub-677968_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-677968/dwi/sub-677968_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-677968/dwi/sub-677968_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-677968/sub-677968__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-677968/anat/sub-677968_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-679568": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-679568/dwi/sub-679568_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-679568/dwi/sub-679568_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-679568/dwi/sub-679568_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-679568/sub-679568__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-679568/anat/sub-679568_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-680957": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-680957/dwi/sub-680957_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-680957/dwi/sub-680957_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-680957/dwi/sub-680957_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-680957/sub-680957__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-680957/anat/sub-680957_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-683256": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-683256/dwi/sub-683256_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-683256/dwi/sub-683256_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-683256/dwi/sub-683256_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-683256/sub-683256__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-683256/anat/sub-683256_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-685058": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-685058/dwi/sub-685058_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-685058/dwi/sub-685058_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-685058/dwi/sub-685058_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-685058/sub-685058__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-685058/anat/sub-685058_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-687163": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-687163/dwi/sub-687163_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-687163/dwi/sub-687163_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-687163/dwi/sub-687163_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-687163/sub-687163__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-687163/anat/sub-687163_space-dwi_desc-preproc_T1w.nii.gz"
+    }
+  },
+  "validation": {
+    "sub-690152": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-690152/dwi/sub-690152_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-690152/dwi/sub-690152_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-690152/dwi/sub-690152_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-690152/sub-690152__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-690152/anat/sub-690152_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-695768": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-695768/dwi/sub-695768_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-695768/dwi/sub-695768_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-695768/dwi/sub-695768_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-695768/sub-695768__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-695768/anat/sub-695768_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-702133": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-702133/dwi/sub-702133_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-702133/dwi/sub-702133_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-702133/dwi/sub-702133_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-702133/sub-702133__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-702133/anat/sub-702133_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-704238": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-704238/dwi/sub-704238_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-704238/dwi/sub-704238_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-704238/dwi/sub-704238_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-704238/sub-704238__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-704238/anat/sub-704238_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-705341": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-705341/dwi/sub-705341_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-705341/dwi/sub-705341_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-705341/dwi/sub-705341_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-705341/sub-705341__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-705341/anat/sub-705341_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-709551": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-709551/dwi/sub-709551_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-709551/dwi/sub-709551_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-709551/dwi/sub-709551_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-709551/sub-709551__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-709551/anat/sub-709551_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-715041": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715041/dwi/sub-715041_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715041/dwi/sub-715041_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715041/dwi/sub-715041_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-715041/sub-715041__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715041/anat/sub-715041_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-715647": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715647/dwi/sub-715647_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715647/dwi/sub-715647_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715647/dwi/sub-715647_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-715647/sub-715647__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-715647/anat/sub-715647_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-729254": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729254/dwi/sub-729254_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729254/dwi/sub-729254_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729254/dwi/sub-729254_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-729254/sub-729254__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729254/anat/sub-729254_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-729557": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729557/dwi/sub-729557_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729557/dwi/sub-729557_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729557/dwi/sub-729557_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-729557/sub-729557__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-729557/anat/sub-729557_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-732243": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-732243/dwi/sub-732243_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-732243/dwi/sub-732243_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-732243/dwi/sub-732243_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-732243/sub-732243__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-732243/anat/sub-732243_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-734045": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-734045/dwi/sub-734045_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-734045/dwi/sub-734045_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-734045/dwi/sub-734045_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-734045/sub-734045__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-734045/anat/sub-734045_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-742549": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-742549/dwi/sub-742549_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-742549/dwi/sub-742549_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-742549/dwi/sub-742549_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-742549/sub-742549__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-742549/anat/sub-742549_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-748258": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748258/dwi/sub-748258_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748258/dwi/sub-748258_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748258/dwi/sub-748258_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-748258/sub-748258__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748258/anat/sub-748258_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-748662": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748662/dwi/sub-748662_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748662/dwi/sub-748662_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748662/dwi/sub-748662_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-748662/sub-748662__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-748662/anat/sub-748662_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-749361": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-749361/dwi/sub-749361_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-749361/dwi/sub-749361_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-749361/dwi/sub-749361_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-749361/sub-749361__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-749361/anat/sub-749361_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-751348": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-751348/dwi/sub-751348_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-751348/dwi/sub-751348_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-751348/dwi/sub-751348_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-751348/sub-751348__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-751348/anat/sub-751348_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-753251": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-753251/dwi/sub-753251_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-753251/dwi/sub-753251_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-753251/dwi/sub-753251_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-753251/sub-753251__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-753251/anat/sub-753251_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-756055": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-756055/dwi/sub-756055_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-756055/dwi/sub-756055_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-756055/dwi/sub-756055_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-756055/sub-756055__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-756055/anat/sub-756055_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-759869": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-759869/dwi/sub-759869_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-759869/dwi/sub-759869_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-759869/dwi/sub-759869_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-759869/sub-759869__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-759869/anat/sub-759869_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-761957": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-761957/dwi/sub-761957_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-761957/dwi/sub-761957_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-761957/dwi/sub-761957_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-761957/sub-761957__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-761957/anat/sub-761957_space-dwi_desc-preproc_T1w.nii.gz"
+    }
+  },
+  "training": {
+
+    "sub-765056": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-765056/dwi/sub-765056_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-765056/dwi/sub-765056_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-765056/dwi/sub-765056_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-765056/sub-765056__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-765056/anat/sub-765056_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-770352": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-770352/dwi/sub-770352_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-770352/dwi/sub-770352_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-770352/dwi/sub-770352_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-770352/sub-770352__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-770352/anat/sub-770352_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-771354": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-771354/dwi/sub-771354_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-771354/dwi/sub-771354_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-771354/dwi/sub-771354_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-771354/sub-771354__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-771354/anat/sub-771354_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-779370": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-779370/dwi/sub-779370_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-779370/dwi/sub-779370_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-779370/dwi/sub-779370_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-779370/sub-779370__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-779370/anat/sub-779370_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-782561": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-782561/dwi/sub-782561_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-782561/dwi/sub-782561_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-782561/dwi/sub-782561_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-782561/sub-782561__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-782561/anat/sub-782561_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-784565": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-784565/dwi/sub-784565_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-784565/dwi/sub-784565_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-784565/dwi/sub-784565_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-784565/sub-784565__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-784565/anat/sub-784565_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-786569": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-786569/dwi/sub-786569_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-786569/dwi/sub-786569_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-786569/dwi/sub-786569_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-786569/sub-786569__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-786569/anat/sub-786569_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-789373": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-789373/dwi/sub-789373_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-789373/dwi/sub-789373_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-789373/dwi/sub-789373_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-789373/sub-789373__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-789373/anat/sub-789373_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-792564": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792564/dwi/sub-792564_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792564/dwi/sub-792564_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792564/dwi/sub-792564_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-792564/sub-792564__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792564/anat/sub-792564_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-792766": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792766/dwi/sub-792766_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792766/dwi/sub-792766_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792766/dwi/sub-792766_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-792766/sub-792766__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-792766/anat/sub-792766_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-802844": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-802844/dwi/sub-802844_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-802844/dwi/sub-802844_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-802844/dwi/sub-802844_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-802844/sub-802844__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-802844/anat/sub-802844_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-814649": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-814649/dwi/sub-814649_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-814649/dwi/sub-814649_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-814649/dwi/sub-814649_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-814649/sub-814649__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-814649/anat/sub-814649_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-816653": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-816653/dwi/sub-816653_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-816653/dwi/sub-816653_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-816653/dwi/sub-816653_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-816653/sub-816653__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-816653/anat/sub-816653_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-826353": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826353/dwi/sub-826353_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826353/dwi/sub-826353_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826353/dwi/sub-826353_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-826353/sub-826353__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826353/anat/sub-826353_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-826454": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826454/dwi/sub-826454_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826454/dwi/sub-826454_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826454/dwi/sub-826454_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-826454/sub-826454__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-826454/anat/sub-826454_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-833148": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833148/dwi/sub-833148_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833148/dwi/sub-833148_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833148/dwi/sub-833148_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-833148/sub-833148__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833148/anat/sub-833148_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-833249": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833249/dwi/sub-833249_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833249/dwi/sub-833249_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833249/dwi/sub-833249_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-833249/sub-833249__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-833249/anat/sub-833249_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-837560": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837560/dwi/sub-837560_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837560/dwi/sub-837560_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837560/dwi/sub-837560_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-837560/sub-837560__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837560/anat/sub-837560_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-837964": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837964/dwi/sub-837964_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837964/dwi/sub-837964_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837964/dwi/sub-837964_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-837964/sub-837964__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-837964/anat/sub-837964_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-845458": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-845458/dwi/sub-845458_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-845458/dwi/sub-845458_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-845458/dwi/sub-845458_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-845458/sub-845458__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-845458/anat/sub-845458_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-849971": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-849971/dwi/sub-849971_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-849971/dwi/sub-849971_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-849971/dwi/sub-849971_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-849971/sub-849971__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-849971/anat/sub-849971_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-856766": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-856766/dwi/sub-856766_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-856766/dwi/sub-856766_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-856766/dwi/sub-856766_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-856766/sub-856766__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-856766/anat/sub-856766_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-857263": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-857263/dwi/sub-857263_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-857263/dwi/sub-857263_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-857263/dwi/sub-857263_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-857263/sub-857263__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-857263/anat/sub-857263_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-859671": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-859671/dwi/sub-859671_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-859671/dwi/sub-859671_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-859671/dwi/sub-859671_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-859671/sub-859671__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-859671/anat/sub-859671_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-861456": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-861456/dwi/sub-861456_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-861456/dwi/sub-861456_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-861456/dwi/sub-861456_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-861456/sub-861456__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-861456/anat/sub-861456_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-865363": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-865363/dwi/sub-865363_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-865363/dwi/sub-865363_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-865363/dwi/sub-865363_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-865363/sub-865363__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-865363/anat/sub-865363_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-871762": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871762/dwi/sub-871762_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871762/dwi/sub-871762_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871762/dwi/sub-871762_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-871762/sub-871762__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871762/anat/sub-871762_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-871964": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871964/dwi/sub-871964_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871964/dwi/sub-871964_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871964/dwi/sub-871964_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-871964/sub-871964__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-871964/anat/sub-871964_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-872158": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872158/dwi/sub-872158_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872158/dwi/sub-872158_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872158/dwi/sub-872158_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-872158/sub-872158__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872158/anat/sub-872158_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-872764": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872764/dwi/sub-872764_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872764/dwi/sub-872764_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872764/dwi/sub-872764_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-872764/sub-872764__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-872764/anat/sub-872764_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-877168": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877168/dwi/sub-877168_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877168/dwi/sub-877168_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877168/dwi/sub-877168_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-877168/sub-877168__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877168/anat/sub-877168_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-877269": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877269/dwi/sub-877269_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877269/dwi/sub-877269_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877269/dwi/sub-877269_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-877269/sub-877269__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-877269/anat/sub-877269_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-887373": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-887373/dwi/sub-887373_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-887373/dwi/sub-887373_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-887373/dwi/sub-887373_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-887373/sub-887373__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-887373/anat/sub-887373_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-889579": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-889579/dwi/sub-889579_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-889579/dwi/sub-889579_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-889579/dwi/sub-889579_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-889579/sub-889579__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-889579/anat/sub-889579_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-894673": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-894673/dwi/sub-894673_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-894673/dwi/sub-894673_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-894673/dwi/sub-894673_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-894673/sub-894673__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-894673/anat/sub-894673_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-896778": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896778/dwi/sub-896778_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896778/dwi/sub-896778_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896778/dwi/sub-896778_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-896778/sub-896778__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896778/anat/sub-896778_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-896879": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896879/dwi/sub-896879_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896879/dwi/sub-896879_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896879/dwi/sub-896879_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-896879/sub-896879__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-896879/anat/sub-896879_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-898176": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-898176/dwi/sub-898176_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-898176/dwi/sub-898176_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-898176/dwi/sub-898176_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-898176/sub-898176__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-898176/anat/sub-898176_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-899885": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-899885/dwi/sub-899885_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-899885/dwi/sub-899885_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-899885/dwi/sub-899885_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-899885/sub-899885__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-899885/anat/sub-899885_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-901038": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901038/dwi/sub-901038_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901038/dwi/sub-901038_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901038/dwi/sub-901038_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-901038/sub-901038__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901038/anat/sub-901038_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-901139": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901139/dwi/sub-901139_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901139/dwi/sub-901139_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901139/dwi/sub-901139_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-901139/sub-901139__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901139/anat/sub-901139_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-901442": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901442/dwi/sub-901442_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901442/dwi/sub-901442_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901442/dwi/sub-901442_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-901442/sub-901442__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-901442/anat/sub-901442_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-904044": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-904044/dwi/sub-904044_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-904044/dwi/sub-904044_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-904044/dwi/sub-904044_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-904044/sub-904044__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-904044/anat/sub-904044_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-907656": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-907656/dwi/sub-907656_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-907656/dwi/sub-907656_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-907656/dwi/sub-907656_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-907656/sub-907656__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-907656/anat/sub-907656_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-910241": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-910241/dwi/sub-910241_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-910241/dwi/sub-910241_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-910241/dwi/sub-910241_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-910241/sub-910241__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-910241/anat/sub-910241_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-912447": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-912447/dwi/sub-912447_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-912447/dwi/sub-912447_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-912447/dwi/sub-912447_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-912447/sub-912447__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-912447/anat/sub-912447_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-917255": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-917255/dwi/sub-917255_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-917255/dwi/sub-917255_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-917255/dwi/sub-917255_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-917255/sub-917255__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-917255/anat/sub-917255_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-922854": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-922854/dwi/sub-922854_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-922854/dwi/sub-922854_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-922854/dwi/sub-922854_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-922854/sub-922854__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-922854/anat/sub-922854_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-930449": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-930449/dwi/sub-930449_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-930449/dwi/sub-930449_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-930449/dwi/sub-930449_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-930449/sub-930449__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-930449/anat/sub-930449_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-932554": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-932554/dwi/sub-932554_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-932554/dwi/sub-932554_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-932554/dwi/sub-932554_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-932554/sub-932554__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-932554/anat/sub-932554_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-951457": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-951457/dwi/sub-951457_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-951457/dwi/sub-951457_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-951457/dwi/sub-951457_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-951457/sub-951457__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-951457/anat/sub-951457_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-957974": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-957974/dwi/sub-957974_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-957974/dwi/sub-957974_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-957974/dwi/sub-957974_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-957974/sub-957974__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-957974/anat/sub-957974_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-958976": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-958976/dwi/sub-958976_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-958976/dwi/sub-958976_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-958976/dwi/sub-958976_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-958976/sub-958976__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-958976/anat/sub-958976_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-959574": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-959574/dwi/sub-959574_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-959574/dwi/sub-959574_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-959574/dwi/sub-959574_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-959574/sub-959574__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-959574/anat/sub-959574_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-965367": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965367/dwi/sub-965367_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965367/dwi/sub-965367_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965367/dwi/sub-965367_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-965367/sub-965367__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965367/anat/sub-965367_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-965771": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965771/dwi/sub-965771_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965771/dwi/sub-965771_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965771/dwi/sub-965771_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-965771/sub-965771__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-965771/anat/sub-965771_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-978578": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-978578/dwi/sub-978578_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-978578/dwi/sub-978578_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-978578/dwi/sub-978578_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-978578/sub-978578__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-978578/anat/sub-978578_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-979984": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-979984/dwi/sub-979984_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-979984/dwi/sub-979984_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-979984/dwi/sub-979984_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-979984/sub-979984__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-979984/anat/sub-979984_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-983773": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-983773/dwi/sub-983773_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-983773/dwi/sub-983773_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-983773/dwi/sub-983773_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-983773/sub-983773__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-983773/anat/sub-983773_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-984472": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-984472/dwi/sub-984472_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-984472/dwi/sub-984472_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-984472/dwi/sub-984472_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-984472/sub-984472__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-984472/anat/sub-984472_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-987983": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-987983/dwi/sub-987983_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-987983/dwi/sub-987983_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-987983/dwi/sub-987983_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-987983/sub-987983__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-987983/anat/sub-987983_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-991267": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-991267/dwi/sub-991267_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-991267/dwi/sub-991267_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-991267/dwi/sub-991267_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-991267/sub-991267__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-991267/anat/sub-991267_space-dwi_desc-preproc_T1w.nii.gz"
+    },
+    "sub-992774": {
+      "inputs": [
+        "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-992774/dwi/sub-992774_model-tensor_param-tensor_dwimap.nii.gz"
+      ],
+      "peaks": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-992774/dwi/sub-992774_model-csd_param-peaks_dwimap.nii.gz",
+      "tracking": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-992774/dwi/sub-992774_space-DWI_label-tracking_desc-local_mask.nii.gz",
+      "seeding": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/pft_maps/sub-992774/sub-992774__interface.nii.gz",
+      "anat": "/home/local/USHERBROOKE/thea1603/data/hcp105/derivatives/sf-tractomics/sub-992774/anat/sub-992774_space-dwi_desc-preproc_T1w.nii.gz"
+    }
+  }
+}

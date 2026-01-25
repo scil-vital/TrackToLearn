@@ -1,0 +1,1 @@
+python TrackToLearn/trainers/sac_auto_train.py dti hcp_105 fullres ~/data/hcp105/derivatives/ttl_dti.hdf5 --max_ep=5000 --log_interval=50 --lr=0.0001 --gamma=0.95 --rng_seed=1111 --npv=2 --theta=30 --alignment_weighting=1.0 --hidden_dims=1024-1024-1024 --n_dirs=100 --n_actor=4096 --use_comet --binary_stopping_threshold=0.1 --oracle_validator --oracle_stopping
