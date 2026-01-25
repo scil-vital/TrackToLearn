@@ -6,10 +6,6 @@ import numpy as np
 import torch
 from dipy.direction.peaks import reshape_peaks_for_visualization
 from dipy.tracking import utils as track_utils
-from dwi_ml.data.processing.volume.interpolation import \
-    interpolate_volume_in_neighborhood
-from dwi_ml.data.processing.space.neighborhood import \
-    get_neighborhood_vectors_axes
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
@@ -17,6 +13,8 @@ from TrackToLearn.datasets.utils import (MRIDataVolume,
                                          convert_length_mm2vox,
                                          set_sh_order_basis,
                                          get_sh_order_and_fullness)
+from TrackToLearn.environments.interpolation import \
+    interpolate_volume_in_neighborhood, get_neighborhood_vectors_axes
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
 from TrackToLearn.environments.oracle_reward import OracleReward
 from TrackToLearn.environments.reward import RewardFunction
