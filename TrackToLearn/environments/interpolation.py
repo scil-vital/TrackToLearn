@@ -1,8 +1,6 @@
 import numpy as np
 import torch
 
-# from numba import njit
-
 B1 = np.array([[1, 0, 0, 0, 0, 0, 0, 0],
                [-1, 0, 0, 0, 1, 0, 0, 0],
                [-1, 0, 1, 0, 0, 0, 0, 0],
@@ -25,8 +23,33 @@ idx_box = np.array([[0, 0, 0],
                     [1, 1, 1]], dtype=float)
 
 
+def torch_nearest_neighbor_interpolation(volume: torch.Tensor,
+                                         coords_vox_corner: torch.Tensor):
+    """
+    Parameters
+    ----------
+    volume : torch.Tensor with 3D or 4D shape
+        The input volume to interpolate from
+    coords_vox_corner : torch.Tensor with shape (N,3)
+        The coordinates where to interpolate. (Origin = corner, space = vox).
+
+    Returns
+    -------
+    output : torch.Tensor with shape (N, #modalities)
+        The list of interpolated values
+    """
+    # Coord corner: First voxel is coordinates from 0 to 0.99.
+    # Using floor value = becomes 0 = index.
+    coords_vox_corner = torch.floor(coords_vox_corner).to(dtype=torch.long)
+
+    return volume[coords_vox_corner[:, 0],
+                  coords_vox_corner[:, 1],
+                  coords_vox_corner[:, 2]]
+
+
 def torch_trilinear_interpolation(volume: torch.Tensor,
-                                  coords_vox_corner: torch.Tensor):
+                                  coords_vox_corner: torch.Tensor,
+                                  clear_cache=True):
     """Evaluates the data volume at given coordinates using trilinear
     interpolation on a torch tensor.
 
@@ -42,6 +65,9 @@ def torch_trilinear_interpolation(volume: torch.Tensor,
         The input volume to interpolate from
     coords_vox_corner : torch.Tensor with shape (N,3)
         The coordinates where to interpolate. (Origin = corner, space = vox).
+    clear_cache : bool
+        If True, will clear the cache after interpolation. This can be useful
+        to save memory, but will slow down the function.
 
     Returns
     -------
@@ -116,7 +142,7 @@ def torch_trilinear_interpolation(volume: torch.Tensor,
 
         # p: of shape n x 8 x features
         # Q1: n x 8 x 1
-        # This can save a bit of space.
+
         # return torch.sum(p * Q1, dim=1)
         # Able to have bigger batches by avoiding 3D matrix.
         # Ex: With neighborhood axis [1 2] (13 neighbors), 47 features per
@@ -132,38 +158,9 @@ def torch_trilinear_interpolation(volume: torch.Tensor,
                          "volume's number of dimensions!")
 
 
-def get_neighborhood_vectors_axes(radius: int, resolution: float):
-    """
-    This neighborhood definition lies on a sphere.
-
-    For radius = 1, returns a list of 6 positions (up, down, left,
-    right, behind, in front) at exactly `resolution` (mm or voxels) from origin
-    (i.e. current postion).
-    If radius is > 1, returns a multi-radius neighborhood (lying on
-    concentring spheres).
-
-    Returns
-    -------
-    neighborhood_vectors : tensor of shape (N, 3)
-        A list of vectors with last dimension = 3 (x,y,z coordinate for each
-        neighbour per respect to the origin). The current point (0,0,0) is
-        NOT included.
-    """
-    tmp_axes = np.identity(3)
-    unit_axes = np.concatenate((tmp_axes, -tmp_axes))
-
-    radiuses = np.asarray(range(1, radius + 1)) * resolution
-    neighborhood_vectors = []
-    for r in radiuses:
-        neighborhood_vectors.extend(unit_axes * r)
-    neighborhood_vectors = torch.as_tensor(np.asarray(neighborhood_vectors),
-                                           dtype=torch.float)
-
-    return neighborhood_vectors
-
-
 def interpolate_volume_in_neighborhood(
-        volume_as_tensor, coords_vox_corner, neighborhood_vectors_vox=None):
+        volume_as_tensor, coords_vox_corner, neighborhood_vectors_vox=None,
+        clear_cache=True):
     """
     Params
     ------
@@ -177,6 +174,9 @@ def interpolate_volume_in_neighborhood(
         The neighboors to add to each coord. Do not include the current point
         ([0,0,0]). Values are considered in the same space as
         coords_vox_corner, and should thus be in voxel space.
+    clear_cache: bool
+        If True, will clear the cache after interpolation. This can be useful
+        to save memory, but will slow down the function.
 
     Returns
     -------
@@ -201,7 +201,8 @@ def interpolate_volume_in_neighborhood(
         # DWI data features for each neighbor are concatenated.
         # Result is of shape: (M * (N+1), F).
         flat_subj_x_data = torch_trilinear_interpolation(volume_as_tensor,
-                                                         coords_vox_corner)
+                                                         coords_vox_corner,
+                                                         clear_cache)
 
         # Neighbors become new features of the current point.
         # Reshape signal into (M, (N+1)*F))
@@ -210,7 +211,8 @@ def interpolate_volume_in_neighborhood(
 
     else:  # No neighborhood:
         subj_x_data = torch_trilinear_interpolation(volume_as_tensor,
-                                                    coords_vox_corner)
+                                                    coords_vox_corner,
+                                                    clear_cache)
 
     return subj_x_data, coords_vox_corner
 
@@ -258,6 +260,36 @@ def extend_coordinates_with_neighborhood(
     flat_coords += tiled_vectors
 
     return flat_coords, tiled_vectors
+
+
+def get_neighborhood_vectors_axes(radius: int, resolution: float):
+    """
+    This neighborhood definition lies on a sphere.
+
+    For radius = 1, returns a list of 6 positions (up, down, left,
+    right, behind, in front) at exactly `resolution` (mm or voxels) from origin
+    (i.e. current postion).
+    If radius is > 1, returns a multi-radius neighborhood (lying on
+    concentring spheres).
+
+    Returns
+    -------
+    neighborhood_vectors : tensor of shape (N, 3)
+        A list of vectors with last dimension = 3 (x,y,z coordinate for each
+        neighbour per respect to the origin). The current point (0,0,0) is
+        NOT included.
+    """
+    tmp_axes = np.identity(3)
+    unit_axes = np.concatenate((tmp_axes, -tmp_axes))
+
+    radiuses = np.asarray(range(1, radius + 1)) * resolution
+    neighborhood_vectors = []
+    for r in radiuses:
+        neighborhood_vectors.extend(unit_axes * r)
+    neighborhood_vectors = torch.as_tensor(np.asarray(neighborhood_vectors),
+                                           dtype=torch.float)
+
+    return neighborhood_vectors
 
 
 # @njit
