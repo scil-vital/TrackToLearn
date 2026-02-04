@@ -51,9 +51,9 @@ def generate_dataset(
             add_subjects_to_hdf5(
                 config, hdf_file, "validation")
 
-            print("Processing test subjects")
-            add_subjects_to_hdf5(
-                config, hdf_file, "testing")
+            # print("Processing test subjects")
+            # add_subjects_to_hdf5(
+            #     config, hdf_file, "testing")
 
     print("Saved dataset : {}".format(output))
 
@@ -140,8 +140,12 @@ def process_subject(
     for i, v in enumerate(input_volumes):
         if len(v.shape) == 3:
             input_volumes[i] = v[..., None]
-    input_volume = input_volumes[0]
 
+    input_volume = input_volumes[0]
+    # Assert the fODF only has 6 channels
+    assert input_volume.shape[-1] == 6, \
+        "Expected fODF volume to have 6 channels, got {}".format(
+            input_volume.shape[-1])
     signal = np.concatenate([input_volume] + input_volumes[1:], axis=-1)
 
     signal_image = Nifti1Image(
