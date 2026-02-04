@@ -6,13 +6,12 @@ import numpy as np
 import torch
 from dipy.direction.peaks import reshape_peaks_for_visualization
 from dipy.tracking import utils as track_utils
+from scilpy.io.utils import load_matrix_in_any_format
 from torch.utils.data import DataLoader
 
 from TrackToLearn.datasets.SubjectDataset import SubjectDataset
 from TrackToLearn.datasets.utils import (MRIDataVolume,
-                                         convert_length_mm2vox,
-                                         set_sh_order_basis,
-                                         get_sh_order_and_fullness)
+                                         convert_length_mm2vox)
 from TrackToLearn.environments.interpolation import \
     interpolate_volume_in_neighborhood, get_neighborhood_vectors_axes
 from TrackToLearn.environments.local_reward import PeaksAlignmentReward
@@ -53,7 +52,7 @@ class BaseEnv(object):
 
     def __init__(
         self,
-        subject_data: str,
+        subject_data: str | Tuple,
         split_id: str,
         env_dto: dict,
     ):
@@ -63,7 +62,7 @@ class BaseEnv(object):
 
         Parameters
         ----------
-        dataset_file: str
+        dataset_file: str or Tuple
             Path to the HDF5 file containing the dataset.
         split_id: str
             Name of the split to load (e.g. 'training',
@@ -102,8 +101,12 @@ class BaseEnv(object):
         # Tracking parameters
         self.n_dirs = env_dto['n_dirs']
         self.theta = env_dto['theta']
+
         # Number of seeds per voxel
         self.npv = env_dto['npv']
+        self.nt = env_dto['nt']
+        self.in_custom_seeds = env_dto['in_custom_seeds']
+
         # Whether to use CMC or binary stopping criterion
         self.binary_stopping_threshold = env_dto['binary_stopping_threshold']
 
@@ -130,7 +133,6 @@ class BaseEnv(object):
         # Other parameters
         self.rng = env_dto['rng']
         self.device = env_dto['device']
-        self.target_sh_order = env_dto['target_sh_order']
 
         # Load one subject as an example
         self.load_subject()
@@ -176,14 +178,6 @@ class BaseEnv(object):
 
             self.reference = reference
 
-        # The SH target order is taken from the hyperparameters in the case of
-        # tracking. Otherwise, the SH target order is taken from the input
-        # volume by default.
-        if self.target_sh_order is None:
-            n_coefs = input_volume.shape[-1]
-            sh_order, _ = get_sh_order_and_fullness(n_coefs)
-            self.target_sh_order = sh_order
-
         self.tracking_mask = tracking_mask
         self.peaks = peaks
         mask_data = tracking_mask.data.astype(np.uint8)
@@ -209,10 +203,23 @@ class BaseEnv(object):
         ).to(self.device)
 
         # Tracking seeds
-        self.seeds = track_utils.random_seeds_from_mask(
-            self.seeding_data,
-            np.eye(4),
-            seeds_count=self.npv)
+        if self.in_custom_seeds:
+            self.seeds = np.squeeze(
+                load_matrix_in_any_format(self.in_custom_seeds))
+        else:
+            if self.npv:
+                seed_per_vox = True
+                nb_seeds = self.npv
+            else:
+                seed_per_vox = False
+                nb_seeds = self.nt
+
+            self.seeds = track_utils.random_seeds_from_mask(
+                self.seeding_data,
+                np.eye(4),
+                seeds_count=nb_seeds,
+                seed_count_per_voxel=seed_per_vox)
+
         # print(
         #     '{} has {} seeds.'.format(self.__class__.__name__,
         #                               len(self.seeds)))
@@ -325,17 +332,13 @@ class BaseEnv(object):
         in_odf = env_dto['in_odf']
         in_seed = env_dto['in_seed']
         in_mask = env_dto['in_mask']
-        sh_basis = env_dto['sh_basis']
         reference = env_dto['reference']
-        target_sh_order = env_dto['target_sh_order']
 
         (input_volume, peaks_volume, tracking_mask, seeding_mask) = \
             BaseEnv._load_files(
                 in_odf,
                 in_seed,
-                in_mask,
-                sh_basis,
-                target_sh_order)
+                in_mask)
 
         subj_files = (input_volume, tracking_mask, seeding_mask,
                       peaks_volume, reference)
@@ -348,8 +351,6 @@ class BaseEnv(object):
         signal_file,
         in_seed,
         in_mask,
-        sh_basis,
-        target_sh_order=6,
     ):
         """ Load data volumes and masks from files. This is useful for
         tracking from a trained model.
@@ -366,10 +367,6 @@ class BaseEnv(object):
             Path to the seeding mask.
         in_mask: str
             Path to the tracking mask.
-        sh_basis: str
-            Basis of the SH coefficients.
-        target_sh_order: int
-            Target SH order. Should come from the hyperparameters file.
 
         Returns
         -------
@@ -393,10 +390,7 @@ class BaseEnv(object):
                   'ran robustly. You are entering undefined behavior '
                   'territory.')
 
-        data = set_sh_order_basis(signal.get_fdata(dtype=np.float32),
-                                  sh_basis,
-                                  target_order=target_sh_order,
-                                  target_basis='descoteaux07')
+        data = signal.get_fdata(dtype=np.float32)
 
         # Compute peaks from signal
         # Does not work if signal is not fODFs
@@ -442,14 +436,6 @@ class BaseEnv(object):
 
         return 3
 
-    def get_target_sh_order(self):
-        """ Returns the target SH order. For tracking, this is based on the
-        hyperparameters.json if it's specified.
-        Otherwise, it's extracted from the data directly.
-        """
-
-        return self.target_sh_order
-
     def get_voxel_size(self):
         """ Returns the voxel size by taking the mean value of the diagonal
         of the affine. This implies that the vox size is always isometric.
@@ -479,7 +465,7 @@ class BaseEnv(object):
     def _format_state(
         self,
         streamlines: np.ndarray
-    ) -> np.ndarray:
+    ) -> torch.Tensor:
         """
         From the last streamlines coordinates, extract the corresponding
         SH coefficients
@@ -491,13 +477,13 @@ class BaseEnv(object):
 
         Returns
         -------
-        inputs: `numpy.ndarray`
+        inputs: `torch.Tensor`
             Observations of the state, incl. previous directions.
         """
         N, L, P = streamlines.shape
 
         if N <= 0:
-            return []
+            return torch.Tensor()
 
         # Get the last point of each streamline
         segments = streamlines[:, -1, :][:, None, :]
@@ -589,7 +575,7 @@ class BaseEnv(object):
         if self.compute_reward:
             self.reward_function.reset()
 
-    def step():
+    def step(self):
         """
         Abstract method to be implemented by subclasses which defines
         the behavior of the environment when taking a step. This includes

@@ -114,6 +114,8 @@ class Experiment(object):
             'max_length': self.max_length,
             'noise': self.noise,
             'npv': self.npv,
+            'nt': self.nt,
+            'in_custom_seeds': self.in_custom_seeds,
             'rng': self.rng,
             'alignment_weighting': self.alignment_weighting,
             'oracle_bonus': self.oracle_bonus,
@@ -125,7 +127,6 @@ class Experiment(object):
             'binary_stopping_threshold': self.binary_stopping_threshold,
             'compute_reward': self.compute_reward,
             'device': self.device,
-            'target_sh_order': self.target_sh_order if hasattr(self, 'target_sh_order') else None,
         }
 
         if noisy:
@@ -187,11 +188,10 @@ class Experiment(object):
 
         # Update DTO to include indiv. files instead of hdf5
         env_dto.update({
-            'in_odf': self.in_odf,
+            'in_tensor': self.in_tensor,
             'wm_file': self.wm_file,
             'in_seed': self.in_seed,
             'in_mask': self.in_mask,
-            'sh_basis': self.sh_basis,
             'input_wm': self.input_wm,
             'reference': self.reference_file,
             # file instead of being passed directly.

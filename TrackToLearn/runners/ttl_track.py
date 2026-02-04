@@ -13,10 +13,11 @@ from os.path import join
 from dipy.io.utils import get_reference_info, create_tractogram_header
 from nibabel.streamlines import detect_format
 from scilpy.io.utils import (add_overwrite_arg,
-                             add_sh_basis_args,
                              assert_inputs_exist, assert_outputs_exist,
                              verify_compression_th)
-from scilpy.tracking.utils import verify_streamline_length_options
+from scilpy.tracking.utils import (
+    add_seeding_options,
+    verify_streamline_length_options)
 
 from TrackToLearn.algorithms.sac_auto import SACAuto
 from TrackToLearn.datasets.utils import MRIDataVolume
@@ -65,12 +66,15 @@ class TrackToLearnTrack(Experiment):
             track_dto['binary_stopping_threshold']
 
         self.n_actor = track_dto['n_actor']
+
         self.npv = track_dto['npv']
+        self.nt = track_dto['nt']
+        self.in_custom_seeds = track_dto['in_custom_seeds']
+
         self.min_length = track_dto['min_length']
         self.max_length = track_dto['max_length']
 
         self.compress = track_dto['compress'] or 0.0
-        self.sh_basis = track_dto['sh_basis'][0]
         self.save_seeds = track_dto['save_seeds']
 
         # Tractometer parameters
@@ -97,11 +101,10 @@ class TrackToLearnTrack(Experiment):
             hyperparams = json.load(json_file)
             self.algorithm = hyperparams['algorithm']
             self.step_size = float(hyperparams['step_size'])
-            self.voxel_size = hyperparams.get('voxel_size', 2.0)
+            self.voxel_size = hyperparams.get('voxel_size', 1.0)
             self.theta = hyperparams['max_angle']
             self.hidden_dims = hyperparams['hidden_dims']
             self.n_dirs = hyperparams['n_dirs']
-            self.target_sh_order = hyperparams['target_sh_order']
 
         self.alignment_weighting = 0.0
         # Oracle parameters
@@ -170,7 +173,7 @@ class TrackToLearnTrack(Experiment):
         # Initialize Tracker, which will handle streamline generation
 
         tracker = Tracker(
-            alg, self.n_actor, compress=self.compress,
+            alg, self.n_actor, compress=self.compress, prob=1.0,
             min_length=self.min_length, max_length=self.max_length,
             save_seeds=self.save_seeds)
 
@@ -188,10 +191,8 @@ class TrackToLearnTrack(Experiment):
 
 def add_mandatory_options_tracking(p):
     p.add_argument('in_odf',
-                   help='File containing the orientation diffusion function \n'
-                        'as spherical harmonics file (.nii.gz). Ex: ODF or '
-                        'fODF.\nCan be of any order and basis (including "full'
-                        '" bases for\nasymmetric ODFs). See also --sh_basis.')
+                   help='File containing the diffusion odfs. Must be in '
+                        'Dipy ordering, ie Dxx, Dxy, Dyy, Dxz, Dyz, Dzz.')
     p.add_argument('in_seed',
                    help='Seeding mask (.nii.gz). Must be represent the WM/GM '
                         'interface.')
@@ -225,9 +226,6 @@ def add_out_options(p):
 def add_track_args(parser):
 
     add_mandatory_options_tracking(parser)
-
-    basis_group = parser.add_argument_group('Basis options')
-    add_sh_basis_args(basis_group)
     add_out_options(parser)
 
     agent_group = parser.add_argument_group('Tracking agent options')
@@ -247,10 +245,8 @@ def add_track_args(parser):
                              'ly.\nLimited by the size of your GPU and RAM. A '
                              'higher value\nwill speed up tracking up to a '
                              'point [%(default)s].')
+    add_seeding_options(parser)
 
-    seed_group = parser.add_argument_group('Seeding options')
-    seed_group.add_argument('--npv', type=int, default=1,
-                            help='Number of seeds per voxel [%(default)s].')
     track_g = parser.add_argument_group('Tracking options')
     track_g.add_argument('--min_length', type=float, default=10.,
                          metavar='m',
@@ -260,7 +256,7 @@ def add_track_args(parser):
                          metavar='M',
                          help='Maximum length of a streamline in mm. '
                          '[%(default)s]')
-    track_g.add_argument('--noise', default=0.0, type=float, metavar='sigma',
+    track_g.add_argument('--noise', default=0.1, type=float, metavar='sigma',
                          help='Add noise ~ N (0, `noise`) to the agent\'s\n'
                          'output to make tracking more probabilistic.\n'
                          'Should be between 0.0 and 0.1.'

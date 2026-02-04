@@ -25,7 +25,7 @@ class Tracker(object):
         self,
         alg: RLAlgorithm,
         n_actor: int,
-        prob: float = 0.,
+        prob: float = 1.,
         compress: float = 0.0,
         min_length: float = 20,
         max_length: float = 200,
@@ -152,7 +152,7 @@ class Tracker(object):
     def track_and_train(
         self,
         env: BaseEnv,
-    ) -> Tuple[Tractogram, float, float, float]:
+    ) -> Tuple[Tractogram, dict, float, dict]:
         """
         Call the main training loop forward then backward.
         This can be considered an "epoch". Note that N=self.n_actor
@@ -204,7 +204,7 @@ class Tracker(object):
     def track_and_validate(
         self,
         env: BaseEnv
-    ) -> Tuple[Tractogram, float, dict]:
+    ) -> Tuple[Tractogram, float]:
         """
         Run the tracking algorithm without training to see how it performs, but
         still compute the reward.
@@ -233,7 +233,7 @@ class Tracker(object):
         def _generate_streamlines_and_rewards():
 
             # Track for every seed in the environment
-            for i, start in enumerate(
+            for _, start in enumerate(
                     tqdm(range(0, len(env.seeds), self.n_actor))):
 
                 # Last batch might not be "full"
