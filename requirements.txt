@@ -1,2 +1,0 @@
-# dwi-ml @ git+https://github.com/scil-vital/dwi_ml@for_beluga_scilpy2
-scilpy=2.1.0

@@ -18,7 +18,7 @@ class OracleSingleton:
         return cls._self
 
     def __init__(self, checkpoint: str, device: str, batch_size=4096):
-        self.checkpoint = torch.load(checkpoint, map_location=get_device())
+        self.checkpoint = torch.load(checkpoint, map_location=get_device(), weights_only=False)
 
         hyper_parameters = self.checkpoint["hyper_parameters"]
         # The model's class is saved in hparams

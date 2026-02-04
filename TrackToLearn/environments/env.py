@@ -176,8 +176,9 @@ class BaseEnv(object):
 
             self.reference = reference
 
-        # The SH target order is taken from the hyperparameters in the case of tracking.
-        # Otherwise, the SH target order is taken from the input volume by default.
+        # The SH target order is taken from the hyperparameters in the case of
+        # tracking. Otherwise, the SH target order is taken from the input
+        # volume by default.
         if self.target_sh_order is None:
             n_coefs = input_volume.shape[-1]
             sh_order, _ = get_sh_order_and_fullness(n_coefs)
@@ -442,7 +443,8 @@ class BaseEnv(object):
         return 3
 
     def get_target_sh_order(self):
-        """ Returns the target SH order. For tracking, this is based on the hyperparameters.json if it's specified.
+        """ Returns the target SH order. For tracking, this is based on the
+        hyperparameters.json if it's specified.
         Otherwise, it's extracted from the data directly.
         """
 

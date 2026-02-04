@@ -23,11 +23,11 @@
 #     echo "No GPU or CUDA installation found. Installing PyTorch without CUDA support."
 #     CUDA_VERSION="cpu"
 # fi
-# 
-# echo "Installing required packages."
-# 
-# pip install Cython==0.29.* numpy==1.23.* packaging --quiet
-# 
+
+echo "Installing required packages."
+
+# pip install Cython==3.0.* numpy==1.25.* --quiet
+
 # if [[ "$OSTYPE" == "darwin"* ]]; then
 #     echo "Installing PyTorch 2.2.0"
 #     pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --quiet
@@ -35,11 +35,12 @@
 #     # Install pytorch
 #     echo "Installing PyTorch 2.2.0+${CUDA_VERSION}"
 #     # Install PyTorch with CUDA support
-#     
+#     pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --extra-index-url https://download.pytorch.org/whl/${CUDA_VERSION} --quiet
 # fi
+uv pip install scilpy torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 # Install other required packages and modules
 echo "Finalizing installation ..."
-uv pip install -e .
-uv pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0
+pip install comet_ml
+pip install -e .
 echo "Done !"
